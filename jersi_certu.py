@@ -851,74 +851,66 @@ class Grid:
         red = Color.red
         kunti = Sort.kunti
 
-        blue_forms = list()
+        blue_forms_wo_kunti = list()
+        blue_kunti = None
         for sort in Sort.get_indices():
-            blue_forms.extend(self.forms[blue][sort])
+            if sort != kunti:
+                blue_forms_wo_kunti.extend(self.forms[blue][sort])
+            else:
+                blue_kunti = self.forms[blue][sort][0]
 
-        red_forms = list()
+        red_forms_wo_kunti = list()
+        red_kunti = None
         for sort in Sort.get_indices():
-            red_forms.extend(self.forms[red][sort])
+            if sort != kunti:
+                red_forms_wo_kunti.extend(self.forms[red][sort])
+            else:
+                red_kunti = self.forms[red][sort][0]
 
-        random.shuffle(blue_forms)
-        random.shuffle(red_forms)
+        random.shuffle(blue_forms_wo_kunti)
+        random.shuffle(red_forms_wo_kunti)
 
         # set blue forms
 
-        self.place_form(blue_forms[0], "b1")
-        self.place_form(blue_forms[1], "b2")
-        self.place_form(blue_forms[2], "b3")
-        self.place_form(blue_forms[3], "b4")
-        self.place_form(blue_forms[4], "b5")
-        self.place_form(blue_forms[5], "b6")
+        self.place_form(blue_forms_wo_kunti[0], "b1")
+        self.place_form(blue_forms_wo_kunti[1], "b2")
+        self.place_form(blue_forms_wo_kunti[2], "b3")
+        self.place_form(blue_forms_wo_kunti[3], "b4")
+        self.place_form(blue_forms_wo_kunti[4], "b5")
+        self.place_form(blue_forms_wo_kunti[5], "b6")
 
-        self.place_form(blue_forms[6], "a1")
+        self.place_form(blue_forms_wo_kunti[6], "a1")
+        
+        self.place_form(blue_forms_wo_kunti[7], "a2")
+        self.place_form(blue_forms_wo_kunti[8], "a2")
 
-        if blue_forms[7].sort != kunti:
-            self.place_form(blue_forms[7], "a2")
-            self.place_form(blue_forms[8], "a2")
-        else:
-            self.place_form(blue_forms[8], "a2")
-            self.place_form(blue_forms[7], "a2")
+        self.place_form(blue_kunti, "a3")
 
-        self.place_form(blue_forms[9], "a3")
-
-        if blue_forms[10].sort != kunti:
-            self.place_form(blue_forms[10], "a4")
-            self.place_form(blue_forms[11], "a4")
-        else:
-            self.place_form(blue_forms[11], "a4")
-            self.place_form(blue_forms[10], "a4")
-
-        self.place_form(blue_forms[12], "a5")
+        self.place_form(blue_forms_wo_kunti[9], "a4")
+        self.place_form(blue_forms_wo_kunti[10], "a4")
+        
+        self.place_form(blue_forms_wo_kunti[11], "a5")
 
         # set red forms
 
-        self.place_form(red_forms[0], "h6")
-        self.place_form(red_forms[1], "h5")
-        self.place_form(red_forms[2], "h4")
-        self.place_form(red_forms[3], "h3")
-        self.place_form(red_forms[4], "h2")
-        self.place_form(red_forms[5], "h1")
+        self.place_form(red_forms_wo_kunti[0], "h6")
+        self.place_form(red_forms_wo_kunti[1], "h5")
+        self.place_form(red_forms_wo_kunti[2], "h4")
+        self.place_form(red_forms_wo_kunti[3], "h3")
+        self.place_form(red_forms_wo_kunti[4], "h2")
+        self.place_form(red_forms_wo_kunti[5], "h1")
 
-        self.place_form(red_forms[6], "i5")
+        self.place_form(red_forms_wo_kunti[6], "i5")
 
-        if red_forms[7].sort != kunti:
-            self.place_form(red_forms[7], "i4")
-            self.place_form(red_forms[8], "i4")
-        else:
-            self.place_form(red_forms[8], "i4")
-            self.place_form(red_forms[7], "i4")
+        self.place_form(red_forms_wo_kunti[7], "i4")
+        self.place_form(red_forms_wo_kunti[8], "i4")
 
-        self.place_form(red_forms[9], "i3")
+        self.place_form(red_kunti, "i3")
 
-        if red_forms[10].sort != kunti:
-            self.place_form(red_forms[10], "i2")
-            self.place_form(red_forms[11], "i2")
-        else:
-            self.place_form(red_forms[11], "i2")
-            self.place_form(red_forms[10], "i2")
+        self.place_form(red_forms_wo_kunti[9], "i2")
+        self.place_form(red_forms_wo_kunti[10], "i2")
 
-        self.place_form(red_forms[12], "i1")
+        self.place_form(red_forms_wo_kunti[11], "i1")
 
 
     def set_forms_at_standard_positions(self):
@@ -1615,8 +1607,12 @@ class Game:
         print("saving positions in file '%s' done" % file_path)
 
 
-if __name__ == "__main__":
+def main():
     print(_COPYRIGHT_AND_LICENSE)
-    MY_GAME = Game()
-    MY_GAME.run()
+    my_game = Game()
+    my_game.run()
+    
+
+if __name__ == "__main__":
+    main()
     
