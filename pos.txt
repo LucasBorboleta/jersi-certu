@@ -1,0 +1,13 @@
+a2:R    a2:K
+a3:N    a4:R
+a4:C    a5:K
+b2:R    b3:C
+b4:K    b5:R
+b6:C    f5:k
+f5:r    h1:c
+h2:K    h2:C
+h3:n    h4:c
+h5:r    h6:k
+i1:k    i2:r
+i3:c    i4:r
+i4:k    i5:c
