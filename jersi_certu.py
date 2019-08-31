@@ -60,13 +60,14 @@ class Hexagon:
           - OC = n*e_y + n*e_u
    """
 
+
+    __SPACE = " "
+    __FILLER = "."
+
     def __init__(self, nodes_per_hexagon_side):
 
         self.__nodes_per_hexagon_side = nodes_per_hexagon_side
         self.__n = self.__nodes_per_hexagon_side - 1
-
-        self.__char_space = " "
-        self.__char_filler = "."
 
         self.__init_directions()
         self.__init_uv_coords()
@@ -111,7 +112,9 @@ class Hexagon:
                 nw_condition = (self.__n + u >= 0)
                 sw_condition = (self.__n + u + v >= 0)
 
-                self.__node_in_hexagon[(u, v)] = nw_condition and ne_condition and sw_condition and se_condition
+                is_inside = nw_condition and ne_condition and sw_condition and se_condition
+
+                self.__node_in_hexagon[(u, v)] = is_inside
 
 
     def __init_xy_frame(self):
@@ -123,13 +126,13 @@ class Hexagon:
 
         for x in range(self.__nx + 1):
             for y in range(self.__ny + 1):
-                self.__xy_frame[(x, y)] = self.__char_space*self.__xy_cell_size
+                self.__xy_frame[(x, y)] = Hexagon.__SPACE*self.__xy_cell_size
 
         for v in self.__v_list:
             for u in self.__u_list:
                 if self.__node_in_hexagon[(u, v)]:
                     (x, y) = self.__uv_to_xy((u, v))
-                    self.__xy_frame[(x, y)] = self.__char_filler*self.__xy_cell_size
+                    self.__xy_frame[(x, y)] = Hexagon.__FILLER*self.__xy_cell_size
 
 
     def __init_y_labels(self):
@@ -284,10 +287,10 @@ class Hexagon:
 
     def print_xy_frame(self):
         for y in range(self.__ny + 1):
-            line = self.__left_labels[y] + self.__char_space*self.__xy_cell_size
+            line = self.__left_labels[y] + Hexagon.__SPACE*self.__xy_cell_size
             for x in range(self.__nx + 1):
                 line += self.__xy_frame[(x, y)]
-            line += self.__char_space*self.__xy_cell_size + self.__right_labels[y]
+            line += Hexagon.__SPACE*self.__xy_cell_size + self.__right_labels[y]
             print(line)
 
 
@@ -300,7 +303,7 @@ class Hexagon:
         (u, v) = uv
         (x, y) = self.__uv_to_xy((u, v))
         assert len(cell_text) <= self.__xy_cell_size
-        self.__xy_frame[(x, y)] = cell_text.rjust(self.__xy_cell_size, self.__char_filler)
+        self.__xy_frame[(x, y)] = cell_text.rjust(self.__xy_cell_size, Hexagon.__FILLER)
 
 
 class Sort:
@@ -347,20 +350,23 @@ class Sort:
         name_uppered = name.upper()
         name_lowered = name.lower()
 
+        index = None
+
         if name in Sort.__names:
-            return Sort.__names.index(name)
+            index = Sort.__names.index(name)
 
         elif name in Sort.__long_names:
-            return Sort.__long_names.index(name)
+            index = Sort.__long_names.index(name)
 
         elif name_uppered in Sort.__names:
-            return Sort.__names.index(name_uppered)
+            index = Sort.__names.index(name_uppered)
 
         elif name_lowered in Sort.__long_names:
-            return Sort.__long_names.index(name_lowered)
+            index = Sort.__long_names.index(name_lowered)
 
-        else:
-            assert False
+        assert index is not None
+
+        return index
 
 
     @staticmethod
@@ -403,15 +409,21 @@ class Color:
     @staticmethod
     def get_index(name):
 
+        index = None
+
         if name in Color.__names:
-            return Color.__names.index(name)
+            index = Color.__names.index(name)
 
         else:
             assert name != ""
             for (color, transformer) in enumerate(Color.__transformers):
                 if name == transformer(name):
-                    return color
-            assert False
+                    index = color
+                    break
+
+        assert index is not None
+
+        return index
 
 
     @staticmethod
@@ -551,8 +563,11 @@ class Node:
         kunti_captured = False
 
         assert dst_node is not None
-        jersi_assert(dst_node.label in self.next_first_labels, "destination should stay at one segment from source")
-        jersi_assert(self.has_one_or_two_forms(), "source should have one or two forms")
+        jersi_assert(dst_node.label in self.next_first_labels,
+                     "destination should stay at one segment from source")
+
+        jersi_assert(self.has_one_or_two_forms(),
+                     "source should have one or two forms")
 
         top = self.get_top()
 
@@ -561,13 +576,15 @@ class Node:
             dst_node.set_form(top)
 
         elif dst_node.get_top_color() == self.get_top_color():
-            jersi_assert(dst_node.has_zero_or_one_form(), "source should have zero or one form")
+            jersi_assert(dst_node.has_zero_or_one_form(),
+                         "source should have zero or one form")
 
             self.unset_form(top)
             dst_node.set_form(top)
 
         else:
-            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()), "source should beats destination")
+            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()),
+                         "source should beats destination")
 
             form_captured = True
 
@@ -593,20 +610,29 @@ class Node:
 
         jersi_assert(self.has_two_forms(), "source should have two forms")
         assert dst_node is not None
-        jersi_assert(dst_node.label in self.next_first_labels or dst_node.label in self.next_second_labels, "destination should stay at one or two segments from source")
 
-        if dst_node.label in self.next_second_labels:
+        stepping_one_segment = dst_node.label in self.next_first_labels
+        stepping_two_segments = dst_node.label in self.next_second_labels
+
+        jersi_assert(stepping_one_segment or stepping_two_segments,
+                     "destination should stay at one or two segments from source")
+
+        if stepping_two_segments:
             dst_direction = self.next_second_labels.index(dst_node.label)
             int_label = self.next_first_labels[dst_direction]
             int_node = self.grid.nodes[int_label]
-            jersi_assert(int_node.has_zero_form(), "path from source to destination should be free")
+            jersi_assert(int_node.has_zero_form(),
+                         "path from source to destination should be free")
 
         if dst_node.has_zero_form():
             pass
 
         else:
-            jersi_assert(dst_node.get_top_color() != self.get_top_color(), "source and destination colors should be different")
-            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()), "source should beat destination")
+            jersi_assert(dst_node.get_top_color() != self.get_top_color(),
+                         "source and destination colors should be different")
+
+            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()),
+                         "source should beat destination")
 
             form_captured = True
 
@@ -639,8 +665,11 @@ class Node:
             form.node = self
 
         else:
-            jersi_assert(self.forms[0].color == form.color, "stacked forms should have same color")
-            jersi_assert(self.forms[0].sort != Sort.kunti, "no form should be stacked above kunti")
+            jersi_assert(self.forms[0].color == form.color,
+                         "stacked forms should have same color")
+
+            jersi_assert(self.forms[0].sort != Sort.kunti,
+                         "no form should be stacked above kunti")
 
             self.forms[1] = form
             form.node = self
@@ -719,7 +748,7 @@ class Grid:
             for sort in Sort.get_indices():
                 self.forms[color][sort] = list()
                 sort_count = Sort.get_max_count(sort)
-                for sort_index in range(sort_count):
+                for _ in range(sort_count):
                     form = Form(sort, color)
                     self.forms[color][sort].append(form)
 
@@ -833,8 +862,11 @@ class Grid:
 
 
     def place_form(self, form, dst_label):
+
         jersi_assert(dst_label in self.placement_node_labels[form.color],
-                     "%s is not a placement position for the %s color" % (dst_label, Color.get_name(form.color)))
+                     "%s is not a placement position for the %s color" %
+                     (dst_label, Color.get_name(form.color)))
+
         self.set_form(form, dst_label)
 
 
@@ -880,7 +912,7 @@ class Grid:
         self.place_form(blue_forms_wo_kunti[5], "b6")
 
         self.place_form(blue_forms_wo_kunti[6], "a1")
-        
+
         self.place_form(blue_forms_wo_kunti[7], "a2")
         self.place_form(blue_forms_wo_kunti[8], "a2")
 
@@ -888,7 +920,7 @@ class Grid:
 
         self.place_form(blue_forms_wo_kunti[9], "a4")
         self.place_form(blue_forms_wo_kunti[10], "a4")
-        
+
         self.place_form(blue_forms_wo_kunti[11], "a5")
 
         # set red forms
@@ -1050,7 +1082,7 @@ class Game:
         positions = dict()
         moves = list()
 
-        parsing_validated = self.parse_instruction(instruction, positions, moves)
+        parsing_validated = Game.parse_instruction(instruction, positions, moves)
 
         if parsing_validated:
 
@@ -1072,15 +1104,25 @@ class Game:
         return instruction_validated
 
 
-    def parse_instruction(self, instruction, positions, moves):
+    @staticmethod
+    def parse_instruction(instruction, positions, moves):
 
         instruction_validated = True
 
-        rule_set_form = re.compile(r"^(?P<node_label>\w{2}):(?P<form_name>\w)$")
-        rule_move_one_form = re.compile(r"^(?P<src_label>\w{2})-(?P<dst_label>\w{2})!{0,2}$")
-        rule_move_two_forms = re.compile(r"^(?P<src_label>\w{2})=(?P<dst_label>\w{2})!{0,2}$")
-        rule_move_one_then_two_forms = re.compile(r"^(?P<src_label>\w{2})-(?P<int_label>\w{2})!{0,1}=(?P<dst_label>\w{2})!{0,2}$")
-        rule_move_two_then_one_forms = re.compile(r"^(?P<src_label>\w{2})=(?P<int_label>\w{2})!{0,1}-(?P<dst_label>\w{2})!{0,2}$")
+        rule_set_form = re.compile(
+            r"^(?P<node_label>\w{2}):(?P<form_name>\w)$")
+
+        rule_move_one_form = re.compile(
+            r"^(?P<src_label>\w{2})-(?P<dst_label>\w{2})!{0,2}$")
+
+        rule_move_two_forms = re.compile(
+            r"^(?P<src_label>\w{2})=(?P<dst_label>\w{2})!{0,2}$")
+
+        rule_move_one_then_two_forms = re.compile(
+            r"^(?P<src_label>\w{2})-(?P<int_label>\w{2})!{0,1}=(?P<dst_label>\w{2})!{0,2}$")
+
+        rule_move_two_then_one_forms = re.compile(
+            r"^(?P<src_label>\w{2})=(?P<int_label>\w{2})!{0,1}-(?P<dst_label>\w{2})!{0,2}$")
 
         match_set_form = rule_set_form.match(instruction)
         match_move_one_form = rule_move_one_form.match(instruction)
@@ -1140,34 +1182,44 @@ class Game:
 
                 for (form_count, src_label, dst_label) in move_steps:
 
-                    jersi_assert(src_label in self.grid.nodes.keys(), "source label should be valid")
-                    jersi_assert(dst_label in self.grid.nodes.keys(), "destination label should be valid")
+                    jersi_assert(src_label in self.grid.nodes.keys(),
+                                 "source label should be valid")
+
+                    jersi_assert(dst_label in self.grid.nodes.keys(),
+                                 "destination label should be valid")
 
                     src_node = self.grid.nodes[src_label]
-                    jersi_assert(src_node.has_one_or_two_forms(), "source should have one or two forms")
-                    jersi_assert(src_node.get_top_color() == move_color, "moved color should be valid")
+
+                    jersi_assert(src_node.has_one_or_two_forms(),
+                                 "source should have one or two forms")
+
+                    jersi_assert(src_node.get_top_color() == move_color,
+                                 "moved color should be valid")
 
                     if form_count == 1:
-                        (form_captured, kunti_captured) = self.grid.move_one_form(src_label, dst_label)
+                        (form_captured,
+                         kunti_captured) = self.grid.move_one_form(src_label, dst_label)
 
                     elif form_count == 2:
-                        (form_captured, kunti_captured) = self.grid.move_two_forms(src_label, dst_label)
+                        (form_captured,
+                         kunti_captured) = self.grid.move_two_forms(src_label, dst_label)
 
                     else:
                         assert False
 
-                    annotated_steps.append((form_count, src_label, dst_label, form_captured, kunti_captured))
+                    annotated_steps.append((form_count, src_label, dst_label,
+                                            form_captured, kunti_captured))
                     step_count += 1
 
                 self.history.append(annotated_steps)
                 self.move_count += 1
-                print("move %s OK" % self.stringify_move(annotated_steps))
+                print("move %s OK" % Game.stringify_move(annotated_steps))
 
                 self.update_end_conditions()
 
         except(JersiError) as jersi_assertion_error:
             print("assertion failed: %s !!!" % jersi_assertion_error.message)
-            print("move %s KO !!!" % self.stringify_move(move_steps))
+            print("move %s KO !!!" % Game.stringify_move(move_steps))
             play_validated = False
 
         return play_validated
@@ -1221,7 +1273,8 @@ class Game:
         return play_validated
 
 
-    def print_help(self):
+    @staticmethod
+    def print_help():
         print()
         print("commands:")
         print("    a1-b1=d1 | a1=c1-d1 | a1-b1 | a1=c1 : examples of move in one or two steps")
@@ -1242,7 +1295,7 @@ class Game:
 
         print()
         print("move history:")
-        for line in self.textify_history(self.history):
+        for line in Game.textify_history(self.history):
             print(line)
 
 
@@ -1295,7 +1348,7 @@ class Game:
             else:
                 instructions = line.split()
                 for instruction in instructions:
-                    instruction_validated = self.parse_instruction(instruction, positions, moves)
+                    instruction_validated = Game.parse_instruction(instruction, positions, moves)
                     if not instruction_validated:
                         parsing_validated = False
 
@@ -1346,7 +1399,7 @@ class Game:
             else:
                 instructions = line.split()
                 for instruction in instructions:
-                    instruction_validated = self.parse_instruction(instruction, positions, moves)
+                    instruction_validated = Game.parse_instruction(instruction, positions, moves)
                     if not instruction_validated:
                         parsing_validated = False
 
@@ -1414,7 +1467,7 @@ class Game:
                 print("turn syntax error !!!")
 
             elif command_args[0] == "h":
-                self.print_help()
+                Game.print_help()
 
             elif command_args[0] == "nf":
                 self.new_free_game()
@@ -1481,17 +1534,20 @@ class Game:
         return saved_game
 
 
-    def stringify_move(self, move_steps):
+    @staticmethod
+    def stringify_move(move_steps):
 
         move_text = ""
 
         for (step_index, step) in enumerate(move_steps):
 
             if len(step) == 5:
-                (form_count, src_label, dst_label, form_captured, kunti_captured) = step
+                (form_count, src_label, dst_label,
+                 form_captured, kunti_captured) = step
 
             elif len(step) == 3:
-                (form_count, src_label, dst_label, form_captured, kunti_captured) = (*step, False, False)
+                (form_count, src_label, dst_label,
+                 form_captured, kunti_captured) = (*step, False, False)
 
             else:
                 assert False
@@ -1520,13 +1576,14 @@ class Game:
         return move_text
 
 
-    def textify_history(self, history):
+    @staticmethod
+    def textify_history(history):
 
         lines = list()
 
         for (move_index, move_steps) in enumerate(history):
 
-            move_text = self.stringify_move(move_steps)
+            move_text = Game.stringify_move(move_steps)
 
             if move_index % 2 == 0:
                 lines.append(move_text)
@@ -1536,7 +1593,8 @@ class Game:
         return lines
 
 
-    def textify_positions(self, positions):
+    @staticmethod
+    def textify_positions(positions):
 
         lines = list()
 
@@ -1582,12 +1640,12 @@ class Game:
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
-        for line in self.textify_positions(self.placement):
+        for line in Game.textify_positions(self.placement):
             file_stream.write("%s\n" % line)
 
         file_stream.write("\n")
 
-        for line in self.textify_history(self.history):
+        for line in Game.textify_history(self.history):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
@@ -1599,7 +1657,7 @@ class Game:
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
-        for line in self.textify_positions(self.grid.export_positions()):
+        for line in Game.textify_positions(self.grid.export_positions()):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
@@ -1611,8 +1669,7 @@ def main():
     print(_COPYRIGHT_AND_LICENSE)
     my_game = Game()
     my_game.run()
-    
+
 
 if __name__ == "__main__":
     main()
-    
