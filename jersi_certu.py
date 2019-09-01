@@ -308,8 +308,26 @@ class Hexagon:
 
 
     def get_labels(self):
-        """Return the labels of all the nodes inside the hexagon."""
+        """Return the labels of all the hexagon nodes."""
         return self.__labels_to_points.keys()
+
+
+    def get_labels_at_row(self, row_label):
+        """Return the labels of all the hexagon nodes at a given row."""
+
+        assert row_label in self.__row_labels
+        row_index = self.__row_labels.index(row_label)
+        point_v = self.__v_list[row_index]
+
+        labels_at_row = list()
+
+        for point_u in self.__u_list:
+            point = (point_u, point_v)
+            if self.__point_in_hexagon[point]:
+                label = self.__labels_from_points[point]
+                labels_at_row.append(label)
+
+        return labels_at_row
 
 
     def get_point(self, label):
@@ -317,31 +335,9 @@ class Hexagon:
         return self.__labels_to_points[label]
 
 
-    def get_placement_labels(self):
-        """Return the labels of valid placement nodes.
-        TODO: reformulate the role fo the method, because Hexagon should
-        not know about JERSI rules."""
-
-        placement_node_labels = dict()
-
-        placement_node_labels[0] = list()
-        placement_node_labels[1] = list()
-
-        for point_v in self.__v_list[:2]:
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    label = self.__labels_from_points[point]
-                    placement_node_labels[0].append(label)
-
-        for point_v in self.__v_list[-2:]:
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    label = self.__labels_from_points[point]
-                    placement_node_labels[1].append(label)
-
-        return placement_node_labels
+    def get_row_labels(self):
+        """Return the row labels."""
+        return self.__row_labels
 
 
     def has_node_at_point(self, point):
@@ -840,13 +836,14 @@ class Grid:
     def __init__(self, hexagon):
 
         self.hexagon = hexagon
-        self.placement_node_labels = self.hexagon.get_placement_labels()
 
+        self.placement_labels = None
         self.nodes = None
         self.forms = None
 
         self.__init_nodes()
         self.__init_forms()
+        self.__init_placement_labels()
 
 
     def __deepcopy__(self, memo):
@@ -856,7 +853,7 @@ class Grid:
         memo[id(self)] = new_one
 
         new_one.hexagon = self.hexagon
-        new_one.placement_node_labels = self.placement_node_labels
+        new_one.placement_labels = self.placement_labels
 
         new_one.nodes = copy.deepcopy(self.nodes, memo)
         new_one.forms = copy.deepcopy(self.forms, memo)
@@ -886,6 +883,24 @@ class Grid:
                 for _ in range(sort_count):
                     form = Form(sort, color)
                     self.forms[color][sort].append(form)
+
+
+    def __init_placement_labels(self):
+
+        self.placement_labels = dict()
+
+        self.placement_labels[0] = list()
+        self.placement_labels[1] = list()
+
+        row_labels = self.hexagon.get_row_labels()
+
+        for row_label in row_labels[:2]:
+            self.placement_labels[0].extend(self.hexagon.get_labels_at_row(row_label))
+
+        for row_label in row_labels[-2:]:
+            self.placement_labels[1].extend(self.hexagon.get_labels_at_row(row_label))
+
+        print(" self.placement_labels:", self.placement_labels)
 
 
     def count_forms_by_colors_and_sorts(self):
@@ -998,7 +1013,7 @@ class Grid:
 
     def place_form(self, form, dst_label):
 
-        jersi_assert(dst_label in self.placement_node_labels[form.color],
+        jersi_assert(dst_label in self.placement_labels[form.color],
                      "%s is not a placement position for the %s color" %
                      (dst_label, Color.get_name(form.color)))
 
