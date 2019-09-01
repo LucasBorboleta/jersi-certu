@@ -24,13 +24,17 @@ You should have received a copy of the GNU General Public License along with thi
 """
 
 class JersiError(Exception):
+    """Customized exception dedicated to all classes of JERSI"""
 
     def __init__(self, message):
+        """JERSI exception records an explaining text message"""
         Exception.__init__(self)
         self.message = message
 
 
 def jersi_assert(condition, message):
+    """If condition fails (is False) then raise a JERSI exception
+    together with the explaining message"""
     if not condition:
         raise JersiError(message)
 
@@ -41,23 +45,38 @@ class Hexagon:
        The Hexagon class captures geometrical knowledge and printing capacity
        about an hexagon meshed with a grid of regular triangles.
 
-       Nodes of the hexagon are described using an oblique and centered
-       coordinates system :
+       Nodes of the hexagon are described using points that are located
+       using an oblique and centered coordinates system :
            - C is the hexagon center;
            - e_u is horizontal unit vector pointing right ;
            - e_v is diagonal unit vector pointing up ;
            - A node P is represented as CP = u*e_u + v*e_v ;
 
-       An "xy frame" is used for printing textual rows and columns :
+       A frame made of cells is used for printing textual rows and columns :
            - O is at the left upper corner ;
            - e_x is horizontal vector pointing right ;
            - e_y is vectical vector pointing down ;
            - A cell P is represented as OP = x*e_x + y*e_y ;
 
-      The relationship bewteen the two coordinates systems are as follows :
+      The relationship bewteen the the (u, v) and (x, y) coordinates systems
+      are as follows :
           - e_u  = 2*e_x
           - e_v = e_x - e_y
           - OC = n*e_y + n*e_u
+
+      Example of a frame for an instance Hexagon(5) with a few cells
+      filled up with one or two letters:
+
+        i1          .k  cr  .n  kr  .c          i5
+        h1        .c  .r  .k  .c  .r  .k        h6
+        g1      ..  ..  ..  ..  ..  ..  ..      g7
+        f1    ..  ..  ..  ..  ..  ..  ..  ..    f8
+        e1  ..  ..  ..  ..  ..  ..  ..  ..  ..  e9
+        d1    ..  ..  ..  ..  ..  ..  ..  ..    d8
+        c1      ..  ..  ..  ..  ..  ..  ..      c7
+        b1        .K  .R  .C  .K  .R  .C        b6
+        a1          .C  KR  .N  CR  .K          a5
+
    """
 
 
@@ -65,34 +84,40 @@ class Hexagon:
     __FILLER = "."
 
     def __init__(self, nodes_per_hexagon_side):
+        """Initialize an hexagon parametrized by
+        the number of nodes per hexagon side"""
 
         self.__nodes_per_hexagon_side = nodes_per_hexagon_side
         self.__n = self.__nodes_per_hexagon_side - 1
 
-        self.__init_directions()
-        self.__init_uv_coords()
-        self.__init_node_in_hexagon()
-        self.__init_xy_frame()
-        self.__init_y_labels()
+        # Many information are computed once and memorized in attributes
+        # in order to accelerate next "get...." queries.
+        self.__init_point_directions()
+        self.__init_point_coordinates()
+        self.__init_point_in_hexagon()
+        self.__init_frame()
+        self.__init_row_labels()
         self.__init_count_labels()
         self.__init_left_labels()
         self.__init_right_labels()
-        self.__init_labels_to_uv_coords()
-        self.__init_labels_from_uv_coords()
+        self.__init_labels_to_points()
+        self.__init_labels_from_points()
 
 
-    def __init_directions(self):
+    def __init_point_directions(self):
+        """Initialize all possible traveling directions from a point."""
 
-        self.__directions = list()
-        self.__directions.append((1, 0)) # e_u
-        self.__directions.append((0, 1)) # e_v
-        self.__directions.append((-1, 1)) # e_v - e_u
-        self.__directions.append((-1, 0)) # -e_u
-        self.__directions.append((0, -1)) # -e_v
-        self.__directions.append((1, -1)) # e_u - e_v
+        self.__point_directions = list()
+        self.__point_directions.append((1, 0)) # e_u
+        self.__point_directions.append((0, 1)) # e_v
+        self.__point_directions.append((-1, 1)) # e_v - e_u
+        self.__point_directions.append((-1, 0)) # -e_u
+        self.__point_directions.append((0, -1)) # -e_v
+        self.__point_directions.append((1, -1)) # e_u - e_v
 
 
-    def __init_uv_coords(self):
+    def __init_point_coordinates(self):
+        """Initialize the possile point coordinates."""
 
         (u_min, u_max) = (-self.__n, self.__n)
         (v_min, v_max) = (-self.__n, self.__n)
@@ -100,51 +125,58 @@ class Hexagon:
         self.__v_list = list(range(v_min, v_max + 1))
 
 
-    def __init_node_in_hexagon(self):
+    def __init_point_in_hexagon(self):
+        """Initialize the results of the predicate "has_node_at_point". """
 
-        self.__node_in_hexagon = dict()
+        self.__point_in_hexagon = dict()
 
-        for u in self.__u_list:
-            for v in self.__v_list:
+        for point_u in self.__u_list:
+            for point_v in self.__v_list:
+                point = (point_u, point_v)
 
-                ne_condition = (self.__n - u - v >= 0)
-                se_condition = (self.__n - u >= 0)
-                nw_condition = (self.__n + u >= 0)
-                sw_condition = (self.__n + u + v >= 0)
+                ne_rule = (self.__n - point_u - point_v >= 0)
+                se_rule = (self.__n - point_u >= 0)
+                nw_rule = (self.__n + point_u >= 0)
+                sw_rule = (self.__n + point_u + point_v >= 0)
 
-                is_inside = nw_condition and ne_condition and sw_condition and se_condition
+                point_is_inside = nw_rule and ne_rule and sw_rule and se_rule
 
-                self.__node_in_hexagon[(u, v)] = is_inside
+                self.__point_in_hexagon[point] = point_is_inside
 
 
-    def __init_xy_frame(self):
+    def __init_frame(self):
+        """Initialize the frame with neutral content in each cell."""
 
-        self.__xy_frame = dict()
+        self.__frame = dict()
         self.__nx = 4*self.__n
         self.__ny = 2*self.__n
         self.__xy_cell_size = 2
 
-        for x in range(self.__nx + 1):
-            for y in range(self.__ny + 1):
-                self.__xy_frame[(x, y)] = Hexagon.__SPACE*self.__xy_cell_size
+        for cell_x in range(self.__nx + 1):
+            for cell_y in range(self.__ny + 1):
+                cell = (cell_x, cell_y)
+                self.__frame[cell] = Hexagon.__SPACE*self.__xy_cell_size
 
-        for v in self.__v_list:
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    (x, y) = self.__uv_to_xy((u, v))
-                    self.__xy_frame[(x, y)] = Hexagon.__FILLER*self.__xy_cell_size
+        for point_v in self.__v_list:
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    cell = self.__point_to_cell(point)
+                    self.__frame[cell] = Hexagon.__FILLER*self.__xy_cell_size
 
 
-    def __init_y_labels(self):
+    def __init_row_labels(self):
+        """Initialize labels refering rows of the frame."""
 
-        self.__y_labels = list(string.ascii_lowercase)
-        self.__y_labels.sort()
-        assert 2*self.__n + 1 <= len(self.__y_labels)
-        self.__y_labels = self.__y_labels[0:2*self.__n + 1]
-        self.__y_labels.reverse()
+        self.__row_labels = list(string.ascii_lowercase)
+        self.__row_labels.sort()
+        assert 2*self.__n + 1 <= len(self.__row_labels)
+        self.__row_labels = self.__row_labels[0:2*self.__n + 1]
+        self.__row_labels.reverse()
 
 
     def __init_count_labels(self):
+        """Initialize labels for counting hexagon nodes in a row."""
 
         self.__count_labels = list(string.digits)
         self.__count_labels.remove("0")
@@ -154,159 +186,206 @@ class Hexagon:
 
 
     def __init_left_labels(self):
+        """Initialize left side labels."""
 
-        self.__left_labels = [None for y in range(self.__ny + 1)]
+        self.__left_labels = [None for cell_y in range(self.__ny + 1)]
 
-        for v in self.__v_list:
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    (_, y) = self.__uv_to_xy((u, v))
-            self.__left_labels[y] = self.__y_labels[y] + self.__count_labels[0]
+        for point_v in self.__v_list:
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    (_, cell_y) = self.__point_to_cell(point)
+            self.__left_labels[cell_y] = ""
+            self.__left_labels[cell_y] += self.__row_labels[cell_y]
+            self.__left_labels[cell_y] += self.__count_labels[0]
 
 
     def __init_right_labels(self):
+        """Initialize right side labels."""
 
-        self.__right_labels = [None for y in range(self.__ny + 1)]
+        self.__right_labels = [None for cell_y in range(self.__ny + 1)]
 
-        for v in self.__v_list:
+        for point_v in self.__v_list:
             node_count = 0
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    (_, y) = self.__uv_to_xy((u, v))
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    (_, cell_y) = self.__point_to_cell(point)
                     node_count += 1
-            self.__right_labels[y] = self.__y_labels[y] + self.__count_labels[node_count - 1]
+            self.__right_labels[cell_y] = ""
+            self.__right_labels[cell_y] += self.__row_labels[cell_y]
+            self.__right_labels[cell_y] += self.__count_labels[node_count - 1]
 
 
-    def __init_labels_to_uv_coords(self):
+    def __init_labels_to_points(self):
+        """Initialize the mapping of a label to a point."""
 
-        self.__labels_to_uv_coords = dict()
+        self.__labels_to_points = dict()
 
-        for v in self.__v_list:
+        for point_v in self.__v_list:
             node_count = 0
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    (_, y) = self.__uv_to_xy((u, v))
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    (_, cell_y) = self.__point_to_cell(point)
                     node_count += 1
-                    label = self.__y_labels[y] + self.__count_labels[node_count - 1]
-                    self.__labels_to_uv_coords[label] = (u, v)
+                    label = ""
+                    label += self.__row_labels[cell_y]
+                    label += self.__count_labels[node_count - 1]
+                    self.__labels_to_points[label] = point
 
 
-    def __init_labels_from_uv_coords(self):
+    def __init_labels_from_points(self):
+        """Initialize the mapping of a point to a label."""
 
-        self.__labels_from_uv_coords = dict()
+        self.__labels_from_points = dict()
 
-        for (label, (u, v)) in self.__labels_to_uv_coords.items():
-            self.__labels_from_uv_coords[(u, v)] = label
-
-
-    def __uv_to_xy(self, uv):
-        (u, v) = uv
-        (x, y) = (2*self.__n + 2*u + v, self.__n - v)
-        return (x, y)
+        for (label, point) in self.__labels_to_points.items():
+            self.__labels_from_points[point] = label
 
 
-    def clear_xy_cells(self):
-        for label in self.__labels_to_uv_coords:
-            self.clear_xy_cell_at_label(label)
+    def __point_to_cell(self, point):
+        """Convert a point to a cell."""
+
+        (point_u, point_v) = point
+        cell = (2*self.__n + 2*point_u + point_v, self.__n - point_v)
+        return cell
 
 
-    def clear_xy_cell_at_label(self, label):
-        self.set_xy_cell_at_label(label, "")
+    def clear_cells(self):
+        """Clear all cells of the frame."""
+
+        for label in self.__labels_to_points:
+            self.clear_cell_at_label(label)
 
 
-    def clear_xy_cell_at_uv_coords(self, uv):
-        self.set_xy_cell_at_uv_coords(uv, "")
+    def clear_cell_at_label(self, label):
+        """Clear the cell at a given label."""
+        self.set_cell_at_label(label, "")
 
 
-    def get_next_first_node_labels(self, label):
+    def clear_cell_at_point(self, point):
+        """Clear the cell at a given point."""
+        self.set_cell_at_point(point, "")
 
-        (u, v) = self.__labels_to_uv_coords[label]
+
+    def get_first_adjacent_labels(self, label):
+        """Return the labels of nodes at one segment of a given node
+        referenced by a label"""
+
+        point = self.__labels_to_points[label]
+        (point_u, point_v) = point
 
         first_nodes = list()
 
-        for (du, dv) in self.__directions:
-            (u1, v1) = (u + du, v + dv)
-            if self.has_node_at_uv_coords((u1, v1)):
-                first_nodes.append(self.__labels_from_uv_coords[(u1, v1)])
+        for (delta_u, delta_v) in self.__point_directions:
+            point_shifted = (point_u + delta_u, point_v + delta_v)
+            if self.has_node_at_point(point_shifted):
+                first_nodes.append(self.__labels_from_points[point_shifted])
             else:
                 first_nodes.append(None)
 
         return first_nodes
 
 
-    def get_next_second_node_labels(self, label):
+    def get_second_adjacent_labels(self, label):
+        """Return the labels of nodes at two straight segments of a given node
+        referenced by a label."""
 
-        (u, v) = self.__labels_to_uv_coords[label]
+        point = self.__labels_to_points[label]
+        (point_u, point_v) = point
 
         second_nodes = list()
 
-        for (du, dv) in self.__directions:
-            (u2, v2) = (u + 2*du, v + 2*dv)
-            if self.has_node_at_uv_coords((u2, v2)):
-                second_nodes.append(self.__labels_from_uv_coords[(u2, v2)])
+        for (delta_u, delta_v) in self.__point_directions:
+            point_shifted = (point_u + 2*delta_u, point_v + 2*delta_v)
+            if self.has_node_at_point(point_shifted):
+                second_nodes.append(self.__labels_from_points[point_shifted])
             else:
                 second_nodes.append(None)
 
         return second_nodes
 
 
-    def get_node_labels(self):
-        return self.__labels_to_uv_coords.keys()
+    def get_labels(self):
+        """Return the labels of all the nodes inside the hexagon."""
+        return self.__labels_to_points.keys()
 
 
-    def get_node_uv_coords(self, label):
-        return self.__labels_to_uv_coords[label]
+    def get_point(self, label):
+        """Return the point at a given label."""
+        return self.__labels_to_points[label]
 
 
-    def get_placement_node_labels(self):
+    def get_placement_labels(self):
+        """Return the labels of valid placement nodes.
+        TODO: reformulate the role fo the method, because Hexagon should
+        not know about JERSI rules."""
 
         placement_node_labels = dict()
 
         placement_node_labels[0] = list()
         placement_node_labels[1] = list()
 
-        for v in self.__v_list[:2]:
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    label = self.__labels_from_uv_coords[(u, v)]
+        for point_v in self.__v_list[:2]:
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    label = self.__labels_from_points[point]
                     placement_node_labels[0].append(label)
 
-        for v in self.__v_list[-2:]:
-            for u in self.__u_list:
-                if self.__node_in_hexagon[(u, v)]:
-                    label = self.__labels_from_uv_coords[(u, v)]
+        for point_v in self.__v_list[-2:]:
+            for point_u in self.__u_list:
+                point = (point_u, point_v)
+                if self.__point_in_hexagon[point]:
+                    label = self.__labels_from_points[point]
                     placement_node_labels[1].append(label)
 
         return placement_node_labels
 
 
-    def has_node_at_uv_coords(self, uv):
-        (u, v) = uv
-        return (u in self.__u_list) and (v in self.__v_list) and (self.__node_in_hexagon[(u, v)])
+    def has_node_at_point(self, point):
+        """Is there an hexagon node at a given point?"""
+
+        has_node = False
+
+        (point_u, point_v) = point
+
+        if (point_u in self.__u_list) and (point_v in self.__v_list):
+            has_node = self.__point_in_hexagon[point]
+
+        return has_node
 
 
-    def print_xy_frame(self):
-        for y in range(self.__ny + 1):
-            line = self.__left_labels[y] + Hexagon.__SPACE*self.__xy_cell_size
-            for x in range(self.__nx + 1):
-                line += self.__xy_frame[(x, y)]
-            line += Hexagon.__SPACE*self.__xy_cell_size + self.__right_labels[y]
+    def print_frame(self):
+        """Print the frame."""
+
+        for cell_y in range(self.__ny + 1):
+            line = self.__left_labels[cell_y] + Hexagon.__SPACE*self.__xy_cell_size
+            for cell_x in range(self.__nx + 1):
+                cell = (cell_x, cell_y)
+                line += self.__frame[cell]
+            line += Hexagon.__SPACE*self.__xy_cell_size + self.__right_labels[cell_y]
             print(line)
 
 
-    def set_xy_cell_at_label(self, label, cell_text):
-        (u, v) = self.__labels_to_uv_coords[label]
-        self.set_xy_cell_at_uv_coords((u, v), cell_text)
+    def set_cell_at_label(self, label, cell_text):
+        """Set the cell text at a given label."""
+
+        point = self.__labels_to_points[label]
+        self.set_cell_at_point(point, cell_text)
 
 
-    def set_xy_cell_at_uv_coords(self, uv, cell_text):
-        (u, v) = uv
-        (x, y) = self.__uv_to_xy((u, v))
+    def set_cell_at_point(self, point, cell_text):
+        """Set the cell text at a given point."""
+
         assert len(cell_text) <= self.__xy_cell_size
-        self.__xy_frame[(x, y)] = cell_text.rjust(self.__xy_cell_size, Hexagon.__FILLER)
+        cell = self.__point_to_cell(point)
+        self.__frame[cell] = cell_text.rjust(self.__xy_cell_size, Hexagon.__FILLER)
 
 
 class Sort:
+    """Capture the knowloedge about the sort of JERSI forms."""
 
     __names = ["N", "K", "R", "C"]
     __max_count = [1, 4, 4, 4]
@@ -321,32 +400,50 @@ class Sort:
     kuctai = __long_names.index("kuctai")
 
     __beat_cases = list()
-    for (a, b) in [("K", "N"), ("R", "N"), ("C", "N"), ("C", "R"), ("R", "K"), ("K", "C")]:
-        (i, j) = (__names.index(a), __names.index(b))
-        __beat_cases.append((i, j))
+
+    # kunti rule
+    for (fst_name, snd_name) in [("K", "N"), ("R", "N"), ("C", "N")]:
+        fst_index = __names.index(fst_name)
+        snd_index = __names.index(snd_name)
+        __beat_cases.append((fst_index, snd_index))
+
+    # cukla-kurfa-kuctai rule
+    for (fst_name, snd_name) in [("C", "R"), ("R", "K"), ("K", "C")]:
+        fst_index = __names.index(fst_name)
+        snd_index = __names.index(snd_name)
+        __beat_cases.append((fst_index, snd_index))
 
 
     @staticmethod
-    def beats(i, j):
-        assert i in Sort.__indices
-        assert j in Sort.__indices
-        return (i, j) in Sort.__beat_cases
+    def beats(fst_index, snd_index):
+        """Does sort fst_index beat sort snd_index?"""
+
+        assert fst_index in Sort.__indices
+        assert snd_index in Sort.__indices
+        return (fst_index, snd_index) in Sort.__beat_cases
 
 
     @staticmethod
-    def beats_by_long_names(a, b):
-        (i, j) = (Sort.__long_names.index(a), Sort.__long_names.index(b))
-        return Sort.beats(i, j)
+    def beats_by_long_names(fst_long_name, snd_long_name):
+        """Does sort fst_long_name beat sort snd_long_name?"""
+
+        fst_index = Sort.__long_names.index(fst_long_name)
+        snd_index = Sort.__long_names.index(snd_long_name)
+        return Sort.beats(fst_index, snd_index)
 
 
     @staticmethod
-    def beats_by_names(a, b):
-        (i, j) = (Sort.__names.index(a), Sort.__names.index(b))
-        return Sort.beats(i, j)
+    def beats_by_names(fst_name, snd_name):
+        """Does sort fst_name beat sort snd_name?"""
+
+        (fst_index, j) = (Sort.__names.index(fst_name), Sort.__names.index(snd_name))
+        return Sort.beats(fst_index, j)
 
 
     @staticmethod
     def get_index(name):
+        """Return the sort index for its name or long name."""
+
         name_uppered = name.upper()
         name_lowered = name.lower()
 
@@ -371,25 +468,30 @@ class Sort:
 
     @staticmethod
     def get_indices():
+        """Return all the sort indices."""
         return Sort.__indices
 
 
     @staticmethod
-    def get_long_name(i):
-        return Sort.__long_names[i]
+    def get_long_name(index):
+        """Return the long name associated to a given sort index."""
+        return Sort.__long_names[index]
 
 
     @staticmethod
-    def get_max_count(i):
-        return Sort.__max_count[i]
+    def get_max_occurrences(index):
+        """Return the maximum occurences of a given sort."""
+        return Sort.__max_count[index]
 
 
     @staticmethod
-    def get_name(i):
-        return Sort.__names[i]
+    def get_name(index):
+        """Return the name associated to a sort index."""
+        return Sort.__names[index]
 
 
 class Color:
+    """Capture the knowlege about colors in JERSI."""
 
     __names = ["blue", "red"]
     __indices = list(range(len(__names)))
@@ -403,11 +505,13 @@ class Color:
 
     @staticmethod
     def get_count():
+        """Return the number of colors."""
         return len(Color.__indices)
 
 
     @staticmethod
     def get_index(name):
+        """Return the color index from its name."""
 
         index = None
 
@@ -428,23 +532,29 @@ class Color:
 
     @staticmethod
     def get_indices():
+        """Return all the color indices."""
         return Color.__indices
 
 
     @staticmethod
     def get_name(i):
+        """Return the name associated to a given color index."""
         return Color.__names[i]
 
 
     @staticmethod
     def get_transformer(i):
+        """Return the transforer function associated to a given color."""
         return Color.__transformers[i]
 
 
 class Form:
-
+    """Capture knowlege about form in JERSI."""
 
     def __init__(self, sort, color):
+        """Initialize a form of a given sort and color,
+        but not yet assigned to a node."""
+
         assert sort in Sort.get_indices()
         assert color in Color.get_indices()
         self.sort = sort
@@ -453,6 +563,8 @@ class Form:
 
 
     def get_name(self):
+        """Return the name of a form."""
+
         name = Sort.get_name(self.sort)
         name_transformed = Color.get_transformer(self.color)(name)
         return name_transformed
@@ -460,6 +572,8 @@ class Form:
 
     @staticmethod
     def make(sort_name, color_name):
+        """Return a new form from a given sort and color names."""
+
         sort = Sort.get_index(sort_name)
         color = Color.get_index(color_name)
         form = Form(sort, color)
@@ -468,23 +582,30 @@ class Form:
 
     @staticmethod
     def parse_sort_and_color(name):
+        """Return the pair of indices (sort, color) form the given name."""
+
         sort = Sort.get_index(name)
         color = Color.get_index(name)
         return (sort, color)
 
 
 class Node:
+    """Capture knowledge about node in JERSI."""
 
 
     def __init__(self, label, grid):
+        """Initialize a node at a given label for the given grid."""
+
         self.label = label
         self.grid = grid
         self.forms = [None, None]
-        self.next_first_labels = None
-        self.next_second_labels = None
+        self.first_adjacent_labels = None
+        self.second_adjacent_labels = None
 
 
     def __deepcopy__(self, memo):
+        """Customized deepcopy of a node: only the grid and forms
+        attributes are deep copied."""
 
         new_one = Node(self.label, None)
 
@@ -493,13 +614,14 @@ class Node:
         new_one.grid = copy.deepcopy(self.grid, memo)
         new_one.forms = copy.deepcopy(self.forms, memo)
 
-        new_one.next_first_labels = self.next_first_labels
-        new_one.next_second_labels = self.next_second_labels
+        new_one.first_adjacent_labels = self.first_adjacent_labels
+        new_one.second_adjacent_labels = self.second_adjacent_labels
 
         return new_one
 
 
     def get_top(self):
+        """Return the top of the form stack at this node."""
 
         if self.forms[1] is not None:
             top = self.forms[1]
@@ -514,6 +636,7 @@ class Node:
 
 
     def get_top_color(self):
+        """Return the color of the top of the form stack at this node."""
 
         if self.forms[1] is not None:
             color = self.forms[1].color
@@ -528,6 +651,7 @@ class Node:
 
 
     def get_top_sort(self):
+        """Return the sort of the top of the form stack at this node."""
 
         if self.forms[1] is not None:
             sort = self.forms[1].sort
@@ -542,28 +666,33 @@ class Node:
 
 
     def has_one_or_two_forms(self):
+        """Does this node have either one or two forms?"""
         return self.forms[0] is not None
 
 
     def has_two_forms(self):
+        """Does this node have two forms?"""
         return self.forms[1] is not None
 
 
     def has_zero_form(self):
+        """Does this node have no form?"""
         return self.forms[0] is None
 
 
     def has_zero_or_one_form(self):
+        """Does this node have either zero or one form?"""
         return self.forms[1] is None
 
 
     def move_one_form(self, dst_node):
+        """Move one form (its top) from this node to a destinaiton node."""
 
         form_captured = False
         kunti_captured = False
 
         assert dst_node is not None
-        jersi_assert(dst_node.label in self.next_first_labels,
+        jersi_assert(dst_node.label in self.first_adjacent_labels,
                      "destination should stay at one segment from source")
 
         jersi_assert(self.has_one_or_two_forms(),
@@ -604,6 +733,7 @@ class Node:
 
 
     def move_two_forms(self, dst_node):
+        """Move two forms from this node to a destinaiton node."""
 
         form_captured = False
         kunti_captured = False
@@ -611,15 +741,15 @@ class Node:
         jersi_assert(self.has_two_forms(), "source should have two forms")
         assert dst_node is not None
 
-        stepping_one_segment = dst_node.label in self.next_first_labels
-        stepping_two_segments = dst_node.label in self.next_second_labels
+        stepping_one_segment = dst_node.label in self.first_adjacent_labels
+        stepping_two_segments = dst_node.label in self.second_adjacent_labels
 
         jersi_assert(stepping_one_segment or stepping_two_segments,
                      "destination should stay at one or two segments from source")
 
         if stepping_two_segments:
-            dst_direction = self.next_second_labels.index(dst_node.label)
-            int_label = self.next_first_labels[dst_direction]
+            dst_direction = self.second_adjacent_labels.index(dst_node.label)
+            int_label = self.first_adjacent_labels[dst_direction]
             int_node = self.grid.nodes[int_label]
             jersi_assert(int_node.has_zero_form(),
                          "path from source to destination should be free")
@@ -657,7 +787,10 @@ class Node:
 
         return (form_captured, kunti_captured)
 
+
     def set_form(self, form):
+        """Set a free form to this node."""
+
         assert self.has_zero_or_one_form()
 
         if self.forms[0] is None:
@@ -676,6 +809,7 @@ class Node:
 
 
     def unset_form(self, form):
+        """Remove a given form from this node."""
 
         assert self == form.node
 
@@ -689,6 +823,7 @@ class Node:
 
 
     def unset_forms(self):
+        """Remove all forms from this node."""
 
         if self.forms[1] is not None:
             self.forms[1].node = None
@@ -705,7 +840,7 @@ class Grid:
     def __init__(self, hexagon):
 
         self.hexagon = hexagon
-        self.placement_node_labels = self.hexagon.get_placement_node_labels()
+        self.placement_node_labels = self.hexagon.get_placement_labels()
 
         self.nodes = None
         self.forms = None
@@ -733,10 +868,10 @@ class Grid:
 
         self.nodes = dict()
 
-        for label in self.hexagon.get_node_labels():
+        for label in self.hexagon.get_labels():
             node = Node(label, self)
-            node.next_first_labels = self.hexagon.get_next_first_node_labels(node.label)
-            node.next_second_labels = self.hexagon.get_next_second_node_labels(node.label)
+            node.first_adjacent_labels = self.hexagon.get_first_adjacent_labels(node.label)
+            node.second_adjacent_labels = self.hexagon.get_second_adjacent_labels(node.label)
             self.nodes[label] = node
 
 
@@ -747,7 +882,7 @@ class Grid:
             self.forms[color] = dict()
             for sort in Sort.get_indices():
                 self.forms[color][sort] = list()
-                sort_count = Sort.get_max_count(sort)
+                sort_count = Sort.get_max_occurrences(sort)
                 for _ in range(sort_count):
                     form = Form(sort, color)
                     self.forms[color][sort].append(form)
@@ -841,13 +976,13 @@ class Grid:
 
 
     def print_grid(self):
-        self.set_xy_cells()
-        self.hexagon.print_xy_frame()
+        self.set_cells()
+        self.hexagon.print_frame()
 
 
-    def set_xy_cells(self):
+    def set_cells(self):
 
-        self.hexagon.clear_xy_cells()
+        self.hexagon.clear_cells()
 
         for node in self.nodes.values():
             cell_text = ""
@@ -858,7 +993,7 @@ class Grid:
             if node.forms[1] is not None:
                 cell_text = node.forms[1].get_name() + cell_text
 
-            self.hexagon.set_xy_cell_at_label(node.label, cell_text)
+            self.hexagon.set_cell_at_label(node.label, cell_text)
 
 
     def place_form(self, form, dst_label):
@@ -1246,7 +1381,7 @@ class Game:
 
             form_count = self.grid.count_forms_by_colors_and_sorts()
             instance = form_count[color][sort]
-            jersi_assert(instance < Sort.get_max_count(sort), "sort should be available")
+            jersi_assert(instance < Sort.get_max_occurrences(sort), "sort should be available")
 
             form = self.grid.forms[color][sort][instance]
             self.grid.place_form(form, node_label)
@@ -1256,7 +1391,7 @@ class Game:
             has_available_form = False
             for color in form_count.keys():
                 for sort in form_count[color].keys():
-                    if form_count[color][sort] < Sort.get_max_count(sort):
+                    if form_count[color][sort] < Sort.get_max_occurrences(sort):
                         has_available_form = True
                         break
 
