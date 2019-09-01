@@ -900,8 +900,6 @@ class Grid:
         for row_label in row_labels[-2:]:
             self.placement_labels[1].extend(self.hexagon.get_labels_at_row(row_label))
 
-        print(" self.placement_labels:", self.placement_labels)
-
 
     def count_forms_by_colors_and_sorts(self):
 
