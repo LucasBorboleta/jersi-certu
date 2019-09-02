@@ -23,6 +23,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses>.
 """
 
+
 class JersiError(Exception):
     """Customized exception dedicated to all classes of JERSI"""
 
@@ -42,30 +43,16 @@ def jersi_assert(condition, message):
 class Hexagon:
 
     """
-       The Hexagon class captures geometrical knowledge and printing capacity
-       about an hexagon meshed with a grid of regular triangles.
+    The Hexagon class captures geometrical knowledge and printing capacity.
 
-       Nodes of the hexagon are described using points that are located
-       using an oblique and centered coordinates system :
-           - C is the hexagon center;
-           - e_u is horizontal unit vector pointing right ;
-           - e_v is diagonal unit vector pointing up ;
-           - A node P is represented as CP = u*e_u + v*e_v ;
+    This class deals with the following concepts:
+        - Node: vertex of the (infinite) triangular grid that fills the plane.
+        - Hexagon: a subset of the triangular grid.
+        - Frame: a finite rectangular grid used to represent the hexagon.
+        - Cell: elment of the frame that represents an hexagon node.
 
-       A frame made of cells is used for printing textual rows and columns :
-           - O is at the left upper corner ;
-           - e_x is horizontal vector pointing right ;
-           - e_y is vectical vector pointing down ;
-           - A cell P is represented as OP = x*e_x + y*e_y ;
-
-      The relationship bewteen the the (u, v) and (x, y) coordinates systems
-      are as follows :
-          - e_u  = 2*e_x
-          - e_v = e_x - e_y
-          - OC = n*e_y + n*e_u
-
-      Example of a frame for an instance Hexagon(5) with a few cells
-      filled up with one or two letters:
+    Example of a frame for an instance Hexagon(5) with a few cells filled up
+    with one or two letters:
 
         i1          .k  cr  .n  kr  .c          i5
         h1        .c  .r  .k  .c  .r  .k        h6
@@ -77,47 +64,68 @@ class Hexagon:
         b1        .K  .R  .C  .K  .R  .C        b6
         a1          .C  KR  .N  CR  .K          a5
 
+    Nodes of the hexagon are described using an oblique coordinates system :
+        - C is the hexagon center;
+        - e_u is horizontal unit vector pointing right ;
+        - e_v is diagonal unit vector pointing up ;
+        - A node P is represented as CP = u*e_u + v*e_v?
+
+    A frame made of cells is used for printing textual rows and columns :
+        - O is at the left upper corner ;
+        - e_x is horizontal vector pointing right ;
+        - e_y is vectical vector pointing down ;
+        - A cell P is represented as OP = x*e_x + y*e_y.
+
+    The relationship bewteen the the (u, v) and (x, y) coordinates systems
+    are as follows :
+        - e_u  = 2*e_x
+        - e_v = e_x - e_y
+        - OC = n*e_y + n*e_u
    """
 
 
     __SPACE = " "
     __FILLER = "."
+    __CELL_SIZE = 2
+    __CELL_SPACE = __SPACE * __CELL_SIZE
+    __CELL_FILLER = __FILLER * __CELL_SIZE
 
-    def __init__(self, nodes_per_hexagon_side):
+
+    def __init__(self, nodes_per_side):
         """Initialize an hexagon parametrized by
         the number of nodes per hexagon side"""
 
-        self.__nodes_per_hexagon_side = nodes_per_hexagon_side
-        self.__n = self.__nodes_per_hexagon_side - 1
+        self.__nodes_per_side = nodes_per_side
+        self.__n = self.__nodes_per_side - 1
 
         # Many information are computed once and memorized in attributes
-        # in order to accelerate next "get...." queries.
-        self.__init_point_directions()
-        self.__init_point_coordinates()
-        self.__init_point_in_hexagon()
+        # in order to accelerate public queries.
+        self.__init_node_directions()
+        self.__init_node_coordinates()
+        self.__init_has_node()
         self.__init_frame()
         self.__init_row_labels()
         self.__init_count_labels()
         self.__init_left_labels()
         self.__init_right_labels()
-        self.__init_labels_to_points()
-        self.__init_labels_from_points()
+        self.__init_labels_to_nodes()
+        self.__init_labels_from_nodes()
 
 
-    def __init_point_directions(self):
-        """Initialize all possible traveling directions from a point."""
+    def __init_node_directions(self):
+        """Initialize all possible traveling directions from a node."""
 
-        self.__point_directions = list()
-        self.__point_directions.append((1, 0)) # e_u
-        self.__point_directions.append((0, 1)) # e_v
-        self.__point_directions.append((-1, 1)) # e_v - e_u
-        self.__point_directions.append((-1, 0)) # -e_u
-        self.__point_directions.append((0, -1)) # -e_v
-        self.__point_directions.append((1, -1)) # e_u - e_v
+        self.__node_directions = list()
+        self.__node_directions.append((1, 0)) # e_u
+        self.__node_directions.append((0, 1)) # e_v
+        self.__node_directions.append((-1, 1)) # e_v - e_u
+        self.__node_directions.append((-1, 0)) # -e_u
+        self.__node_directions.append((0, -1)) # -e_v
+        self.__node_directions.append((1, -1)) # e_u - e_v
 
 
-    def __init_point_coordinates(self):
-        """Initialize the possile point coordinates."""
+    def __init_node_coordinates(self):
+        """Initialize the possible node coordinates."""
 
         (u_min, u_max) = (-self.__n, self.__n)
         (v_min, v_max) = (-self.__n, self.__n)
@@ -125,23 +133,23 @@ class Hexagon:
         self.__v_list = list(range(v_min, v_max + 1))
 
 
-    def __init_point_in_hexagon(self):
-        """Initialize the results of the predicate "has_node_at_point". """
+    def __init_has_node(self):
+        """Initialize the results of the predicate "has_node"."""
 
-        self.__point_in_hexagon = dict()
+        self.__has_node = dict()
 
-        for point_u in self.__u_list:
-            for point_v in self.__v_list:
-                point = (point_u, point_v)
+        for node_u in self.__u_list:
+            for node_v in self.__v_list:
+                node = (node_u, node_v)
 
-                ne_rule = (self.__n - point_u - point_v >= 0)
-                se_rule = (self.__n - point_u >= 0)
-                nw_rule = (self.__n + point_u >= 0)
-                sw_rule = (self.__n + point_u + point_v >= 0)
+                ne_rule = (self.__n - node_u - node_v >= 0)
+                se_rule = (self.__n - node_u >= 0)
+                nw_rule = (self.__n + node_u >= 0)
+                sw_rule = (self.__n + node_u + node_v >= 0)
 
-                point_is_inside = nw_rule and ne_rule and sw_rule and se_rule
+                in_hexagon = nw_rule and ne_rule and sw_rule and se_rule
 
-                self.__point_in_hexagon[point] = point_is_inside
+                self.__has_node[node] = in_hexagon
 
 
     def __init_frame(self):
@@ -150,19 +158,18 @@ class Hexagon:
         self.__frame = dict()
         self.__nx = 4*self.__n
         self.__ny = 2*self.__n
-        self.__xy_cell_size = 2
 
         for cell_x in range(self.__nx + 1):
             for cell_y in range(self.__ny + 1):
                 cell = (cell_x, cell_y)
-                self.__frame[cell] = Hexagon.__SPACE*self.__xy_cell_size
+                self.__frame[cell] = Hexagon.__CELL_SPACE
 
-        for point_v in self.__v_list:
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    cell = self.__point_to_cell(point)
-                    self.__frame[cell] = Hexagon.__FILLER*self.__xy_cell_size
+        for node_v in self.__v_list:
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node[node]:
+                    cell = self.__node_to_cell(node)
+                    self.__frame[cell] = Hexagon.__CELL_FILLER
 
 
     def __init_row_labels(self):
@@ -190,11 +197,11 @@ class Hexagon:
 
         self.__left_labels = [None for cell_y in range(self.__ny + 1)]
 
-        for point_v in self.__v_list:
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    (_, cell_y) = self.__point_to_cell(point)
+        for node_v in self.__v_list:
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node[node]:
+                    (_, cell_y) = self.__node_to_cell(node)
             self.__left_labels[cell_y] = ""
             self.__left_labels[cell_y] += self.__row_labels[cell_y]
             self.__left_labels[cell_y] += self.__count_labels[0]
@@ -205,57 +212,57 @@ class Hexagon:
 
         self.__right_labels = [None for cell_y in range(self.__ny + 1)]
 
-        for point_v in self.__v_list:
+        for node_v in self.__v_list:
             node_count = 0
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    (_, cell_y) = self.__point_to_cell(point)
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node[node]:
+                    (_, cell_y) = self.__node_to_cell(node)
                     node_count += 1
             self.__right_labels[cell_y] = ""
             self.__right_labels[cell_y] += self.__row_labels[cell_y]
             self.__right_labels[cell_y] += self.__count_labels[node_count - 1]
 
 
-    def __init_labels_to_points(self):
-        """Initialize the mapping of a label to a point."""
+    def __init_labels_to_nodes(self):
+        """Initialize the mapping of a label to a node."""
 
-        self.__labels_to_points = dict()
+        self.__labels_to_nodes = dict()
 
-        for point_v in self.__v_list:
+        for node_v in self.__v_list:
             node_count = 0
-            for point_u in self.__u_list:
-                point = (point_u, point_v)
-                if self.__point_in_hexagon[point]:
-                    (_, cell_y) = self.__point_to_cell(point)
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node[node]:
+                    (_, cell_y) = self.__node_to_cell(node)
                     node_count += 1
                     label = ""
                     label += self.__row_labels[cell_y]
                     label += self.__count_labels[node_count - 1]
-                    self.__labels_to_points[label] = point
+                    self.__labels_to_nodes[label] = node
 
 
-    def __init_labels_from_points(self):
-        """Initialize the mapping of a point to a label."""
+    def __init_labels_from_nodes(self):
+        """Initialize the mapping of a node to a label."""
 
-        self.__labels_from_points = dict()
+        self.__labels_from_nodes = dict()
 
-        for (label, point) in self.__labels_to_points.items():
-            self.__labels_from_points[point] = label
+        for (label, node) in self.__labels_to_nodes.items():
+            self.__labels_from_nodes[node] = label
 
 
-    def __point_to_cell(self, point):
-        """Convert a point to a cell."""
+    def __node_to_cell(self, node):
+        """Convert a node to a cell."""
 
-        (point_u, point_v) = point
-        cell = (2*self.__n + 2*point_u + point_v, self.__n - point_v)
+        (node_u, node_v) = node
+        cell = (2*self.__n + 2*node_u + node_v, self.__n - node_v)
         return cell
 
 
     def clear_cells(self):
         """Clear all cells of the frame."""
 
-        for label in self.__labels_to_points:
+        for label in self.__labels_to_nodes:
             self.clear_cell_at_label(label)
 
 
@@ -264,52 +271,33 @@ class Hexagon:
         self.set_cell_at_label(label, "")
 
 
-    def clear_cell_at_point(self, point):
-        """Clear the cell at a given point."""
-        self.set_cell_at_point(point, "")
+    def clear_cell_at_node(self, node):
+        """Clear the cell at a given node."""
+        self.set_cell_at_node(node, "")
 
 
     def get_first_adjacent_labels(self, label):
         """Return the labels of nodes at one segment of a given node
         referenced by a label"""
 
-        point = self.__labels_to_points[label]
-        (point_u, point_v) = point
+        node = self.__labels_to_nodes[label]
+        (node_u, node_v) = node
 
         first_nodes = list()
 
-        for (delta_u, delta_v) in self.__point_directions:
-            point_shifted = (point_u + delta_u, point_v + delta_v)
-            if self.has_node_at_point(point_shifted):
-                first_nodes.append(self.__labels_from_points[point_shifted])
+        for (delta_u, delta_v) in self.__node_directions:
+            node_translated = (node_u + delta_u, node_v + delta_v)
+            if self.has_node(node_translated):
+                first_nodes.append(self.__labels_from_nodes[node_translated])
             else:
                 first_nodes.append(None)
 
         return first_nodes
 
 
-    def get_second_adjacent_labels(self, label):
-        """Return the labels of nodes at two straight segments of a given node
-        referenced by a label."""
-
-        point = self.__labels_to_points[label]
-        (point_u, point_v) = point
-
-        second_nodes = list()
-
-        for (delta_u, delta_v) in self.__point_directions:
-            point_shifted = (point_u + 2*delta_u, point_v + 2*delta_v)
-            if self.has_node_at_point(point_shifted):
-                second_nodes.append(self.__labels_from_points[point_shifted])
-            else:
-                second_nodes.append(None)
-
-        return second_nodes
-
-
     def get_labels(self):
         """Return the labels of all the hexagon nodes."""
-        return self.__labels_to_points.keys()
+        return self.__labels_to_nodes.keys()
 
 
     def get_labels_at_row(self, row_label):
@@ -317,22 +305,22 @@ class Hexagon:
 
         assert row_label in self.__row_labels
         row_index = self.__row_labels.index(row_label)
-        point_v = self.__v_list[row_index]
+        node_v = self.__v_list[row_index]
 
         labels_at_row = list()
 
-        for point_u in self.__u_list:
-            point = (point_u, point_v)
-            if self.__point_in_hexagon[point]:
-                label = self.__labels_from_points[point]
+        for node_u in self.__u_list:
+            node = (node_u, node_v)
+            if self.__has_node[node]:
+                label = self.__labels_from_nodes[node]
                 labels_at_row.append(label)
 
         return labels_at_row
 
 
-    def get_point(self, label):
-        """Return the point at a given label."""
-        return self.__labels_to_points[label]
+    def get_node(self, label):
+        """Return the node at a given label."""
+        return self.__labels_to_nodes[label]
 
 
     def get_row_labels(self):
@@ -340,15 +328,34 @@ class Hexagon:
         return self.__row_labels
 
 
-    def has_node_at_point(self, point):
-        """Is there an hexagon node at a given point?"""
+    def get_second_adjacent_labels(self, label):
+        """Return the labels of nodes at two straight segments of a given node
+        referenced by a label."""
+
+        node = self.__labels_to_nodes[label]
+        (node_u, node_v) = node
+
+        second_nodes = list()
+
+        for (delta_u, delta_v) in self.__node_directions:
+            node_translated = (node_u + 2*delta_u, node_v + 2*delta_v)
+            if self.has_node(node_translated):
+                second_nodes.append(self.__labels_from_nodes[node_translated])
+            else:
+                second_nodes.append(None)
+
+        return second_nodes
+
+
+    def has_node(self, node):
+        """Does this hexagon has the given node?"""
 
         has_node = False
 
-        (point_u, point_v) = point
+        (node_u, node_v) = node
 
-        if (point_u in self.__u_list) and (point_v in self.__v_list):
-            has_node = self.__point_in_hexagon[point]
+        if (node_u in self.__u_list) and (node_v in self.__v_list):
+            has_node = self.__has_node[node]
 
         return has_node
 
@@ -357,31 +364,31 @@ class Hexagon:
         """Print the frame."""
 
         for cell_y in range(self.__ny + 1):
-            line = self.__left_labels[cell_y] + Hexagon.__SPACE*self.__xy_cell_size
+            line = self.__left_labels[cell_y] + Hexagon.__CELL_SPACE
             for cell_x in range(self.__nx + 1):
                 cell = (cell_x, cell_y)
                 line += self.__frame[cell]
-            line += Hexagon.__SPACE*self.__xy_cell_size + self.__right_labels[cell_y]
+            line += Hexagon.__CELL_SPACE + self.__right_labels[cell_y]
             print(line)
 
 
     def set_cell_at_label(self, label, cell_text):
         """Set the cell text at a given label."""
 
-        point = self.__labels_to_points[label]
-        self.set_cell_at_point(point, cell_text)
+        node = self.__labels_to_nodes[label]
+        self.set_cell_at_node(node, cell_text)
 
 
-    def set_cell_at_point(self, point, cell_text):
-        """Set the cell text at a given point."""
+    def set_cell_at_node(self, node, cell_text):
+        """Set the cell text at a given node."""
 
-        assert len(cell_text) <= self.__xy_cell_size
-        cell = self.__point_to_cell(point)
-        self.__frame[cell] = cell_text.rjust(self.__xy_cell_size, Hexagon.__FILLER)
+        assert len(cell_text) <= Hexagon.__CELL_SIZE
+        cell = self.__node_to_cell(node)
+        self.__frame[cell] = cell_text.rjust(Hexagon.__CELL_SIZE, Hexagon.__FILLER)
 
 
 class Sort:
-    """Capture the knowloedge about the sort of JERSI forms."""
+    """Capture the knowlege about sorts in JERSI."""
 
     __names = ["N", "K", "R", "C"]
     __max_count = [1, 4, 4, 4]
@@ -412,7 +419,7 @@ class Sort:
 
     @staticmethod
     def beats(fst_index, snd_index):
-        """Does sort fst_index beat sort snd_index?"""
+        """Does first sort beat second sort?"""
 
         assert fst_index in Sort.__indices
         assert snd_index in Sort.__indices
@@ -421,7 +428,7 @@ class Sort:
 
     @staticmethod
     def beats_by_long_names(fst_long_name, snd_long_name):
-        """Does sort fst_long_name beat sort snd_long_name?"""
+        """Does first sort beat second sort?"""
 
         fst_index = Sort.__long_names.index(fst_long_name)
         snd_index = Sort.__long_names.index(snd_long_name)
@@ -430,7 +437,7 @@ class Sort:
 
     @staticmethod
     def beats_by_names(fst_name, snd_name):
-        """Does sort fst_name beat sort snd_name?"""
+        """Does first sort beat second sort?"""
 
         (fst_index, j) = (Sort.__names.index(fst_name), Sort.__names.index(snd_name))
         return Sort.beats(fst_index, j)
@@ -545,7 +552,7 @@ class Color:
 
 
 class Form:
-    """Capture knowlege about form in JERSI."""
+    """Capture knowlege about forms in JERSI."""
 
     def __init__(self, sort, color):
         """Initialize a form of a given sort and color,
