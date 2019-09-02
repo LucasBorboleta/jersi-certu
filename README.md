@@ -17,5 +17,7 @@ Here is an overview of the text interface:
     a1          .C  KR  .N  CR  .K          a5
     
     blue turn / move 1 / blue N=1 K=4 R=4 C=4 / red n=1 k=4 r=4 c=4
+    
+    command?
 
 If you intent to derive or to sell either a text, a product or a software from this work, then read the [**LICENSE**](./docs/LICENSE.txt) and the  [**COPYRIGHT**](./docs/COPYRIGHT.md)  documents.
