@@ -388,7 +388,7 @@ class Hexagon:
 
 
 class Sort:
-    """Capture the knowlege about sorts in JERSI."""
+    """Capture the knowlege about Sort in JERSI."""
 
     __names = ["N", "K", "R", "C"]
     __max_count = [1, 4, 4, 4]
@@ -494,7 +494,7 @@ class Sort:
 
 
 class Color:
-    """Capture the knowlege about colors in JERSI."""
+    """Capture the knowlege about Color in JERSI."""
 
     __names = ["blue", "red"]
     __indices = list(range(len(__names)))
@@ -552,7 +552,7 @@ class Color:
 
 
 class Form:
-    """Capture knowlege about forms in JERSI."""
+    """Capture knowlege about Form in JERSI."""
 
     def __init__(self, sort, color):
         """Initialize a form of a given sort and color,
@@ -593,7 +593,7 @@ class Form:
 
 
 class Node:
-    """Capture knowledge about node in JERSI."""
+    """Capture knowledge about Node in JERSI."""
 
 
     def __init__(self, label, grid):
@@ -608,7 +608,7 @@ class Node:
 
     def __deepcopy__(self, memo):
         """Customized deepcopy of a node: only the grid and forms
-        attributes are deep copied."""
+        attributes are copied in depth."""
 
         new_one = Node(self.label, None)
 
@@ -838,9 +838,13 @@ class Node:
 
 
 class Grid:
+    """Capture knowledge about Grid in JERSI.
+    Basically a Grid is an abstraction of an Hexagon.
+    """
 
 
     def __init__(self, hexagon):
+        """Initialize a grid from a given hexagon."""
 
         self.hexagon = hexagon
 
@@ -854,6 +858,8 @@ class Grid:
 
 
     def __deepcopy__(self, memo):
+        """Customized deepcopy of a node: only the nodes and forms
+        attributes are copied in depth."""
 
         cls = self.__class__
         new_one = cls.__new__(cls)
@@ -869,6 +875,7 @@ class Grid:
 
 
     def __init_nodes(self):
+        """Initialize all nodes of the grid."""
 
         self.nodes = dict()
 
@@ -880,6 +887,7 @@ class Grid:
 
 
     def __init_forms(self):
+        """Initialize all forms that could be place on the grid."""
 
         self.forms = dict()
         for color in Color.get_indices():
@@ -893,6 +901,7 @@ class Grid:
 
 
     def __init_placement_labels(self):
+        """Initialize the valid nodes for the placement."""
 
         self.placement_labels = dict()
 
@@ -909,6 +918,7 @@ class Grid:
 
 
     def count_forms_by_colors_and_sorts(self):
+        """Count alive forms by color and by sort."""
 
         count = dict()
 
@@ -923,6 +933,7 @@ class Grid:
 
 
     def count_kuntis_by_colors(self):
+        """Count alive kunti by color."""
 
         count = dict()
 
@@ -936,6 +947,7 @@ class Grid:
 
 
     def export_positions(self):
+        """Export positions of alive forms."""
 
         positions = dict()
 
@@ -958,10 +970,16 @@ class Grid:
 
 
     def import_placement(self, positions):
+        """Import and place forms at given positions."""
         self.import_positions(positions, check_placement=True)
 
 
     def import_positions(self, positions, check_placement=False):
+        """Import and set forms at given positions.
+        On option, check that positions are a valid placement.
+        """
+
+        self.unset_forms()
 
         count = dict()
         for color in Color.get_indices():
@@ -984,23 +1002,30 @@ class Grid:
 
 
     def move_one_form(self, src_label, dst_label):
+        """Move one form from a source label to a destination label."""
+
         src_node = self.nodes[src_label]
         dst_node = self.nodes[dst_label]
         return src_node.move_one_form(dst_node)
 
 
     def move_two_forms(self, src_label, dst_label):
+        """Move two forms from a source label to a destination label."""
+
         src_node = self.nodes[src_label]
         dst_node = self.nodes[dst_label]
         return src_node.move_two_forms(dst_node)
 
 
     def print_grid(self):
+        """Print the grid using the frame managed by the hexagon."""
+
         self.set_cells()
         self.hexagon.print_frame()
 
 
     def set_cells(self):
+        """Set the cells of the hexagon."""
 
         self.hexagon.clear_cells()
 
@@ -1017,6 +1042,7 @@ class Grid:
 
 
     def place_form(self, form, dst_label):
+        """Place a form at a destination label."""
 
         jersi_assert(dst_label in self.placement_labels[form.color],
                      "%s is not a placement position for the %s color" %
@@ -1025,12 +1051,8 @@ class Grid:
         self.set_form(form, dst_label)
 
 
-    def set_form(self, form, dst_label):
-        dst_node = self.nodes[dst_label]
-        dst_node.set_form(form)
-
-
-    def set_forms_at_random_positions(self):
+    def place_forms_at_random_positions(self):
+        """Place all the forms at random positions."""
 
         self.unset_forms()
 
@@ -1100,7 +1122,8 @@ class Grid:
         self.place_form(red_forms_wo_kunti[11], "i1")
 
 
-    def set_forms_at_standard_positions(self):
+    def place_forms_at_standard_positions(self):
+        """Place all the forms at standard/symmetric positions."""
 
         self.unset_forms()
 
@@ -1155,7 +1178,16 @@ class Grid:
         self.place_form(self.forms[red][cukla][3], "i1")
 
 
+    def set_form(self, form, dst_label):
+        """Set a form at a destination label."""
+
+        dst_node = self.nodes[dst_label]
+        dst_node.set_form(form)
+
+
     def unset_forms(self):
+        """Unset all forms out of the grid."""
+
         for node in self.nodes.values():
             node.unset_forms()
 
@@ -1208,7 +1240,7 @@ class Game:
 
     def new_random_game(self):
         self.reset_game()
-        self.grid.set_forms_at_random_positions()
+        self.grid.place_forms_at_random_positions()
         self.placement = self.grid.export_positions()
         self.placement_over = True
 
@@ -1220,7 +1252,7 @@ class Game:
 
     def new_standard_game(self):
         self.reset_game()
-        self.grid.set_forms_at_standard_positions()
+        self.grid.place_forms_at_standard_positions()
         self.placement = self.grid.export_positions()
         self.placement_over = True
 
@@ -1455,6 +1487,8 @@ class Game:
 
 
     def print_status(self):
+
+        #TODO: score is better computed by update_ending_conditions
 
         form_count = self.grid.count_forms_by_colors_and_sorts()
 
