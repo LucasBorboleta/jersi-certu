@@ -1193,11 +1193,53 @@ class Grid:
 
 
 class Game:
+    """Provide services for playing, saving and reloading a game of JERSI.
+    Manage JERSI rule related to the dynamics like the alternance rule
+    between the two players and the end of game.
+    """
 
 
     def __init__(self):
+        """Initialize the Game with an hexagon.
+        Propose a to start witj a standard placement.
+        """
 
         self.grid = None
+        self.placement = None
+        self.history = None
+        self.game_over = None
+        self.placement_over = None
+        self.last_count = None
+        self.move_count = None
+        self.score = None
+
+        self.grid = Grid(hexagon=Hexagon(5))
+        self.init_game()
+        self.new_standard_game()
+
+
+    def __deepcopy__(self, memo):
+        """Customized deepcopy of a game: only the grid, placement and history
+        attributes are copied in depth."""
+
+        cls = self.__class__
+        new_one = cls.__new__(cls)
+        memo[id(self)] = new_one
+
+        new_one.__dict__.update(self.__dict__)
+
+        new_one.grid = copy.deepcopy(self.grid, memo)
+        new_one.placement = copy.copy(self.placement)
+        new_one.history = copy.copy(self.history)
+
+        return new_one
+
+
+    def init_game(self):
+        """Initialize or re-initialize the game."""
+
+        self.grid.unset_forms()
+
         self.placement = dict()
         self.history = list()
         self.game_over = False
@@ -1205,32 +1247,16 @@ class Game:
         self.last_count = None
         self.move_count = 1
 
-        hexagon = Hexagon(5)
-        self.grid = Grid(hexagon)
-        self.new_standard_game()
-
-
-    def __deepcopy__(self, memo):
-
-        cls = self.__class__
-        new_one = cls.__new__(cls)
-        memo[id(self)] = new_one
-
-        new_one.grid = copy.deepcopy(self.grid, memo)
-
-        new_one.placement = copy.copy(self.placement)
-        new_one.history = copy.copy(self.history)
-
-        new_one.game_over = self.game_over
-        new_one.placement_over = self.placement_over
-        new_one.last_count = self.last_count
-        new_one.move_count = self.move_count
-
-        return new_one
+        self.score = dict()
+        for color in sorted(Sort.get_indices()):
+            self.score[color] = 0
 
 
     def new_free_game(self):
-        self.reset_game()
+        """Initialize the game with a free placement
+        i.e. no form yet placed."""
+
+        self.init_game()
 
         print()
         print("new free game")
@@ -1239,7 +1265,9 @@ class Game:
 
 
     def new_random_game(self):
-        self.reset_game()
+        """Initialize the game with a random placement."""
+
+        self.init_game()
         self.grid.place_forms_at_random_positions()
         self.placement = self.grid.export_positions()
         self.placement_over = True
@@ -1251,7 +1279,9 @@ class Game:
 
 
     def new_standard_game(self):
-        self.reset_game()
+        """Initialize the game with a standard/symmetric placement."""
+
+        self.init_game()
         self.grid.place_forms_at_standard_positions()
         self.placement = self.grid.export_positions()
         self.placement_over = True
@@ -1263,6 +1293,7 @@ class Game:
 
 
     def parse_and_play_instruction(self, instruction):
+        """Parse and play an instruction."""
 
         instruction_validated = False
 
@@ -1293,6 +1324,7 @@ class Game:
 
     @staticmethod
     def parse_instruction(instruction, positions, moves):
+        """Parse an instruction and update the given positions and moves."""
 
         instruction_validated = True
 
@@ -1354,6 +1386,7 @@ class Game:
 
 
     def play_moves(self, moves):
+        """Play the given moves."""
 
         play_validated = True
 
@@ -1413,6 +1446,7 @@ class Game:
 
 
     def play_placement(self, positions):
+        """Play the given positions as a placement."""
 
         play_validated = True
 
@@ -1462,6 +1496,8 @@ class Game:
 
     @staticmethod
     def print_help():
+        """Print help about the commands."""
+
         print()
         print("commands:")
         print("    a1-b1=d1 | a1=c1-d1 | a1-b1 | a1=c1 : examples of move in one or two steps")
@@ -1479,6 +1515,7 @@ class Game:
 
 
     def print_history(self):
+        """Print the history of moves. Placement is not printed."""
 
         print()
         print("move history:")
@@ -1487,8 +1524,7 @@ class Game:
 
 
     def print_status(self):
-
-        #TODO: score is better computed by update_ending_conditions
+        """Print the status of the game: turn, score, count of forms."""
 
         form_count = self.grid.count_forms_by_colors_and_sorts()
 
@@ -1496,7 +1532,7 @@ class Game:
             text = "game over"
 
             for color in sorted(form_count.keys()):
-                text += " / %s %d" % (Color.get_name(color), form_count[color][Sort.kunti])
+                text += " / %s %d" % (Color.get_name(color), self.score[color])
 
         else:
             move_color = (self.move_count - 1) % Color.get_count()
@@ -1519,6 +1555,8 @@ class Game:
 
 
     def read_game(self, file_path):
+        """Read a game from a file: set initial positions of forms (placement)
+        and play read moves."""
 
         positions = dict()
         moves = list()
@@ -1546,7 +1584,7 @@ class Game:
         if parsing_validated:
 
             saved_game = self.save_game()
-            self.reset_game()
+            self.init_game()
 
             playing_validated = True
 
@@ -1573,6 +1611,8 @@ class Game:
 
 
     def read_positions(self, file_path):
+        """Remove all forms from the grid and set forms only
+        at the read positions from the file."""
 
         positions = dict()
         moves = list()
@@ -1597,7 +1637,7 @@ class Game:
         if parsing_validated:
 
             saved_game = self.save_game()
-            self.reset_game()
+            self.init_game()
 
             importing_validated = True
             try:
@@ -1621,29 +1661,14 @@ class Game:
                 self.restore_game(saved_game)
 
 
-    def reset_game(self):
-
-        self.grid.unset_forms()
-        self.placement = dict()
-        self.history = list()
-        self.game_over = False
-        self.placement_over = False
-        self.last_count = None
-        self.move_count = 1
-
-
     def restore_game(self, saved_game):
+        """Restore all saved attributes of the game."""
 
-        self.grid = saved_game.grid
-        self.placement = saved_game.placement
-        self.history = saved_game.history
-        self.game_over = saved_game.game_over
-        self.placement_over = saved_game.placement_over
-        self.last_count = saved_game.last_count
-        self.move_count = saved_game.move_count
+        self.__dict__.update(saved_game.__dict__)
 
 
     def run(self):
+        """Run all entered commands until the command for quitting."""
 
         continue_running = True
 
@@ -1718,6 +1743,7 @@ class Game:
 
 
     def save_game(self):
+        """Save all atributes of the game."""
 
         saved_game = copy.deepcopy(self)
         return saved_game
@@ -1725,6 +1751,7 @@ class Game:
 
     @staticmethod
     def stringify_move(move_steps):
+        """Convert all steps of the given move as a string."""
 
         move_text = ""
 
@@ -1767,6 +1794,7 @@ class Game:
 
     @staticmethod
     def textify_history(history):
+        """Convert all played moves as a list of string."""
 
         lines = list()
 
@@ -1784,6 +1812,7 @@ class Game:
 
     @staticmethod
     def textify_positions(positions):
+        """Convert all given form positions as a list of string."""
 
         lines = list()
 
@@ -1806,14 +1835,18 @@ class Game:
 
 
     def update_end_conditions(self):
+        """Determine conditions for ending a game."""
 
         form_count = self.grid.count_forms_by_colors_and_sorts()
 
         for color in form_count.keys():
+            self.score[color] = 1
             if form_count[color][Sort.kunti] == 0:
                 self.game_over = True
+                self.score[color] = 0
 
         if not self.game_over:
+
             if self.last_count is None:
                 for color in form_count.keys():
                     for sort in form_count[color].keys():
@@ -1826,6 +1859,8 @@ class Game:
 
 
     def write_game(self, file_path):
+        """Write a game into a file: set initial positions of forms (placement)
+        and play read moves."""
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
@@ -1843,6 +1878,7 @@ class Game:
 
 
     def write_positions(self, file_path):
+        """Write into a file the actual positions of forms."""
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
@@ -1855,6 +1891,8 @@ class Game:
 
 
 def main():
+    """Start JERSI."""
+
     print(_COPYRIGHT_AND_LICENSE)
     my_game = Game()
     my_game.run()
