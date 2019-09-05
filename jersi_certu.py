@@ -40,19 +40,19 @@ def jersi_assert(condition, message):
         raise JersiError(message)
 
 
-class Hexagon:
+class Hexmap:
 
     """
-    The Hexagon class captures geometrical knowledge and printing capacity.
+    Captures the geometrical knowledge about the Hexmap of JERSI.
 
-    This class deals with the following concepts:
-        - Node: vertex of the (infinite) triangular grid that fills the plane.
-        - Hexagon: a subset of the triangular grid.
-        - Frame: a finite rectangular grid used to represent the hexagon.
-        - Cell: elment of the frame that represents an hexagon node.
+    An hexmap is made of nodes. Each node can be set with a text.
+    For printing the hexmap, a table is used, which is made of cells
+    distributed in rows and columns.
 
-    Example of a frame for an instance Hexagon(5) with a few cells filled up
-    with one or two letters:
+    Example of a table for an hexmap with 5 nodes per side.
+    A few cells filled up with one or two letters.
+    The left and right columns of labels are not part of the table,
+    but they are printed together with the table:
 
         i1          .k  cr  .n  kr  .c          i5
         h1        .c  .r  .k  .c  .r  .k        h6
@@ -64,19 +64,21 @@ class Hexagon:
         b1        .K  .R  .C  .K  .R  .C        b6
         a1          .C  KR  .N  CR  .K          a5
 
-    Nodes of the hexagon are described using an oblique coordinates system :
-        - C is the hexagon center;
+    The nodes of the hexmap are described using an oblique coordinates system :
+        - C is the hexmap center;
         - e_u is horizontal unit vector pointing right ;
         - e_v is diagonal unit vector pointing up ;
-        - A node P is represented as CP = u*e_u + v*e_v?
+        - a node P is represented by its center as CP = u*e_u + v*e_v.
 
-    A frame made of cells is used for printing textual rows and columns :
+    The cells of the table are described using an
+    orthogonal coordinates system :
         - O is at the left upper corner ;
         - e_x is horizontal vector pointing right ;
         - e_y is vectical vector pointing down ;
-        - A cell P is represented as OP = x*e_x + y*e_y.
+        - a cell P is represented as OP = x*e_x + y*e_y ;
+        - x is a column index ; y is a row index.
 
-    The relationship bewteen the the (u, v) and (x, y) coordinates systems
+    The relationship bewteen the (u, v) and (x, y) coordinates systems
     are as follows :
         - e_u  = 2*e_x
         - e_v = e_x - e_y
@@ -92,24 +94,104 @@ class Hexagon:
 
 
     def __init__(self, nodes_per_side):
-        """Initialize an hexagon parametrized by
-        the number of nodes per hexagon side"""
+        """Initialize an hexmap parametrized by
+        the number of nodes per hexmap side"""
 
         self.__nodes_per_side = nodes_per_side
         self.__n = self.__nodes_per_side - 1
 
         # Many information are computed once and memorized in attributes
         # in order to accelerate public queries.
-        self.__init_node_directions()
         self.__init_node_coordinates()
-        self.__init_has_node()
-        self.__init_frame()
-        self.__init_row_labels()
+        self.__init_node_directions()
+        self.__init_has_node_values()
+        self.__init_table()
         self.__init_count_labels()
+        self.__init_row_labels()
         self.__init_left_labels()
         self.__init_right_labels()
         self.__init_labels_to_nodes()
         self.__init_labels_from_nodes()
+
+
+    def __init_count_labels(self):
+        """Initialize labels for counting nodes in a row."""
+
+        self.__count_labels = list(string.digits)
+        self.__count_labels.remove("0")
+        self.__count_labels.sort()
+        assert 2*self.__n + 1 <= len(self.__count_labels)
+        self.__count_labels = self.__count_labels[0: 2*self.__n + 1]
+
+
+    def __init_has_node_values(self):
+        """Initialize the values of the predicate "__has_node"."""
+
+        self.__has_node_values = dict()
+
+        for node_u in self.__u_list:
+            for node_v in self.__v_list:
+                node = (node_u, node_v)
+
+                ne_rule = (self.__n - node_u - node_v >= 0)
+                se_rule = (self.__n - node_u >= 0)
+                nw_rule = (self.__n + node_u >= 0)
+                sw_rule = (self.__n + node_u + node_v >= 0)
+
+                is_inside = nw_rule and ne_rule and sw_rule and se_rule
+
+                self.__has_node_values[node] = is_inside
+
+
+    def __init_labels_from_nodes(self):
+        """Initialize the mapping of a node to a label."""
+
+        self.__labels_from_nodes = dict()
+
+        for (label, node) in self.__labels_to_nodes.items():
+            self.__labels_from_nodes[node] = label
+
+
+    def __init_labels_to_nodes(self):
+        """Initialize the mapping of a label to a node."""
+
+        self.__labels_to_nodes = dict()
+
+        for node_v in self.__v_list:
+            node_count = 0
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node_values[node]:
+                    (_, cell_y) = self.__node_to_cell(node)
+                    node_count += 1
+                    label = ""
+                    label += self.__row_labels[cell_y]
+                    label += self.__count_labels[node_count - 1]
+                    self.__labels_to_nodes[label] = node
+
+
+    def __init_left_labels(self):
+        """Initialize left side labels."""
+
+        self.__left_labels = [None for cell_y in range(self.__ny + 1)]
+
+        for node_v in self.__v_list:
+            for node_u in self.__u_list:
+                node = (node_u, node_v)
+                if self.__has_node_values[node]:
+                    (_, cell_y) = self.__node_to_cell(node)
+            self.__left_labels[cell_y] = ""
+            self.__left_labels[cell_y] += self.__row_labels[cell_y]
+            self.__left_labels[cell_y] += self.__count_labels[0]
+
+
+    def __init_node_coordinates(self):
+        """Initialize the possible node coordinates."""
+
+        (u_min, u_max) = (-self.__n, self.__n)
+        (v_min, v_max) = (-self.__n, self.__n)
+        self.__u_list = list(range(u_min, u_max + 1))
+        self.__v_list = list(range(v_min, v_max + 1))
 
 
     def __init_node_directions(self):
@@ -124,89 +206,6 @@ class Hexagon:
         self.__node_directions.append((1, -1)) # e_u - e_v
 
 
-    def __init_node_coordinates(self):
-        """Initialize the possible node coordinates."""
-
-        (u_min, u_max) = (-self.__n, self.__n)
-        (v_min, v_max) = (-self.__n, self.__n)
-        self.__u_list = list(range(u_min, u_max + 1))
-        self.__v_list = list(range(v_min, v_max + 1))
-
-
-    def __init_has_node(self):
-        """Initialize the results of the predicate "has_node"."""
-
-        self.__has_node = dict()
-
-        for node_u in self.__u_list:
-            for node_v in self.__v_list:
-                node = (node_u, node_v)
-
-                ne_rule = (self.__n - node_u - node_v >= 0)
-                se_rule = (self.__n - node_u >= 0)
-                nw_rule = (self.__n + node_u >= 0)
-                sw_rule = (self.__n + node_u + node_v >= 0)
-
-                in_hexagon = nw_rule and ne_rule and sw_rule and se_rule
-
-                self.__has_node[node] = in_hexagon
-
-
-    def __init_frame(self):
-        """Initialize the frame with neutral content in each cell."""
-
-        self.__frame = dict()
-        self.__nx = 4*self.__n
-        self.__ny = 2*self.__n
-
-        for cell_x in range(self.__nx + 1):
-            for cell_y in range(self.__ny + 1):
-                cell = (cell_x, cell_y)
-                self.__frame[cell] = Hexagon.__CELL_SPACE
-
-        for node_v in self.__v_list:
-            for node_u in self.__u_list:
-                node = (node_u, node_v)
-                if self.__has_node[node]:
-                    cell = self.__node_to_cell(node)
-                    self.__frame[cell] = Hexagon.__CELL_FILLER
-
-
-    def __init_row_labels(self):
-        """Initialize labels refering rows of the frame."""
-
-        self.__row_labels = list(string.ascii_lowercase)
-        self.__row_labels.sort()
-        assert 2*self.__n + 1 <= len(self.__row_labels)
-        self.__row_labels = self.__row_labels[0:2*self.__n + 1]
-        self.__row_labels.reverse()
-
-
-    def __init_count_labels(self):
-        """Initialize labels for counting hexagon nodes in a row."""
-
-        self.__count_labels = list(string.digits)
-        self.__count_labels.remove("0")
-        self.__count_labels.sort()
-        assert 2*self.__n + 1 <= len(self.__count_labels)
-        self.__count_labels = self.__count_labels[0: 2*self.__n + 1]
-
-
-    def __init_left_labels(self):
-        """Initialize left side labels."""
-
-        self.__left_labels = [None for cell_y in range(self.__ny + 1)]
-
-        for node_v in self.__v_list:
-            for node_u in self.__u_list:
-                node = (node_u, node_v)
-                if self.__has_node[node]:
-                    (_, cell_y) = self.__node_to_cell(node)
-            self.__left_labels[cell_y] = ""
-            self.__left_labels[cell_y] += self.__row_labels[cell_y]
-            self.__left_labels[cell_y] += self.__count_labels[0]
-
-
     def __init_right_labels(self):
         """Initialize right side labels."""
 
@@ -216,7 +215,7 @@ class Hexagon:
             node_count = 0
             for node_u in self.__u_list:
                 node = (node_u, node_v)
-                if self.__has_node[node]:
+                if self.__has_node_values[node]:
                     (_, cell_y) = self.__node_to_cell(node)
                     node_count += 1
             self.__right_labels[cell_y] = ""
@@ -224,61 +223,56 @@ class Hexagon:
             self.__right_labels[cell_y] += self.__count_labels[node_count - 1]
 
 
-    def __init_labels_to_nodes(self):
-        """Initialize the mapping of a label to a node."""
+    def __init_row_labels(self):
+        """Initialize labels indexing rows."""
 
-        self.__labels_to_nodes = dict()
+        self.__row_labels = list(string.ascii_lowercase)
+        self.__row_labels.sort()
+        assert 2*self.__n + 1 <= len(self.__row_labels)
+        self.__row_labels = self.__row_labels[0:2*self.__n + 1]
+        self.__row_labels.reverse()
+
+
+    def __init_table(self):
+        """Initialize the table with neutral content in each cell."""
+
+        self.__table = dict()
+        self.__nx = 4*self.__n
+        self.__ny = 2*self.__n
+
+        for cell_x in range(self.__nx + 1):
+            for cell_y in range(self.__ny + 1):
+                cell = (cell_x, cell_y)
+                self.__table[cell] = Hexmap.__CELL_SPACE
 
         for node_v in self.__v_list:
-            node_count = 0
             for node_u in self.__u_list:
                 node = (node_u, node_v)
-                if self.__has_node[node]:
-                    (_, cell_y) = self.__node_to_cell(node)
-                    node_count += 1
-                    label = ""
-                    label += self.__row_labels[cell_y]
-                    label += self.__count_labels[node_count - 1]
-                    self.__labels_to_nodes[label] = node
+                if self.__has_node_values[node]:
+                    cell = self.__node_to_cell(node)
+                    self.__table[cell] = Hexmap.__CELL_FILLER
 
 
-    def __init_labels_from_nodes(self):
-        """Initialize the mapping of a node to a label."""
-
-        self.__labels_from_nodes = dict()
-
-        for (label, node) in self.__labels_to_nodes.items():
-            self.__labels_from_nodes[node] = label
+    def __clear_node(self, node):
+        """Clear the text at the given node."""
+        self.__set_node(node, "")
 
 
-    def __node_to_cell(self, node):
-        """Convert a node to a cell."""
-
-        (node_u, node_v) = node
-        cell = (2*self.__n + 2*node_u + node_v, self.__n - node_v)
-        return cell
-
-
-    def clear_cells(self):
-        """Clear all cells of the frame."""
+    def clear_nodes(self):
+        """Clear all nodes."""
 
         for label in self.__labels_to_nodes:
-            self.clear_cell_at_label(label)
+            self.clear_node_at_label(label)
 
 
-    def clear_cell_at_label(self, label):
-        """Clear the cell at a given label."""
-        self.set_cell_at_label(label, "")
-
-
-    def clear_cell_at_node(self, node):
-        """Clear the cell at a given node."""
-        self.set_cell_at_node(node, "")
+    def clear_node_at_label(self, label):
+        """Clear node text at the given label."""
+        self.set_node_at_label(label, "")
 
 
     def get_first_adjacent_labels(self, label):
-        """Return the labels of nodes at one segment of a given node
-        referenced by a label"""
+        """Return the labels of adjacent nodes
+        to the node at the given label."""
 
         node = self.__labels_to_nodes[label]
         (node_u, node_v) = node
@@ -287,7 +281,7 @@ class Hexagon:
 
         for (delta_u, delta_v) in self.__node_directions:
             node_translated = (node_u + delta_u, node_v + delta_v)
-            if self.has_node(node_translated):
+            if self.__has_node(node_translated):
                 first_nodes.append(self.__labels_from_nodes[node_translated])
             else:
                 first_nodes.append(None)
@@ -296,12 +290,12 @@ class Hexagon:
 
 
     def get_labels(self):
-        """Return the labels of all the hexagon nodes."""
+        """Return the labels of all the hexmap nodes."""
         return self.__labels_to_nodes.keys()
 
 
-    def get_labels_at_row(self, row_label):
-        """Return the labels of all the hexagon nodes at a given row."""
+    def get_node_labels_at_row(self, row_label):
+        """Return the labels of all the hexmap nodes at a given row."""
 
         assert row_label in self.__row_labels
         row_index = self.__row_labels.index(row_label)
@@ -311,15 +305,15 @@ class Hexagon:
 
         for node_u in self.__u_list:
             node = (node_u, node_v)
-            if self.__has_node[node]:
+            if self.__has_node_values[node]:
                 label = self.__labels_from_nodes[node]
                 labels_at_row.append(label)
 
         return labels_at_row
 
 
-    def get_node(self, label):
-        """Return the node at a given label."""
+    def __get_node_at_label(self, label):
+        """Return the node at the given label."""
         return self.__labels_to_nodes[label]
 
 
@@ -329,8 +323,8 @@ class Hexagon:
 
 
     def get_second_adjacent_labels(self, label):
-        """Return the labels of nodes at two straight segments of a given node
-        referenced by a label."""
+        """Return the labels of adjacent to adjacent nodes, in straight line,
+        to the node at the given label."""
 
         node = self.__labels_to_nodes[label]
         (node_u, node_v) = node
@@ -339,7 +333,7 @@ class Hexagon:
 
         for (delta_u, delta_v) in self.__node_directions:
             node_translated = (node_u + 2*delta_u, node_v + 2*delta_v)
-            if self.has_node(node_translated):
+            if self.__has_node(node_translated):
                 second_nodes.append(self.__labels_from_nodes[node_translated])
             else:
                 second_nodes.append(None)
@@ -347,48 +341,57 @@ class Hexagon:
         return second_nodes
 
 
-    def has_node(self, node):
-        """Does this hexagon has the given node?"""
+    def __has_node(self, node):
+        """Is the given node inside this hexmap?"""
 
-        has_node = False
+        self_has_node = False
 
         (node_u, node_v) = node
 
         if (node_u in self.__u_list) and (node_v in self.__v_list):
-            has_node = self.__has_node[node]
+            self_has_node = self.__has_node_values[node]
 
-        return has_node
+        return self_has_node
 
 
-    def print_frame(self):
-        """Print the frame."""
+    def print(self):
+        """Print the hexmap using the table representation."""
 
         for cell_y in range(self.__ny + 1):
-            line = self.__left_labels[cell_y] + Hexagon.__CELL_SPACE
+            line = self.__left_labels[cell_y] + Hexmap.__CELL_SPACE
             for cell_x in range(self.__nx + 1):
                 cell = (cell_x, cell_y)
-                line += self.__frame[cell]
-            line += Hexagon.__CELL_SPACE + self.__right_labels[cell_y]
+                line += self.__table[cell]
+            line += Hexmap.__CELL_SPACE + self.__right_labels[cell_y]
             print(line)
 
 
-    def set_cell_at_label(self, label, cell_text):
-        """Set the cell text at a given label."""
+    def __node_to_cell(self, node):
+        """Convert a node of hexmap to a cell of table."""
+
+        (node_u, node_v) = node
+        cell = (2*self.__n + 2*node_u + node_v, self.__n - node_v)
+        return cell
+
+
+    def set_node_at_label(self, label, text):
+        """Set the text of the node at the given label."""
 
         node = self.__labels_to_nodes[label]
-        self.set_cell_at_node(node, cell_text)
+        self.__set_node(node, text)
 
 
-    def set_cell_at_node(self, node, cell_text):
-        """Set the cell text at a given node."""
+    def __set_node(self, node, text):
+        """Set the text of the given node."""
 
-        assert len(cell_text) <= Hexagon.__CELL_SIZE
+        assert len(text) <= Hexmap.__CELL_SIZE
         cell = self.__node_to_cell(node)
-        self.__frame[cell] = cell_text.rjust(Hexagon.__CELL_SIZE, Hexagon.__FILLER)
+        self.__table[cell] = text.rjust(Hexmap.__CELL_SIZE, Hexmap.__FILLER)
 
 
-class Sort:
-    """Capture the knowlege about Sort in JERSI."""
+
+class Shape:
+    """Capture the knowlege about Shape in JERSI."""
 
     __names = ["N", "K", "R", "C"]
     __max_count = [1, 4, 4, 4]
@@ -419,50 +422,50 @@ class Sort:
 
     @staticmethod
     def beats(fst_index, snd_index):
-        """Does first sort beat second sort?"""
+        """Does first shape beat second shape?"""
 
-        assert fst_index in Sort.__indices
-        assert snd_index in Sort.__indices
-        return (fst_index, snd_index) in Sort.__beat_cases
+        assert fst_index in Shape.__indices
+        assert snd_index in Shape.__indices
+        return (fst_index, snd_index) in Shape.__beat_cases
 
 
     @staticmethod
     def beats_by_long_names(fst_long_name, snd_long_name):
-        """Does first sort beat second sort?"""
+        """Does first shape beat second shape?"""
 
-        fst_index = Sort.__long_names.index(fst_long_name)
-        snd_index = Sort.__long_names.index(snd_long_name)
-        return Sort.beats(fst_index, snd_index)
+        fst_index = Shape.__long_names.index(fst_long_name)
+        snd_index = Shape.__long_names.index(snd_long_name)
+        return Shape.beats(fst_index, snd_index)
 
 
     @staticmethod
     def beats_by_names(fst_name, snd_name):
-        """Does first sort beat second sort?"""
+        """Does first shape beat second shape?"""
 
-        (fst_index, j) = (Sort.__names.index(fst_name), Sort.__names.index(snd_name))
-        return Sort.beats(fst_index, j)
+        (fst_index, j) = (Shape.__names.index(fst_name), Shape.__names.index(snd_name))
+        return Shape.beats(fst_index, j)
 
 
     @staticmethod
     def get_index(name):
-        """Return the sort index for its name or long name."""
+        """Return the shape index for its name or long name."""
 
         name_uppered = name.upper()
         name_lowered = name.lower()
 
         index = None
 
-        if name in Sort.__names:
-            index = Sort.__names.index(name)
+        if name in Shape.__names:
+            index = Shape.__names.index(name)
 
-        elif name in Sort.__long_names:
-            index = Sort.__long_names.index(name)
+        elif name in Shape.__long_names:
+            index = Shape.__long_names.index(name)
 
-        elif name_uppered in Sort.__names:
-            index = Sort.__names.index(name_uppered)
+        elif name_uppered in Shape.__names:
+            index = Shape.__names.index(name_uppered)
 
-        elif name_lowered in Sort.__long_names:
-            index = Sort.__long_names.index(name_lowered)
+        elif name_lowered in Shape.__long_names:
+            index = Shape.__long_names.index(name_lowered)
 
         assert index is not None
 
@@ -471,26 +474,26 @@ class Sort:
 
     @staticmethod
     def get_indices():
-        """Return all the sort indices."""
-        return Sort.__indices
+        """Return all the shape indices."""
+        return Shape.__indices
 
 
     @staticmethod
     def get_long_name(index):
-        """Return the long name associated to a given sort index."""
-        return Sort.__long_names[index]
+        """Return the long name associated to a given shape index."""
+        return Shape.__long_names[index]
 
 
     @staticmethod
     def get_max_occurrences(index):
-        """Return the maximum occurences of a given sort."""
-        return Sort.__max_count[index]
+        """Return the maximum occurences of a given shape."""
+        return Shape.__max_count[index]
 
 
     @staticmethod
     def get_name(index):
-        """Return the name associated to a sort index."""
-        return Sort.__names[index]
+        """Return the name associated to a shape index."""
+        return Shape.__names[index]
 
 
 class Color:
@@ -551,71 +554,71 @@ class Color:
         return Color.__transformers[i]
 
 
-class Form:
-    """Capture knowlege about Form in JERSI."""
+class Piece:
+    """Capture knowlege about Piece in JERSI."""
 
-    def __init__(self, sort, color):
-        """Initialize a form of a given sort and color,
+    def __init__(self, shape, color):
+        """Initialize a piece of a given shape and color,
         but not yet assigned to a node."""
 
-        assert sort in Sort.get_indices()
+        assert shape in Shape.get_indices()
         assert color in Color.get_indices()
-        self.sort = sort
+        self.shape = shape
         self.color = color
         self.node = None
 
 
     def get_name(self):
-        """Return the name of a form."""
+        """Return the name of a piece."""
 
-        name = Sort.get_name(self.sort)
+        name = Shape.get_name(self.shape)
         name_transformed = Color.get_transformer(self.color)(name)
         return name_transformed
 
 
     @staticmethod
-    def make(sort_name, color_name):
-        """Return a new form from a given sort and color names."""
+    def make(shape_name, color_name):
+        """Return a new piece from a given shape and color names."""
 
-        sort = Sort.get_index(sort_name)
+        shape = Shape.get_index(shape_name)
         color = Color.get_index(color_name)
-        form = Form(sort, color)
-        return form
+        piece = Piece(shape, color)
+        return piece
 
 
     @staticmethod
-    def parse_sort_and_color(name):
-        """Return the pair of indices (sort, color) form the given name."""
+    def parse_shape_and_color(name):
+        """Return the pair of indices (shape, color) piece the given name."""
 
-        sort = Sort.get_index(name)
+        shape = Shape.get_index(name)
         color = Color.get_index(name)
-        return (sort, color)
+        return (shape, color)
 
 
 class Node:
     """Capture knowledge about Node in JERSI."""
 
 
-    def __init__(self, label, grid):
-        """Initialize a node at a given label for the given grid."""
+    def __init__(self, label, graph):
+        """Initialize a node at a given label for the given graph."""
 
         self.label = label
-        self.grid = grid
-        self.forms = [None, None]
+        self.graph = graph
+        self.pieces = [None, None]
         self.first_adjacent_labels = None
         self.second_adjacent_labels = None
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a node: only the grid and forms
+        """Customized deepcopy of a node: only the graph and pieces
         attributes are copied in depth."""
 
         new_one = Node(self.label, None)
 
         memo[id(self)] = new_one
 
-        new_one.grid = copy.deepcopy(self.grid, memo)
-        new_one.forms = copy.deepcopy(self.forms, memo)
+        new_one.graph = copy.deepcopy(self.graph, memo)
+        new_one.pieces = copy.deepcopy(self.pieces, memo)
 
         new_one.first_adjacent_labels = self.first_adjacent_labels
         new_one.second_adjacent_labels = self.second_adjacent_labels
@@ -624,13 +627,13 @@ class Node:
 
 
     def get_top(self):
-        """Return the top of the form stack at this node."""
+        """Return the top of the piece stack at this node."""
 
-        if self.forms[1] is not None:
-            top = self.forms[1]
+        if self.pieces[1] is not None:
+            top = self.pieces[1]
 
-        elif self.forms[0] is not None:
-            top = self.forms[0]
+        elif self.pieces[0] is not None:
+            top = self.pieces[0]
 
         else:
             top = None
@@ -639,13 +642,13 @@ class Node:
 
 
     def get_top_color(self):
-        """Return the color of the top of the form stack at this node."""
+        """Return the color of the top of the piece stack at this node."""
 
-        if self.forms[1] is not None:
-            color = self.forms[1].color
+        if self.pieces[1] is not None:
+            color = self.pieces[1].color
 
-        elif self.forms[0] is not None:
-            color = self.forms[0].color
+        elif self.pieces[0] is not None:
+            color = self.pieces[0].color
 
         else:
             color = None
@@ -653,95 +656,95 @@ class Node:
         return color
 
 
-    def get_top_sort(self):
-        """Return the sort of the top of the form stack at this node."""
+    def get_top_shape(self):
+        """Return the shape of the top of the piece stack at this node."""
 
-        if self.forms[1] is not None:
-            sort = self.forms[1].sort
+        if self.pieces[1] is not None:
+            shape = self.pieces[1].shape
 
-        elif self.forms[0] is not None:
-            sort = self.forms[0].sort
+        elif self.pieces[0] is not None:
+            shape = self.pieces[0].shape
 
         else:
-            sort = None
+            shape = None
 
-        return sort
-
-
-    def has_one_or_two_forms(self):
-        """Does this node have either one or two forms?"""
-        return self.forms[0] is not None
+        return shape
 
 
-    def has_two_forms(self):
-        """Does this node have two forms?"""
-        return self.forms[1] is not None
+    def has_one_or_two_pieces(self):
+        """Does this node have either one or two pieces?"""
+        return self.pieces[0] is not None
 
 
-    def has_zero_form(self):
-        """Does this node have no form?"""
-        return self.forms[0] is None
+    def has_two_pieces(self):
+        """Does this node have two pieces?"""
+        return self.pieces[1] is not None
 
 
-    def has_zero_or_one_form(self):
-        """Does this node have either zero or one form?"""
-        return self.forms[1] is None
+    def has_zero_piece(self):
+        """Does this node have no piece?"""
+        return self.pieces[0] is None
 
 
-    def move_one_form(self, dst_node):
-        """Move one form (its top) from this node to a destinaiton node."""
+    def has_zero_or_one_piece(self):
+        """Does this node have either zero or one piece?"""
+        return self.pieces[1] is None
 
-        form_captured = False
+
+    def move_one_piece(self, dst_node):
+        """Move one piece (its top) from this node to a destinaiton node."""
+
+        piece_captured = False
         kunti_captured = False
 
         assert dst_node is not None
         jersi_assert(dst_node.label in self.first_adjacent_labels,
                      "destination should stay at one segment from source")
 
-        jersi_assert(self.has_one_or_two_forms(),
-                     "source should have one or two forms")
+        jersi_assert(self.has_one_or_two_pieces(),
+                     "source should have one or two pieces")
 
         top = self.get_top()
 
-        if dst_node.has_zero_form():
-            self.unset_form(top)
-            dst_node.set_form(top)
+        if dst_node.has_zero_piece():
+            self.unset_piece(top)
+            dst_node.set_piece(top)
 
         elif dst_node.get_top_color() == self.get_top_color():
-            jersi_assert(dst_node.has_zero_or_one_form(),
-                         "source should have zero or one form")
+            jersi_assert(dst_node.has_zero_or_one_piece(),
+                         "source should have zero or one piece")
 
-            self.unset_form(top)
-            dst_node.set_form(top)
+            self.unset_piece(top)
+            dst_node.set_piece(top)
 
         else:
-            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()),
+            jersi_assert(Shape.beats(self.get_top_shape(), dst_node.get_top_shape()),
                          "source should beats destination")
 
-            form_captured = True
+            piece_captured = True
 
-            if dst_node.forms[1] is not None:
-                if dst_node.forms[1].sort == Sort.kunti:
+            if dst_node.pieces[1] is not None:
+                if dst_node.pieces[1].shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.forms[0] is not None:
-                if dst_node.forms[0].sort == Sort.kunti:
+            if dst_node.pieces[0] is not None:
+                if dst_node.pieces[0].shape == Shape.kunti:
                     kunti_captured = True
 
-            dst_node.unset_forms()
-            self.unset_form(top)
-            dst_node.set_form(top)
+            dst_node.unset_pieces()
+            self.unset_piece(top)
+            dst_node.set_piece(top)
 
-        return (form_captured, kunti_captured)
+        return (piece_captured, kunti_captured)
 
 
-    def move_two_forms(self, dst_node):
-        """Move two forms from this node to a destinaiton node."""
+    def move_two_pieces(self, dst_node):
+        """Move two pieces from this node to a destinaiton node."""
 
-        form_captured = False
+        piece_captured = False
         kunti_captured = False
 
-        jersi_assert(self.has_two_forms(), "source should have two forms")
+        jersi_assert(self.has_two_pieces(), "source should have two pieces")
         assert dst_node is not None
 
         stepping_one_segment = dst_node.label in self.first_adjacent_labels
@@ -753,151 +756,149 @@ class Node:
         if stepping_two_segments:
             dst_direction = self.second_adjacent_labels.index(dst_node.label)
             int_label = self.first_adjacent_labels[dst_direction]
-            int_node = self.grid.nodes[int_label]
-            jersi_assert(int_node.has_zero_form(),
+            int_node = self.graph.nodes[int_label]
+            jersi_assert(int_node.has_zero_piece(),
                          "path from source to destination should be free")
 
-        if dst_node.has_zero_form():
+        if dst_node.has_zero_piece():
             pass
 
         else:
             jersi_assert(dst_node.get_top_color() != self.get_top_color(),
                          "source and destination colors should be different")
 
-            jersi_assert(Sort.beats(self.get_top_sort(), dst_node.get_top_sort()),
+            jersi_assert(Shape.beats(self.get_top_shape(), dst_node.get_top_shape()),
                          "source should beat destination")
 
-            form_captured = True
+            piece_captured = True
 
-            if dst_node.forms[1] is not None:
-                if dst_node.forms[1].sort == Sort.kunti:
+            if dst_node.pieces[1] is not None:
+                if dst_node.pieces[1].shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.forms[0] is not None:
-                if dst_node.forms[0].sort == Sort.kunti:
+            if dst_node.pieces[0] is not None:
+                if dst_node.pieces[0].shape == Shape.kunti:
                     kunti_captured = True
 
-            dst_node.unset_forms()
+            dst_node.unset_pieces()
 
         top = self.get_top()
-        self.unset_form(top)
+        self.unset_piece(top)
 
         bottom = self.get_top()
-        self.unset_form(bottom)
+        self.unset_piece(bottom)
 
-        dst_node.set_form(bottom)
-        dst_node.set_form(top)
+        dst_node.set_piece(bottom)
+        dst_node.set_piece(top)
 
-        return (form_captured, kunti_captured)
+        return (piece_captured, kunti_captured)
 
 
-    def set_form(self, form):
-        """Set a free form to this node."""
+    def set_piece(self, piece):
+        """Set a free piece to this node."""
 
-        assert self.has_zero_or_one_form()
+        assert self.has_zero_or_one_piece()
 
-        if self.forms[0] is None:
-            self.forms[0] = form
-            form.node = self
+        if self.pieces[0] is None:
+            self.pieces[0] = piece
+            piece.node = self
 
         else:
-            jersi_assert(self.forms[0].color == form.color,
-                         "stacked forms should have same color")
+            jersi_assert(self.pieces[0].color == piece.color,
+                         "stacked pieces should have same color")
 
-            jersi_assert(self.forms[0].sort != Sort.kunti,
-                         "no form should be stacked above kunti")
+            jersi_assert(self.pieces[0].shape != Shape.kunti,
+                         "no piece should be stacked above kunti")
 
-            self.forms[1] = form
-            form.node = self
-
-
-    def unset_form(self, form):
-        """Remove a given form from this node."""
-
-        assert self == form.node
-
-        if self.forms[1] == form:
-            self.forms[1] = None
-
-        elif self.forms[0] == form:
-            self.forms[0] = None
-
-        form.node = None
+            self.pieces[1] = piece
+            piece.node = self
 
 
-    def unset_forms(self):
-        """Remove all forms from this node."""
+    def unset_piece(self, piece):
+        """Remove a given piece from this node."""
 
-        if self.forms[1] is not None:
-            self.forms[1].node = None
-            self.forms[1] = None
+        assert self == piece.node
 
-        if self.forms[0] is not None:
-            self.forms[0].node = None
-            self.forms[0] = None
+        if self.pieces[1] == piece:
+            self.pieces[1] = None
 
+        elif self.pieces[0] == piece:
+            self.pieces[0] = None
 
-class Grid:
-    """Capture knowledge about Grid in JERSI.
-    Basically a Grid is an abstraction of an Hexagon.
-    """
+        piece.node = None
 
 
-    def __init__(self, hexagon):
-        """Initialize a grid from a given hexagon."""
+    def unset_pieces(self):
+        """Remove all pieces from this node."""
 
-        self.hexagon = hexagon
+        if self.pieces[1] is not None:
+            self.pieces[1].node = None
+            self.pieces[1] = None
+
+        if self.pieces[0] is not None:
+            self.pieces[0].node = None
+            self.pieces[0] = None
+
+
+class Graph:
+    """Graph is an abstraction of an Hexmap."""
+    
+
+    def __init__(self, hexmap):
+        """Initialize a graph from a given hexmap."""
+
+        self.hexmap = hexmap
 
         self.placement_labels = None
         self.nodes = None
-        self.forms = None
+        self.pieces = None
 
         self.__init_nodes()
-        self.__init_forms()
+        self.__init_pieces()
         self.__init_placement_labels()
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a node: only the nodes and forms
+        """Customized deepcopy of a node: only the nodes and pieces
         attributes are copied in depth."""
 
         cls = self.__class__
         new_one = cls.__new__(cls)
         memo[id(self)] = new_one
 
-        new_one.hexagon = self.hexagon
+        new_one.hexmap = self.hexmap
         new_one.placement_labels = self.placement_labels
 
         new_one.nodes = copy.deepcopy(self.nodes, memo)
-        new_one.forms = copy.deepcopy(self.forms, memo)
+        new_one.pieces = copy.deepcopy(self.pieces, memo)
 
         return new_one
 
 
     def __init_nodes(self):
-        """Initialize all nodes of the grid."""
+        """Initialize all nodes of the graph."""
 
         self.nodes = dict()
 
-        for label in self.hexagon.get_labels():
+        for label in self.hexmap.get_labels():
             node = Node(label, self)
-            node.first_adjacent_labels = self.hexagon.get_first_adjacent_labels(node.label)
-            node.second_adjacent_labels = self.hexagon.get_second_adjacent_labels(node.label)
+            node.first_adjacent_labels = self.hexmap.get_first_adjacent_labels(node.label)
+            node.second_adjacent_labels = self.hexmap.get_second_adjacent_labels(node.label)
             self.nodes[label] = node
 
 
-    def __init_forms(self):
-        """Initialize all forms that could be place on the grid."""
+    def __init_pieces(self):
+        """Initialize all pieces that could be place on the graph."""
 
-        self.forms = dict()
+        self.pieces = dict()
         for color in Color.get_indices():
-            self.forms[color] = dict()
-            for sort in Sort.get_indices():
-                self.forms[color][sort] = list()
-                sort_count = Sort.get_max_occurrences(sort)
-                for _ in range(sort_count):
-                    form = Form(sort, color)
-                    self.forms[color][sort].append(form)
+            self.pieces[color] = dict()
+            for shape in Shape.get_indices():
+                self.pieces[color][shape] = list()
+                shape_count = Shape.get_max_occurrences(shape)
+                for _ in range(shape_count):
+                    piece = Piece(shape, color)
+                    self.pieces[color][shape].append(piece)
 
 
     def __init_placement_labels(self):
@@ -908,27 +909,27 @@ class Grid:
         self.placement_labels[0] = list()
         self.placement_labels[1] = list()
 
-        row_labels = self.hexagon.get_row_labels()
+        row_labels = self.hexmap.get_row_labels()
 
         for row_label in row_labels[:2]:
-            self.placement_labels[0].extend(self.hexagon.get_labels_at_row(row_label))
+            self.placement_labels[0].extend(self.hexmap.get_node_labels_at_row(row_label))
 
         for row_label in row_labels[-2:]:
-            self.placement_labels[1].extend(self.hexagon.get_labels_at_row(row_label))
+            self.placement_labels[1].extend(self.hexmap.get_node_labels_at_row(row_label))
 
 
-    def count_forms_by_colors_and_sorts(self):
-        """Count alive forms by color and by sort."""
+    def count_pieces_by_colors_and_shapes(self):
+        """Count alive pieces by color and by shape."""
 
         count = dict()
 
         for color in Color.get_indices():
             count[color] = dict()
-            for sort in Sort.get_indices():
-                count[color][sort] = 0
-                for form in self.forms[color][sort]:
-                    if form.node is not None:
-                        count[color][sort] += 1
+            for shape in Shape.get_indices():
+                count[color][shape] = 0
+                for piece in self.pieces[color][shape]:
+                    if piece.node is not None:
+                        count[color][shape] += 1
         return count
 
 
@@ -939,257 +940,257 @@ class Grid:
 
         for color in Color.get_indices():
             count[color] = 0
-            for form in self.forms[color][Sort.kunti]:
-                if form.node is not None:
+            for piece in self.pieces[color][Shape.kunti]:
+                if piece.node is not None:
                     count[color] += 1
 
         return count
 
 
     def export_positions(self):
-        """Export positions of alive forms."""
+        """Export positions of alive pieces."""
 
         positions = dict()
 
         for color in Color.get_indices():
-            for sort in Sort.get_indices():
-                for form in self.forms[color][sort]:
-                    if form.node is not None:
-                        node = form.node
+            for shape in Shape.get_indices():
+                for piece in self.pieces[color][shape]:
+                    if piece.node is not None:
+                        node = piece.node
                         node_label = node.label
                         if node_label not in positions:
                             positions[node_label] = list()
 
-                            if node.forms[0] is not None:
-                                positions[node_label].append(node.forms[0].get_name())
+                            if node.pieces[0] is not None:
+                                positions[node_label].append(node.pieces[0].get_name())
 
-                            if node.forms[1] is not None:
-                                positions[node_label].append(node.forms[1].get_name())
+                            if node.pieces[1] is not None:
+                                positions[node_label].append(node.pieces[1].get_name())
 
         return positions
 
 
     def import_placement(self, positions):
-        """Import and place forms at given positions."""
+        """Import and place pieces at given positions."""
         self.import_positions(positions, check_placement=True)
 
 
     def import_positions(self, positions, check_placement=False):
-        """Import and set forms at given positions.
+        """Import and set pieces at given positions.
         On option, check that positions are a valid placement.
         """
 
-        self.unset_forms()
+        self.unset_pieces()
 
         count = dict()
         for color in Color.get_indices():
             count[color] = dict()
-            for sort in Sort.get_indices():
-                count[color][sort] = 0
+            for shape in Shape.get_indices():
+                count[color][shape] = 0
 
-        for (node_label, form_names) in positions.items():
-            for form_name in form_names:
-                (sort, color) = Form.parse_sort_and_color(form_name)
-                instance = count[color][sort]
-                form = self.forms[color][sort][instance]
+        for (node_label, piece_names) in positions.items():
+            for piece_name in piece_names:
+                (shape, color) = Piece.parse_shape_and_color(piece_name)
+                instance = count[color][shape]
+                piece = self.pieces[color][shape][instance]
 
                 if check_placement:
-                    self.place_form(form, node_label)
+                    self.place_piece(piece, node_label)
                 else:
-                    self.set_form(form, node_label)
+                    self.set_piece(piece, node_label)
 
-                count[color][sort] += 1
-
-
-    def move_one_form(self, src_label, dst_label):
-        """Move one form from a source label to a destination label."""
-
-        src_node = self.nodes[src_label]
-        dst_node = self.nodes[dst_label]
-        return src_node.move_one_form(dst_node)
+                count[color][shape] += 1
 
 
-    def move_two_forms(self, src_label, dst_label):
-        """Move two forms from a source label to a destination label."""
+    def move_one_piece(self, src_label, dst_label):
+        """Move one piece from a source label to a destination label."""
 
         src_node = self.nodes[src_label]
         dst_node = self.nodes[dst_label]
-        return src_node.move_two_forms(dst_node)
+        return src_node.move_one_piece(dst_node)
 
 
-    def print_grid(self):
-        """Print the grid using the frame managed by the hexagon."""
+    def move_two_pieces(self, src_label, dst_label):
+        """Move two pieces from a source label to a destination label."""
 
-        self.set_cells()
-        self.hexagon.print_frame()
+        src_node = self.nodes[src_label]
+        dst_node = self.nodes[dst_label]
+        return src_node.move_two_pieces(dst_node)
 
 
-    def set_cells(self):
-        """Set the cells of the hexagon."""
+    def print(self):
+        """Print the graph using the table managed by the hexmap."""
 
-        self.hexagon.clear_cells()
+        self.__set_hexmap_nodes()
+        self.hexmap.print()
+
+
+    def __set_hexmap_nodes(self):
+        """Set the cells of the hexmap."""
+
+        self.hexmap.clear_nodes()
 
         for node in self.nodes.values():
             cell_text = ""
 
-            if node.forms[0] is not None:
-                cell_text = node.forms[0].get_name() + cell_text
+            if node.pieces[0] is not None:
+                cell_text = node.pieces[0].get_name() + cell_text
 
-            if node.forms[1] is not None:
-                cell_text = node.forms[1].get_name() + cell_text
+            if node.pieces[1] is not None:
+                cell_text = node.pieces[1].get_name() + cell_text
 
-            self.hexagon.set_cell_at_label(node.label, cell_text)
+            self.hexmap.set_node_at_label(node.label, cell_text)
 
 
-    def place_form(self, form, dst_label):
-        """Place a form at a destination label."""
+    def place_piece(self, piece, dst_label):
+        """Place a piece at a destination label."""
 
-        jersi_assert(dst_label in self.placement_labels[form.color],
+        jersi_assert(dst_label in self.placement_labels[piece.color],
                      "%s is not a placement position for the %s color" %
-                     (dst_label, Color.get_name(form.color)))
+                     (dst_label, Color.get_name(piece.color)))
 
-        self.set_form(form, dst_label)
+        self.set_piece(piece, dst_label)
 
 
-    def place_forms_at_random_positions(self):
-        """Place all the forms at random positions."""
+    def place_pieces_at_random_positions(self):
+        """Place all the pieces at random positions."""
 
-        self.unset_forms()
+        self.unset_pieces()
 
         blue = Color.blue
         red = Color.red
-        kunti = Sort.kunti
+        kunti = Shape.kunti
 
-        blue_forms_wo_kunti = list()
+        blue_pieces_wo_kunti = list()
         blue_kunti = None
-        for sort in Sort.get_indices():
-            if sort != kunti:
-                blue_forms_wo_kunti.extend(self.forms[blue][sort])
+        for shape in Shape.get_indices():
+            if shape != kunti:
+                blue_pieces_wo_kunti.extend(self.pieces[blue][shape])
             else:
-                blue_kunti = self.forms[blue][sort][0]
+                blue_kunti = self.pieces[blue][shape][0]
 
-        red_forms_wo_kunti = list()
+        red_pieces_wo_kunti = list()
         red_kunti = None
-        for sort in Sort.get_indices():
-            if sort != kunti:
-                red_forms_wo_kunti.extend(self.forms[red][sort])
+        for shape in Shape.get_indices():
+            if shape != kunti:
+                red_pieces_wo_kunti.extend(self.pieces[red][shape])
             else:
-                red_kunti = self.forms[red][sort][0]
+                red_kunti = self.pieces[red][shape][0]
 
-        random.shuffle(blue_forms_wo_kunti)
-        random.shuffle(red_forms_wo_kunti)
+        random.shuffle(blue_pieces_wo_kunti)
+        random.shuffle(red_pieces_wo_kunti)
 
-        # set blue forms
+        # set blue pieces
 
-        self.place_form(blue_forms_wo_kunti[0], "b1")
-        self.place_form(blue_forms_wo_kunti[1], "b2")
-        self.place_form(blue_forms_wo_kunti[2], "b3")
-        self.place_form(blue_forms_wo_kunti[3], "b4")
-        self.place_form(blue_forms_wo_kunti[4], "b5")
-        self.place_form(blue_forms_wo_kunti[5], "b6")
+        self.place_piece(blue_pieces_wo_kunti[0], "b1")
+        self.place_piece(blue_pieces_wo_kunti[1], "b2")
+        self.place_piece(blue_pieces_wo_kunti[2], "b3")
+        self.place_piece(blue_pieces_wo_kunti[3], "b4")
+        self.place_piece(blue_pieces_wo_kunti[4], "b5")
+        self.place_piece(blue_pieces_wo_kunti[5], "b6")
 
-        self.place_form(blue_forms_wo_kunti[6], "a1")
+        self.place_piece(blue_pieces_wo_kunti[6], "a1")
 
-        self.place_form(blue_forms_wo_kunti[7], "a2")
-        self.place_form(blue_forms_wo_kunti[8], "a2")
+        self.place_piece(blue_pieces_wo_kunti[7], "a2")
+        self.place_piece(blue_pieces_wo_kunti[8], "a2")
 
-        self.place_form(blue_kunti, "a3")
+        self.place_piece(blue_kunti, "a3")
 
-        self.place_form(blue_forms_wo_kunti[9], "a4")
-        self.place_form(blue_forms_wo_kunti[10], "a4")
+        self.place_piece(blue_pieces_wo_kunti[9], "a4")
+        self.place_piece(blue_pieces_wo_kunti[10], "a4")
 
-        self.place_form(blue_forms_wo_kunti[11], "a5")
+        self.place_piece(blue_pieces_wo_kunti[11], "a5")
 
-        # set red forms
+        # set red pieces
 
-        self.place_form(red_forms_wo_kunti[0], "h6")
-        self.place_form(red_forms_wo_kunti[1], "h5")
-        self.place_form(red_forms_wo_kunti[2], "h4")
-        self.place_form(red_forms_wo_kunti[3], "h3")
-        self.place_form(red_forms_wo_kunti[4], "h2")
-        self.place_form(red_forms_wo_kunti[5], "h1")
+        self.place_piece(red_pieces_wo_kunti[0], "h6")
+        self.place_piece(red_pieces_wo_kunti[1], "h5")
+        self.place_piece(red_pieces_wo_kunti[2], "h4")
+        self.place_piece(red_pieces_wo_kunti[3], "h3")
+        self.place_piece(red_pieces_wo_kunti[4], "h2")
+        self.place_piece(red_pieces_wo_kunti[5], "h1")
 
-        self.place_form(red_forms_wo_kunti[6], "i5")
+        self.place_piece(red_pieces_wo_kunti[6], "i5")
 
-        self.place_form(red_forms_wo_kunti[7], "i4")
-        self.place_form(red_forms_wo_kunti[8], "i4")
+        self.place_piece(red_pieces_wo_kunti[7], "i4")
+        self.place_piece(red_pieces_wo_kunti[8], "i4")
 
-        self.place_form(red_kunti, "i3")
+        self.place_piece(red_kunti, "i3")
 
-        self.place_form(red_forms_wo_kunti[9], "i2")
-        self.place_form(red_forms_wo_kunti[10], "i2")
+        self.place_piece(red_pieces_wo_kunti[9], "i2")
+        self.place_piece(red_pieces_wo_kunti[10], "i2")
 
-        self.place_form(red_forms_wo_kunti[11], "i1")
+        self.place_piece(red_pieces_wo_kunti[11], "i1")
 
 
-    def place_forms_at_standard_positions(self):
-        """Place all the forms at standard/symmetric positions."""
+    def place_pieces_at_standard_positions(self):
+        """Place all the pieces at standard/symmetric positions."""
 
-        self.unset_forms()
+        self.unset_pieces()
 
         blue = Color.blue
         red = Color.red
 
-        kunti = Sort.kunti
-        cukla = Sort.cukla
-        kurfa = Sort.kurfa
-        kuctai = Sort.kuctai
+        kunti = Shape.kunti
+        cukla = Shape.cukla
+        kurfa = Shape.kurfa
+        kuctai = Shape.kuctai
 
-        # set blue forms
+        # set blue pieces
 
-        self.place_form(self.forms[blue][cukla][0], "b1")
-        self.place_form(self.forms[blue][kurfa][0], "b2")
-        self.place_form(self.forms[blue][kuctai][0], "b3")
-        self.place_form(self.forms[blue][cukla][1], "b4")
-        self.place_form(self.forms[blue][kurfa][1], "b5")
-        self.place_form(self.forms[blue][kuctai][1], "b6")
+        self.place_piece(self.pieces[blue][cukla][0], "b1")
+        self.place_piece(self.pieces[blue][kurfa][0], "b2")
+        self.place_piece(self.pieces[blue][kuctai][0], "b3")
+        self.place_piece(self.pieces[blue][cukla][1], "b4")
+        self.place_piece(self.pieces[blue][kurfa][1], "b5")
+        self.place_piece(self.pieces[blue][kuctai][1], "b6")
 
-        self.place_form(self.forms[blue][kuctai][2], "a1")
+        self.place_piece(self.pieces[blue][kuctai][2], "a1")
 
-        self.place_form(self.forms[blue][kurfa][2], "a2")
-        self.place_form(self.forms[blue][cukla][2], "a2")
+        self.place_piece(self.pieces[blue][kurfa][2], "a2")
+        self.place_piece(self.pieces[blue][cukla][2], "a2")
 
-        self.place_form(self.forms[blue][kunti][0], "a3")
+        self.place_piece(self.pieces[blue][kunti][0], "a3")
 
-        self.place_form(self.forms[blue][kurfa][3], "a4")
-        self.place_form(self.forms[blue][kuctai][3], "a4")
+        self.place_piece(self.pieces[blue][kurfa][3], "a4")
+        self.place_piece(self.pieces[blue][kuctai][3], "a4")
 
-        self.place_form(self.forms[blue][cukla][3], "a5")
+        self.place_piece(self.pieces[blue][cukla][3], "a5")
 
-        # set red forms
+        # set red pieces
 
-        self.place_form(self.forms[red][cukla][0], "h6")
-        self.place_form(self.forms[red][kurfa][0], "h5")
-        self.place_form(self.forms[red][kuctai][0], "h4")
-        self.place_form(self.forms[red][cukla][1], "h3")
-        self.place_form(self.forms[red][kurfa][1], "h2")
-        self.place_form(self.forms[red][kuctai][1], "h1")
+        self.place_piece(self.pieces[red][cukla][0], "h6")
+        self.place_piece(self.pieces[red][kurfa][0], "h5")
+        self.place_piece(self.pieces[red][kuctai][0], "h4")
+        self.place_piece(self.pieces[red][cukla][1], "h3")
+        self.place_piece(self.pieces[red][kurfa][1], "h2")
+        self.place_piece(self.pieces[red][kuctai][1], "h1")
 
-        self.place_form(self.forms[red][kuctai][2], "i5")
+        self.place_piece(self.pieces[red][kuctai][2], "i5")
 
-        self.place_form(self.forms[red][kurfa][2], "i4")
-        self.place_form(self.forms[red][cukla][2], "i4")
+        self.place_piece(self.pieces[red][kurfa][2], "i4")
+        self.place_piece(self.pieces[red][cukla][2], "i4")
 
-        self.place_form(self.forms[red][kunti][0], "i3")
+        self.place_piece(self.pieces[red][kunti][0], "i3")
 
-        self.place_form(self.forms[red][kurfa][3], "i2")
-        self.place_form(self.forms[red][kuctai][3], "i2")
+        self.place_piece(self.pieces[red][kurfa][3], "i2")
+        self.place_piece(self.pieces[red][kuctai][3], "i2")
 
-        self.place_form(self.forms[red][cukla][3], "i1")
+        self.place_piece(self.pieces[red][cukla][3], "i1")
 
 
-    def set_form(self, form, dst_label):
-        """Set a form at a destination label."""
+    def set_piece(self, piece, dst_label):
+        """Set a piece at a destination label."""
 
         dst_node = self.nodes[dst_label]
-        dst_node.set_form(form)
+        dst_node.set_piece(piece)
 
 
-    def unset_forms(self):
-        """Unset all forms out of the grid."""
+    def unset_pieces(self):
+        """Unset all pieces out of the graph."""
 
         for node in self.nodes.values():
-            node.unset_forms()
+            node.unset_pieces()
 
 
 class Game:
@@ -1200,11 +1201,11 @@ class Game:
 
 
     def __init__(self):
-        """Initialize the Game with an hexagon.
+        """Initialize the Game with an hexmap.
         Propose a to start witj a standard placement.
         """
 
-        self.grid = None
+        self.graph = None
         self.placement = None
         self.history = None
         self.game_over = None
@@ -1213,13 +1214,13 @@ class Game:
         self.move_count = None
         self.score = None
 
-        self.grid = Grid(hexagon=Hexagon(5))
+        self.graph = Graph(hexmap=Hexmap(5))
         self.init_game()
         self.new_standard_game()
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a game: only the grid, placement and history
+        """Customized deepcopy of a game: only the graph, placement and history
         attributes are copied in depth."""
 
         cls = self.__class__
@@ -1228,7 +1229,7 @@ class Game:
 
         new_one.__dict__.update(self.__dict__)
 
-        new_one.grid = copy.deepcopy(self.grid, memo)
+        new_one.graph = copy.deepcopy(self.graph, memo)
         new_one.placement = copy.copy(self.placement)
         new_one.history = copy.copy(self.history)
 
@@ -1238,7 +1239,7 @@ class Game:
     def init_game(self):
         """Initialize or re-initialize the game."""
 
-        self.grid.unset_forms()
+        self.graph.unset_pieces()
 
         self.placement = dict()
         self.history = list()
@@ -1248,19 +1249,19 @@ class Game:
         self.move_count = 1
 
         self.score = dict()
-        for color in sorted(Sort.get_indices()):
+        for color in sorted(Shape.get_indices()):
             self.score[color] = 0
 
 
     def new_free_game(self):
         """Initialize the game with a free placement
-        i.e. no form yet placed."""
+        i.e. no piece yet placed."""
 
         self.init_game()
 
         print()
         print("new free game")
-        self.grid.print_grid()
+        self.graph.print()
         self.print_status()
 
 
@@ -1268,13 +1269,13 @@ class Game:
         """Initialize the game with a random placement."""
 
         self.init_game()
-        self.grid.place_forms_at_random_positions()
-        self.placement = self.grid.export_positions()
+        self.graph.place_pieces_at_random_positions()
+        self.placement = self.graph.export_positions()
         self.placement_over = True
 
         print()
         print("new random game")
-        self.grid.print_grid()
+        self.graph.print()
         self.print_status()
 
 
@@ -1282,13 +1283,13 @@ class Game:
         """Initialize the game with a standard/symmetric placement."""
 
         self.init_game()
-        self.grid.place_forms_at_standard_positions()
-        self.placement = self.grid.export_positions()
+        self.graph.place_pieces_at_standard_positions()
+        self.placement = self.graph.export_positions()
         self.placement_over = True
 
         print()
         print("new standard game")
-        self.grid.print_grid()
+        self.graph.print()
         self.print_status()
 
 
@@ -1328,54 +1329,54 @@ class Game:
 
         instruction_validated = True
 
-        rule_set_form = re.compile(
-            r"^(?P<node_label>\w{2}):(?P<form_name>\w)$")
+        rule_set_piece = re.compile(
+            r"^(?P<node_label>\w{2}):(?P<piece_name>\w)$")
 
-        rule_move_one_form = re.compile(
+        rule_move_one_piece = re.compile(
             r"^(?P<src_label>\w{2})-(?P<dst_label>\w{2})!{0,2}$")
 
-        rule_move_two_forms = re.compile(
+        rule_move_two_pieces = re.compile(
             r"^(?P<src_label>\w{2})=(?P<dst_label>\w{2})!{0,2}$")
 
-        rule_move_one_then_two_forms = re.compile(
+        rule_move_one_then_two_pieces = re.compile(
             r"^(?P<src_label>\w{2})-(?P<int_label>\w{2})!{0,1}=(?P<dst_label>\w{2})!{0,2}$")
 
-        rule_move_two_then_one_forms = re.compile(
+        rule_move_two_then_one_pieces = re.compile(
             r"^(?P<src_label>\w{2})=(?P<int_label>\w{2})!{0,1}-(?P<dst_label>\w{2})!{0,2}$")
 
-        match_set_form = rule_set_form.match(instruction)
-        match_move_one_form = rule_move_one_form.match(instruction)
-        match_move_two_forms = rule_move_two_forms.match(instruction)
-        match_move_one_then_two_forms = rule_move_one_then_two_forms.match(instruction)
-        match_move_two_then_one_forms = rule_move_two_then_one_forms.match(instruction)
+        match_set_piece = rule_set_piece.match(instruction)
+        match_move_one_piece = rule_move_one_piece.match(instruction)
+        match_move_two_pieces = rule_move_two_pieces.match(instruction)
+        match_move_one_then_two_pieces = rule_move_one_then_two_pieces.match(instruction)
+        match_move_two_then_one_pieces = rule_move_two_then_one_pieces.match(instruction)
 
-        if match_set_form:
-            node_label = match_set_form.group("node_label")
-            form_name = match_set_form.group("form_name")
+        if match_set_piece:
+            node_label = match_set_piece.group("node_label")
+            piece_name = match_set_piece.group("piece_name")
             if node_label not in positions:
                 positions[node_label] = list()
-            positions[node_label].append(form_name)
+            positions[node_label].append(piece_name)
 
-        elif match_move_one_form:
-            src_label = match_move_one_form.group("src_label")
-            dst_label = match_move_one_form.group("dst_label")
+        elif match_move_one_piece:
+            src_label = match_move_one_piece.group("src_label")
+            dst_label = match_move_one_piece.group("dst_label")
             moves.append([(1, src_label, dst_label)])
 
-        elif match_move_two_forms:
-            src_label = match_move_two_forms.group("src_label")
-            dst_label = match_move_two_forms.group("dst_label")
+        elif match_move_two_pieces:
+            src_label = match_move_two_pieces.group("src_label")
+            dst_label = match_move_two_pieces.group("dst_label")
             moves.append([(2, src_label, dst_label)])
 
-        elif match_move_one_then_two_forms:
-            src_label = match_move_one_then_two_forms.group("src_label")
-            int_label = match_move_one_then_two_forms.group("int_label")
-            dst_label = match_move_one_then_two_forms.group("dst_label")
+        elif match_move_one_then_two_pieces:
+            src_label = match_move_one_then_two_pieces.group("src_label")
+            int_label = match_move_one_then_two_pieces.group("int_label")
+            dst_label = match_move_one_then_two_pieces.group("dst_label")
             moves.append([(1, src_label, int_label), (2, int_label, dst_label)])
 
-        elif match_move_two_then_one_forms:
-            src_label = match_move_two_then_one_forms.group("src_label")
-            int_label = match_move_two_then_one_forms.group("int_label")
-            dst_label = match_move_two_then_one_forms.group("dst_label")
+        elif match_move_two_then_one_pieces:
+            src_label = match_move_two_then_one_pieces.group("src_label")
+            int_label = match_move_two_then_one_pieces.group("int_label")
+            dst_label = match_move_two_then_one_pieces.group("dst_label")
             moves.append([(2, src_label, int_label), (1, int_label, dst_label)])
 
         else:
@@ -1400,35 +1401,35 @@ class Game:
                 step_count = 1
                 annotated_steps = list()
 
-                for (form_count, src_label, dst_label) in move_steps:
+                for (piece_count, src_label, dst_label) in move_steps:
 
-                    jersi_assert(src_label in self.grid.nodes.keys(),
+                    jersi_assert(src_label in self.graph.nodes.keys(),
                                  "source label should be valid")
 
-                    jersi_assert(dst_label in self.grid.nodes.keys(),
+                    jersi_assert(dst_label in self.graph.nodes.keys(),
                                  "destination label should be valid")
 
-                    src_node = self.grid.nodes[src_label]
+                    src_node = self.graph.nodes[src_label]
 
-                    jersi_assert(src_node.has_one_or_two_forms(),
-                                 "source should have one or two forms")
+                    jersi_assert(src_node.has_one_or_two_pieces(),
+                                 "source should have one or two pieces")
 
                     jersi_assert(src_node.get_top_color() == move_color,
                                  "moved color should be valid")
 
-                    if form_count == 1:
-                        (form_captured,
-                         kunti_captured) = self.grid.move_one_form(src_label, dst_label)
+                    if piece_count == 1:
+                        (piece_captured,
+                         kunti_captured) = self.graph.move_one_piece(src_label, dst_label)
 
-                    elif form_count == 2:
-                        (form_captured,
-                         kunti_captured) = self.grid.move_two_forms(src_label, dst_label)
+                    elif piece_count == 2:
+                        (piece_captured,
+                         kunti_captured) = self.graph.move_two_pieces(src_label, dst_label)
 
                     else:
                         assert False
 
-                    annotated_steps.append((form_count, src_label, dst_label,
-                                            form_captured, kunti_captured))
+                    annotated_steps.append((piece_count, src_label, dst_label,
+                                            piece_captured, kunti_captured))
                     step_count += 1
 
                 self.history.append(annotated_steps)
@@ -1452,40 +1453,40 @@ class Game:
 
         try:
             assert len(positions) == 1
-            [(node_label, form_names)] = positions.items()
+            [(node_label, piece_names)] = positions.items()
 
-            assert len(form_names) == 1
-            form_name = form_names[0]
+            assert len(piece_names) == 1
+            piece_name = piece_names[0]
 
             jersi_assert(not self.game_over, "game should be not over")
             jersi_assert(not self.placement_over, "placement should be not over")
 
-            (sort, color) = Form.parse_sort_and_color(form_name)
+            (shape, color) = Piece.parse_shape_and_color(piece_name)
 
             move_color = (self.move_count - 1) % Color.get_count()
             jersi_assert(color == move_color, "moved color should be valid")
 
-            form_count = self.grid.count_forms_by_colors_and_sorts()
-            instance = form_count[color][sort]
-            jersi_assert(instance < Sort.get_max_occurrences(sort), "sort should be available")
+            piece_count = self.graph.count_pieces_by_colors_and_shapes()
+            instance = piece_count[color][shape]
+            jersi_assert(instance < Shape.get_max_occurrences(shape), "shape should be available")
 
-            form = self.grid.forms[color][sort][instance]
-            self.grid.place_form(form, node_label)
+            piece = self.graph.pieces[color][shape][instance]
+            self.graph.place_piece(piece, node_label)
 
             self.move_count += 1
 
-            has_available_form = False
-            for color in form_count.keys():
-                for sort in form_count[color].keys():
-                    if form_count[color][sort] < Sort.get_max_occurrences(sort):
-                        has_available_form = True
+            has_available_piece = False
+            for color in piece_count.keys():
+                for shape in piece_count[color].keys():
+                    if piece_count[color][shape] < Shape.get_max_occurrences(shape):
+                        has_available_piece = True
                         break
 
-            if not has_available_form:
+            if not has_available_piece:
                 self.placement_over = False
 
             if self.placement_over:
-                self.placement = self.grid.export_positions()
+                self.placement = self.graph.export_positions()
 
         except(JersiError) as jersi_assertion_error:
             print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -1524,14 +1525,14 @@ class Game:
 
 
     def print_status(self):
-        """Print the status of the game: turn, score, count of forms."""
+        """Print the status of the game: turn, score, count of pieces."""
 
-        form_count = self.grid.count_forms_by_colors_and_sorts()
+        piece_count = self.graph.count_pieces_by_colors_and_shapes()
 
         if self.game_over:
             text = "game over"
 
-            for color in sorted(form_count.keys()):
+            for color in sorted(piece_count.keys()):
                 text += " / %s %d" % (Color.get_name(color), self.score[color])
 
         else:
@@ -1544,18 +1545,19 @@ class Game:
             if self.last_count is not None:
                 text += " / last %d moves" % self.last_count
 
-        for color in sorted(form_count.keys()):
+        for color in sorted(piece_count.keys()):
             text += " / " + Color.get_name(color)
             color_transformer = Color.get_transformer(color)
-            for sort in sorted(form_count[color].keys()):
-                text += " %s=%d" % (color_transformer(Sort.get_name(sort)), form_count[color][sort])
+            for shape in sorted(piece_count[color].keys()):
+                text += " %s=%d" % (color_transformer(Shape.get_name(shape)),
+                                    piece_count[color][shape])
 
         print()
         print(text)
 
 
     def read_game(self, file_path):
-        """Read a game from a file: set initial positions of forms (placement)
+        """Read a game from a file: set initial positions of pieces (placement)
         and play read moves."""
 
         positions = dict()
@@ -1589,7 +1591,7 @@ class Game:
             playing_validated = True
 
             try:
-                self.grid.import_placement(positions)
+                self.graph.import_placement(positions)
                 self.placement_over = True
 
                 play_moves_validated = self.play_moves(moves)
@@ -1603,7 +1605,7 @@ class Game:
             if playing_validated:
                 print()
                 print("game from file '%s'" % file_path)
-                self.grid.print_grid()
+                self.graph.print()
                 self.print_status()
 
             else:
@@ -1611,7 +1613,7 @@ class Game:
 
 
     def read_positions(self, file_path):
-        """Remove all forms from the grid and set forms only
+        """Remove all pieces from the graph and set pieces only
         at the read positions from the file."""
 
         positions = dict()
@@ -1643,9 +1645,9 @@ class Game:
             try:
                 jersi_assert(len(moves) == 0, "file should not have moves")
 
-                self.grid.import_positions(positions)
+                self.graph.import_positions(positions)
                 self.placement_over = True
-                self.placement = self.grid.export_positions()
+                self.placement = self.graph.export_positions()
 
             except(JersiError) as jersi_assertion_error:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -1654,7 +1656,7 @@ class Game:
             if importing_validated:
                 print()
                 print("positions from file '%s'" % file_path)
-                self.grid.print_grid()
+                self.graph.print()
                 self.print_status()
 
             else:
@@ -1736,7 +1738,7 @@ class Game:
                     instruction_validated = self.parse_and_play_instruction(instruction)
 
                     if instruction_validated:
-                        self.grid.print_grid()
+                        self.graph.print()
                         self.print_status()
                 else:
                     print("turn syntax error !!!")
@@ -1758,12 +1760,12 @@ class Game:
         for (step_index, step) in enumerate(move_steps):
 
             if len(step) == 5:
-                (form_count, src_label, dst_label,
-                 form_captured, kunti_captured) = step
+                (piece_count, src_label, dst_label,
+                 piece_captured, kunti_captured) = step
 
             elif len(step) == 3:
-                (form_count, src_label, dst_label,
-                 form_captured, kunti_captured) = (*step, False, False)
+                (piece_count, src_label, dst_label,
+                 piece_captured, kunti_captured) = (*step, False, False)
 
             else:
                 assert False
@@ -1773,15 +1775,15 @@ class Game:
             if step_index == 0:
                 step_text += src_label
 
-            if form_count == 1:
+            if piece_count == 1:
                 step_text += "-"
 
-            elif form_count == 2:
+            elif piece_count == 2:
                 step_text += "="
 
             step_text += dst_label
 
-            if form_captured:
+            if piece_captured:
                 step_text += "!"
 
             if kunti_captured:
@@ -1812,22 +1814,22 @@ class Game:
 
     @staticmethod
     def textify_positions(positions):
-        """Convert all given form positions as a list of string."""
+        """Convert all given piece positions as a list of string."""
 
         lines = list()
 
         start_index = 0
 
-        for (node_label, form_names) in  sorted(positions.items()):
+        for (node_label, piece_names) in  sorted(positions.items()):
 
-            for form_name in form_names:
+            for piece_name in piece_names:
 
-                form_text = "%s:%s" % (node_label, form_name)
+                piece_text = "%s:%s" % (node_label, piece_name)
 
                 if start_index % 2 == 0:
-                    lines.append(form_text)
+                    lines.append(piece_text)
                 else:
-                    lines[-1] += " "*4 + form_text
+                    lines[-1] += " "*4 + piece_text
 
                 start_index += 1
 
@@ -1837,20 +1839,20 @@ class Game:
     def update_end_conditions(self):
         """Determine conditions for ending a game."""
 
-        form_count = self.grid.count_forms_by_colors_and_sorts()
+        piece_count = self.graph.count_pieces_by_colors_and_shapes()
 
-        for color in form_count.keys():
+        for color in piece_count.keys():
             self.score[color] = 1
-            if form_count[color][Sort.kunti] == 0:
+            if piece_count[color][Shape.kunti] == 0:
                 self.game_over = True
                 self.score[color] = 0
 
         if not self.game_over:
 
             if self.last_count is None:
-                for color in form_count.keys():
-                    for sort in form_count[color].keys():
-                        if form_count[color][sort] == 0:
+                for color in piece_count.keys():
+                    for shape in piece_count[color].keys():
+                        if piece_count[color][shape] == 0:
                             self.last_count = 20
             else:
                 self.last_count -= 1
@@ -1859,7 +1861,7 @@ class Game:
 
 
     def write_game(self, file_path):
-        """Write a game into a file: set initial positions of forms (placement)
+        """Write a game into a file: set initial positions of pieces (placement)
         and play read moves."""
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
@@ -1878,11 +1880,11 @@ class Game:
 
 
     def write_positions(self, file_path):
-        """Write into a file the actual positions of forms."""
+        """Write into a file the actual positions of pieces."""
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
-        for line in Game.textify_positions(self.grid.export_positions()):
+        for line in Game.textify_positions(self.graph.export_positions()):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
