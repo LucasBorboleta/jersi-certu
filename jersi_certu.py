@@ -43,11 +43,12 @@ def jersi_assert(condition, message):
 class Hexmap:
 
     """
-    Captures the geometrical knowledge about the Hexmap of JERSI.
+    Captures the geometrical knowledge about the hexagonal map of JERSI.
+    The Hexmap does not know about Piece having Shape and Color.
 
     An hexmap is made of nodes. Each node can be set with a text.
-    For printing the hexmap, a table is used, which is made of cells
-    distributed in rows and columns.
+    For printing the hexmap, an auxilliary table is used,
+    which is made of cells distributed in rows and columns.
 
     Example of a table for an hexmap with 5 nodes per side.
     A few cells filled up with one or two letters.
@@ -64,7 +65,7 @@ class Hexmap:
         b1        .K  .R  .C  .K  .R  .C        b6
         a1          .C  KR  .N  CR  .K          a5
 
-    The nodes of the hexmap are described using an oblique coordinates system :
+    The nodes of an hexmap are described using an oblique coordinates system :
         - C is the hexmap center;
         - e_u is horizontal unit vector pointing right ;
         - e_v is diagonal unit vector pointing up ;
@@ -95,13 +96,13 @@ class Hexmap:
 
     def __init__(self, nodes_per_side):
         """Initialize an hexmap parametrized by
-        the number of nodes per hexmap side"""
+        the number of nodes per hexmap side."""
 
         self.__nodes_per_side = nodes_per_side
         self.__n = self.__nodes_per_side - 1
 
         # Many information are computed once and memorized in attributes
-        # in order to accelerate public queries.
+        # in order to accelerate further public queries.
         self.__init_node_coordinates()
         self.__init_node_directions()
         self.__init_has_node_values()
@@ -270,23 +271,26 @@ class Hexmap:
         self.set_node_at_label(label, "")
 
 
-    def get_first_adjacent_labels(self, label):
-        """Return the labels of adjacent nodes
-        to the node at the given label."""
+    def get_labels_at_one_link(self, label):
+        """Return the labels of nodes reachable by a translation of
+        one link. The returned list is indexed by the translating directions.
+        If in a given direction the translation moves outside the
+        Hexmap, then None is inserted in the list instead of the
+        reached label."""
 
         node = self.__labels_to_nodes[label]
         (node_u, node_v) = node
 
-        first_nodes = list()
+        labels = list()
 
         for (delta_u, delta_v) in self.__node_directions:
             node_translated = (node_u + delta_u, node_v + delta_v)
             if self.__has_node(node_translated):
-                first_nodes.append(self.__labels_from_nodes[node_translated])
+                labels.append(self.__labels_from_nodes[node_translated])
             else:
-                first_nodes.append(None)
+                labels.append(None)
 
-        return first_nodes
+        return labels
 
 
     def get_labels(self):
@@ -294,22 +298,22 @@ class Hexmap:
         return self.__labels_to_nodes.keys()
 
 
-    def get_node_labels_at_row(self, row_label):
+    def get_labels_at_row(self, row_label):
         """Return the labels of all the hexmap nodes at a given row."""
 
         assert row_label in self.__row_labels
         row_index = self.__row_labels.index(row_label)
         node_v = self.__v_list[row_index]
 
-        labels_at_row = list()
+        labels = list()
 
         for node_u in self.__u_list:
             node = (node_u, node_v)
             if self.__has_node_values[node]:
-                label = self.__labels_from_nodes[node]
-                labels_at_row.append(label)
+                node_label = self.__labels_from_nodes[node]
+                labels.append(node_label)
 
-        return labels_at_row
+        return labels
 
 
     def __get_node_at_label(self, label):
@@ -322,39 +326,38 @@ class Hexmap:
         return self.__row_labels
 
 
-    def get_second_adjacent_labels(self, label):
-        """Return the labels of adjacent to adjacent nodes, in straight line,
-        to the node at the given label."""
+    def get_labels_at_two_links(self, label):
+        """Return the labels of nodes reachable by a translation of
+        two links. The returned list is indexed by the translating directions.
+        If in a given direction the translation moves outside the
+        Hexmap, then None is inserted in the list instead of the
+        reached label."""
 
         node = self.__labels_to_nodes[label]
         (node_u, node_v) = node
 
-        second_nodes = list()
+        labels = list()
 
         for (delta_u, delta_v) in self.__node_directions:
             node_translated = (node_u + 2*delta_u, node_v + 2*delta_v)
             if self.__has_node(node_translated):
-                second_nodes.append(self.__labels_from_nodes[node_translated])
+                labels.append(self.__labels_from_nodes[node_translated])
             else:
-                second_nodes.append(None)
+                labels.append(None)
 
-        return second_nodes
+        return labels
 
 
     def __has_node(self, node):
         """Is the given node inside this hexmap?"""
 
         self_has_node = False
-
-        (node_u, node_v) = node
-
-        if (node_u in self.__u_list) and (node_v in self.__v_list):
+        if node in self.__has_node_values:
             self_has_node = self.__has_node_values[node]
-
         return self_has_node
 
 
-    def print(self):
+    def print_hexmap(self):
         """Print the hexmap using the table representation."""
 
         for cell_y in range(self.__ny + 1):
@@ -596,38 +599,37 @@ class Piece:
 
 
 class Node:
-    """Capture knowledge about Node in JERSI."""
+    """Capture knowledge about a Node in JERSI.
+    A Node hosts stacked Pieces.
+    """
 
 
-    def __init__(self, label, graph):
-        """Initialize a node at a given label for the given graph."""
+    def __init__(self, label):
+        """Initialize a node at a given label."""
 
         self.label = label
-        self.graph = graph
         self.pieces = [None, None]
-        self.first_adjacent_labels = None
-        self.second_adjacent_labels = None
+        self.nodes_at_one_link = list()
+        self.nodes_at_two_links = list()
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a node: only the graph and pieces
-        attributes are copied in depth."""
+        """Customized deepcopy of a Node."""
 
-        new_one = Node(self.label, None)
-
+        cls = self.__class__
+        new_one = cls.__new__(cls)
         memo[id(self)] = new_one
+        new_one.__dict__.update(self.__dict__)
 
-        new_one.graph = copy.deepcopy(self.graph, memo)
         new_one.pieces = copy.deepcopy(self.pieces, memo)
-
-        new_one.first_adjacent_labels = self.first_adjacent_labels
-        new_one.second_adjacent_labels = self.second_adjacent_labels
+        new_one.nodes_at_one_link = copy.deepcopy(self.nodes_at_one_link, memo)
+        new_one.nodes_at_two_links = copy.deepcopy(self.nodes_at_two_links, memo)
 
         return new_one
 
 
     def get_top(self):
-        """Return the top of the piece stack at this node."""
+        """Return the top of the stacked pieces at this node."""
 
         if self.pieces[1] is not None:
             top = self.pieces[1]
@@ -642,14 +644,12 @@ class Node:
 
 
     def get_top_color(self):
-        """Return the color of the top of the piece stack at this node."""
+        """Return the color of the top of the stacked pieces at this node."""
 
-        if self.pieces[1] is not None:
-            color = self.pieces[1].color
+        top = self.get_top()
 
-        elif self.pieces[0] is not None:
-            color = self.pieces[0].color
-
+        if top is not None:
+            color = top.color
         else:
             color = None
 
@@ -657,14 +657,12 @@ class Node:
 
 
     def get_top_shape(self):
-        """Return the shape of the top of the piece stack at this node."""
+        """Return the shape of the top of the stacked pieces at this node."""
 
-        if self.pieces[1] is not None:
-            shape = self.pieces[1].shape
+        top = self.get_top()
 
-        elif self.pieces[0] is not None:
-            shape = self.pieces[0].shape
-
+        if top is not None:
+            shape = top.shape
         else:
             shape = None
 
@@ -691,15 +689,25 @@ class Node:
         return self.pieces[1] is None
 
 
+    def init_nodes_at_one_link(self, nodes_at_one_link):
+        """Initialize nodes at one link."""
+        self.nodes_at_one_link = nodes_at_one_link
+
+
+    def init_nodes_at_two_links(self, nodes_at_two_links):
+        """Initialize nodes at two linsk."""
+        self.nodes_at_two_links = nodes_at_two_links
+
+
     def move_one_piece(self, dst_node):
-        """Move one piece (its top) from this node to a destinaiton node."""
+        """Move one piece from this node to the destination node."""
 
         piece_captured = False
         kunti_captured = False
 
         assert dst_node is not None
-        jersi_assert(dst_node.label in self.first_adjacent_labels,
-                     "destination should stay at one segment from source")
+        jersi_assert(dst_node in self.nodes_at_one_link,
+                     "destination should be at one link from source")
 
         jersi_assert(self.has_one_or_two_pieces(),
                      "source should have one or two pieces")
@@ -739,7 +747,7 @@ class Node:
 
 
     def move_two_pieces(self, dst_node):
-        """Move two pieces from this node to a destinaiton node."""
+        """Move two pieces from this node to the destination node."""
 
         piece_captured = False
         kunti_captured = False
@@ -747,16 +755,15 @@ class Node:
         jersi_assert(self.has_two_pieces(), "source should have two pieces")
         assert dst_node is not None
 
-        stepping_one_segment = dst_node.label in self.first_adjacent_labels
-        stepping_two_segments = dst_node.label in self.second_adjacent_labels
+        traveling_one_link = dst_node in self.nodes_at_one_link
+        traveling_two_links = dst_node in self.nodes_at_two_links
 
-        jersi_assert(stepping_one_segment or stepping_two_segments,
-                     "destination should stay at one or two segments from source")
+        jersi_assert(traveling_one_link or traveling_two_links,
+                     "destination should be at one or two links from source")
 
-        if stepping_two_segments:
-            dst_direction = self.second_adjacent_labels.index(dst_node.label)
-            int_label = self.first_adjacent_labels[dst_direction]
-            int_node = self.graph.nodes[int_label]
+        if traveling_two_links:
+            dst_direction = self.nodes_at_two_links.index(dst_node)
+            int_node = self.nodes_at_one_link[dst_direction]
             jersi_assert(int_node.has_zero_piece(),
                          "path from source to destination should be free")
 
@@ -797,7 +804,10 @@ class Node:
     def set_piece(self, piece):
         """Set a free piece to this node."""
 
-        assert self.has_zero_or_one_piece()
+        jersi_assert(self.has_zero_or_one_piece(),
+                     "the piece should be set on a node having zero or one piece")
+
+        jersi_assert(piece.node is None, "the set piece should be free.")
 
         if self.pieces[0] is None:
             self.pieces[0] = piece
@@ -840,12 +850,15 @@ class Node:
             self.pieces[0] = None
 
 
-class Graph:
-    """Graph is an abstraction of an Hexmap."""
-    
+class Absmap:
+    """Absmap is an abstraction of the hexagonal map of JERSI.
+    Absmap relies on Hexmap for geometrial knowledge. But Unlike Hexmap,
+    Absmap knows some rules of JERSI about Nodes and Pieces.
+    """
+
 
     def __init__(self, hexmap):
-        """Initialize a graph from a given hexmap."""
+        """Initialize an absmap from a given hexmap."""
 
         self.hexmap = hexmap
 
@@ -859,15 +872,12 @@ class Graph:
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a node: only the nodes and pieces
-        attributes are copied in depth."""
+        """Customized deepcopy of an Absmap."""
 
         cls = self.__class__
         new_one = cls.__new__(cls)
         memo[id(self)] = new_one
-
-        new_one.hexmap = self.hexmap
-        new_one.placement_labels = self.placement_labels
+        new_one.__dict__.update(self.__dict__)
 
         new_one.nodes = copy.deepcopy(self.nodes, memo)
         new_one.pieces = copy.deepcopy(self.pieces, memo)
@@ -876,19 +886,39 @@ class Graph:
 
 
     def __init_nodes(self):
-        """Initialize all nodes of the graph."""
+        """Initialize all nodes of the absmap."""
 
         self.nodes = dict()
 
+        # Create all nodes of the absmap
         for label in self.hexmap.get_labels():
-            node = Node(label, self)
-            node.first_adjacent_labels = self.hexmap.get_first_adjacent_labels(node.label)
-            node.second_adjacent_labels = self.hexmap.get_second_adjacent_labels(node.label)
+            node = Node(label)
             self.nodes[label] = node
+
+        # Initialize links between nodes
+        for label in self.nodes:
+
+            nodes_at_one_link = list()
+            for dst_label in self.hexmap.get_labels_at_one_link(label):
+                if dst_label is not None:
+                    nodes_at_one_link.append(self.nodes[dst_label])
+                else:
+                    nodes_at_one_link.append(None)
+
+            nodes_at_two_links = list()
+            for dst_label in self.hexmap.get_labels_at_two_links(label):
+                if dst_label is not None:
+                    nodes_at_two_links.append(self.nodes[dst_label])
+                else:
+                    nodes_at_two_links.append(None)
+
+            node = self.nodes[label]
+            node.init_nodes_at_one_link(nodes_at_one_link)
+            node.init_nodes_at_two_links(nodes_at_two_links)
 
 
     def __init_pieces(self):
-        """Initialize all pieces that could be place on the graph."""
+        """Initialize all pieces that could be place on the absmap."""
 
         self.pieces = dict()
         for color in Color.get_indices():
@@ -912,10 +942,10 @@ class Graph:
         row_labels = self.hexmap.get_row_labels()
 
         for row_label in row_labels[:2]:
-            self.placement_labels[0].extend(self.hexmap.get_node_labels_at_row(row_label))
+            self.placement_labels[0].extend(self.hexmap.get_labels_at_row(row_label))
 
         for row_label in row_labels[-2:]:
-            self.placement_labels[1].extend(self.hexmap.get_node_labels_at_row(row_label))
+            self.placement_labels[1].extend(self.hexmap.get_labels_at_row(row_label))
 
 
     def count_pieces_by_colors_and_shapes(self):
@@ -952,20 +982,19 @@ class Graph:
 
         positions = dict()
 
-        for color in Color.get_indices():
-            for shape in Shape.get_indices():
-                for piece in self.pieces[color][shape]:
-                    if piece.node is not None:
-                        node = piece.node
-                        node_label = node.label
-                        if node_label not in positions:
-                            positions[node_label] = list()
+        for (color, shape) in zip(Color.get_indices(), Shape.get_indices()):
+            for piece in self.pieces[color][shape]:
+                if piece.node is not None:
+                    node = piece.node
+                    node_label = node.label
+                    if node_label not in positions:
+                        positions[node_label] = list()
 
-                            if node.pieces[0] is not None:
-                                positions[node_label].append(node.pieces[0].get_name())
+                        if node.pieces[0] is not None:
+                            positions[node_label].append(node.pieces[0].get_name())
 
-                            if node.pieces[1] is not None:
-                                positions[node_label].append(node.pieces[1].get_name())
+                        if node.pieces[1] is not None:
+                            positions[node_label].append(node.pieces[1].get_name())
 
         return positions
 
@@ -1018,11 +1047,11 @@ class Graph:
         return src_node.move_two_pieces(dst_node)
 
 
-    def print(self):
-        """Print the graph using the table managed by the hexmap."""
+    def print_absmap(self):
+        """Print the absmap using the table managed by the hexmap."""
 
         self.__set_hexmap_nodes()
-        self.hexmap.print()
+        self.hexmap.print_hexmap()
 
 
     def __set_hexmap_nodes(self):
@@ -1187,7 +1216,7 @@ class Graph:
 
 
     def unset_pieces(self):
-        """Unset all pieces out of the graph."""
+        """Unset all pieces out of the absmap."""
 
         for node in self.nodes.values():
             node.unset_pieces()
@@ -1205,7 +1234,7 @@ class Game:
         Propose a to start witj a standard placement.
         """
 
-        self.graph = None
+        self.absmap = None
         self.placement = None
         self.history = None
         self.game_over = None
@@ -1214,22 +1243,20 @@ class Game:
         self.move_count = None
         self.score = None
 
-        self.graph = Graph(hexmap=Hexmap(5))
+        self.absmap = Absmap(hexmap=Hexmap(5))
         self.init_game()
-        self.new_standard_game()
+        self.__new_standard_game()
 
 
     def __deepcopy__(self, memo):
-        """Customized deepcopy of a game: only the graph, placement and history
-        attributes are copied in depth."""
+        """Customized deepcopy of a Game."""
 
         cls = self.__class__
         new_one = cls.__new__(cls)
         memo[id(self)] = new_one
-
         new_one.__dict__.update(self.__dict__)
 
-        new_one.graph = copy.deepcopy(self.graph, memo)
+        new_one.absmap = copy.deepcopy(self.absmap, memo)
         new_one.placement = copy.copy(self.placement)
         new_one.history = copy.copy(self.history)
 
@@ -1239,7 +1266,7 @@ class Game:
     def init_game(self):
         """Initialize or re-initialize the game."""
 
-        self.graph.unset_pieces()
+        self.absmap.unset_pieces()
 
         self.placement = dict()
         self.history = list()
@@ -1253,7 +1280,7 @@ class Game:
             self.score[color] = 0
 
 
-    def new_free_game(self):
+    def __new_free_game(self):
         """Initialize the game with a free placement
         i.e. no piece yet placed."""
 
@@ -1261,39 +1288,39 @@ class Game:
 
         print()
         print("new free game")
-        self.graph.print()
-        self.print_status()
+        self.absmap.print_absmap()
+        self.__print_status()
 
 
-    def new_random_game(self):
+    def __new_random_game(self):
         """Initialize the game with a random placement."""
 
         self.init_game()
-        self.graph.place_pieces_at_random_positions()
-        self.placement = self.graph.export_positions()
+        self.absmap.place_pieces_at_random_positions()
+        self.placement = self.absmap.export_positions()
         self.placement_over = True
 
         print()
         print("new random game")
-        self.graph.print()
-        self.print_status()
+        self.absmap.print_absmap()
+        self.__print_status()
 
 
-    def new_standard_game(self):
+    def __new_standard_game(self):
         """Initialize the game with a standard/symmetric placement."""
 
         self.init_game()
-        self.graph.place_pieces_at_standard_positions()
-        self.placement = self.graph.export_positions()
+        self.absmap.place_pieces_at_standard_positions()
+        self.placement = self.absmap.export_positions()
         self.placement_over = True
 
         print()
         print("new standard game")
-        self.graph.print()
-        self.print_status()
+        self.absmap.print_absmap()
+        self.__print_status()
 
 
-    def parse_and_play_instruction(self, instruction):
+    def __parse_and_play_instruction(self, instruction):
         """Parse and play an instruction."""
 
         instruction_validated = False
@@ -1301,7 +1328,7 @@ class Game:
         positions = dict()
         moves = list()
 
-        parsing_validated = Game.parse_instruction(instruction, positions, moves)
+        parsing_validated = Game.__parse_instruction(instruction, positions, moves)
 
         if parsing_validated:
 
@@ -1310,21 +1337,21 @@ class Game:
             assert len(positions) == 1 or len(moves) == 1
 
             if len(positions) == 1:
-                playing_validated = self.play_placement(positions)
+                playing_validated = self.__play_placement(positions)
 
             elif len(moves) == 1:
-                playing_validated = self.play_moves(moves)
+                playing_validated = self.__play_moves(moves)
 
             if playing_validated:
                 instruction_validated = True
             else:
-                self.restore_game(saved_game)
+                self.__restore_game(saved_game)
 
         return instruction_validated
 
 
     @staticmethod
-    def parse_instruction(instruction, positions, moves):
+    def __parse_instruction(instruction, positions, moves):
         """Parse an instruction and update the given positions and moves."""
 
         instruction_validated = True
@@ -1386,7 +1413,7 @@ class Game:
         return instruction_validated
 
 
-    def play_moves(self, moves):
+    def __play_moves(self, moves):
         """Play the given moves."""
 
         play_validated = True
@@ -1403,13 +1430,13 @@ class Game:
 
                 for (piece_count, src_label, dst_label) in move_steps:
 
-                    jersi_assert(src_label in self.graph.nodes.keys(),
+                    jersi_assert(src_label in self.absmap.nodes.keys(),
                                  "source label should be valid")
 
-                    jersi_assert(dst_label in self.graph.nodes.keys(),
+                    jersi_assert(dst_label in self.absmap.nodes.keys(),
                                  "destination label should be valid")
 
-                    src_node = self.graph.nodes[src_label]
+                    src_node = self.absmap.nodes[src_label]
 
                     jersi_assert(src_node.has_one_or_two_pieces(),
                                  "source should have one or two pieces")
@@ -1419,11 +1446,11 @@ class Game:
 
                     if piece_count == 1:
                         (piece_captured,
-                         kunti_captured) = self.graph.move_one_piece(src_label, dst_label)
+                         kunti_captured) = self.absmap.move_one_piece(src_label, dst_label)
 
                     elif piece_count == 2:
                         (piece_captured,
-                         kunti_captured) = self.graph.move_two_pieces(src_label, dst_label)
+                         kunti_captured) = self.absmap.move_two_pieces(src_label, dst_label)
 
                     else:
                         assert False
@@ -1434,19 +1461,19 @@ class Game:
 
                 self.history.append(annotated_steps)
                 self.move_count += 1
-                print("move %s OK" % Game.stringify_move(annotated_steps))
+                print("move %s OK" % Game.__stringify_move(annotated_steps))
 
-                self.update_end_conditions()
+                self.__update_end_conditions()
 
         except(JersiError) as jersi_assertion_error:
             print("assertion failed: %s !!!" % jersi_assertion_error.message)
-            print("move %s KO !!!" % Game.stringify_move(move_steps))
+            print("move %s KO !!!" % Game.__stringify_move(move_steps))
             play_validated = False
 
         return play_validated
 
 
-    def play_placement(self, positions):
+    def __play_placement(self, positions):
         """Play the given positions as a placement."""
 
         play_validated = True
@@ -1466,12 +1493,12 @@ class Game:
             move_color = (self.move_count - 1) % Color.get_count()
             jersi_assert(color == move_color, "moved color should be valid")
 
-            piece_count = self.graph.count_pieces_by_colors_and_shapes()
+            piece_count = self.absmap.count_pieces_by_colors_and_shapes()
             instance = piece_count[color][shape]
             jersi_assert(instance < Shape.get_max_occurrences(shape), "shape should be available")
 
-            piece = self.graph.pieces[color][shape][instance]
-            self.graph.place_piece(piece, node_label)
+            piece = self.absmap.pieces[color][shape][instance]
+            self.absmap.place_piece(piece, node_label)
 
             self.move_count += 1
 
@@ -1486,7 +1513,7 @@ class Game:
                 self.placement_over = False
 
             if self.placement_over:
-                self.placement = self.graph.export_positions()
+                self.placement = self.absmap.export_positions()
 
         except(JersiError) as jersi_assertion_error:
             print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -1515,19 +1542,19 @@ class Game:
         print("   wp f: write the positions into the given file 'f'")
 
 
-    def print_history(self):
+    def __print_history(self):
         """Print the history of moves. Placement is not printed."""
 
         print()
         print("move history:")
-        for line in Game.textify_history(self.history):
+        for line in Game.__textify_history(self.history):
             print(line)
 
 
-    def print_status(self):
+    def __print_status(self):
         """Print the status of the game: turn, score, count of pieces."""
 
-        piece_count = self.graph.count_pieces_by_colors_and_shapes()
+        piece_count = self.absmap.count_pieces_by_colors_and_shapes()
 
         if self.game_over:
             text = "game over"
@@ -1577,7 +1604,7 @@ class Game:
             else:
                 instructions = line.split()
                 for instruction in instructions:
-                    instruction_validated = Game.parse_instruction(instruction, positions, moves)
+                    instruction_validated = Game.__parse_instruction(instruction, positions, moves)
                     if not instruction_validated:
                         parsing_validated = False
 
@@ -1591,10 +1618,10 @@ class Game:
             playing_validated = True
 
             try:
-                self.graph.import_placement(positions)
+                self.absmap.import_placement(positions)
                 self.placement_over = True
 
-                play_moves_validated = self.play_moves(moves)
+                play_moves_validated = self.__play_moves(moves)
                 if not play_moves_validated:
                     playing_validated = False
 
@@ -1605,15 +1632,15 @@ class Game:
             if playing_validated:
                 print()
                 print("game from file '%s'" % file_path)
-                self.graph.print()
-                self.print_status()
+                self.absmap.print_absmap()
+                self.__print_status()
 
             else:
-                self.restore_game(saved_game)
+                self.__restore_game(saved_game)
 
 
     def read_positions(self, file_path):
-        """Remove all pieces from the graph and set pieces only
+        """Remove all pieces from the absmap and set pieces only
         at the read positions from the file."""
 
         positions = dict()
@@ -1630,7 +1657,7 @@ class Game:
             else:
                 instructions = line.split()
                 for instruction in instructions:
-                    instruction_validated = Game.parse_instruction(instruction, positions, moves)
+                    instruction_validated = Game.__parse_instruction(instruction, positions, moves)
                     if not instruction_validated:
                         parsing_validated = False
 
@@ -1643,11 +1670,11 @@ class Game:
 
             importing_validated = True
             try:
-                jersi_assert(len(moves) == 0, "file should not have moves")
+                jersi_assert(not moves, "file should not have moves") # assert len(moves) == 0
 
-                self.graph.import_positions(positions)
+                self.absmap.import_positions(positions)
                 self.placement_over = True
-                self.placement = self.graph.export_positions()
+                self.placement = self.absmap.export_positions()
 
             except(JersiError) as jersi_assertion_error:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -1656,14 +1683,14 @@ class Game:
             if importing_validated:
                 print()
                 print("positions from file '%s'" % file_path)
-                self.graph.print()
-                self.print_status()
+                self.absmap.print_absmap()
+                self.__print_status()
 
             else:
-                self.restore_game(saved_game)
+                self.__restore_game(saved_game)
 
 
-    def restore_game(self, saved_game):
+    def __restore_game(self, saved_game):
         """Restore all saved attributes of the game."""
 
         self.__dict__.update(saved_game.__dict__)
@@ -1679,23 +1706,24 @@ class Game:
             command_line = input("command? ")
             command_args = command_line.split()
 
-            if len(command_args) < 1:
+            if not command_args:
+                # len(command_args) == 0
                 print("turn syntax error !!!")
 
             elif command_args[0] == "h":
                 Game.print_help()
 
             elif command_args[0] == "nf":
-                self.new_free_game()
+                self.__new_free_game()
 
             elif command_args[0] == "nr":
-                self.new_random_game()
+                self.__new_random_game()
 
             elif command_args[0] == "ns":
-                self.new_standard_game()
+                self.__new_standard_game()
 
             elif command_args[0] == "ph":
-                self.print_history()
+                self.__print_history()
 
             elif command_args[0] == "q":
                 continue_running = False
@@ -1735,11 +1763,11 @@ class Game:
             else:
                 if len(command_args) == 1:
                     instruction = command_args[0]
-                    instruction_validated = self.parse_and_play_instruction(instruction)
+                    instruction_validated = self.__parse_and_play_instruction(instruction)
 
                     if instruction_validated:
-                        self.graph.print()
-                        self.print_status()
+                        self.absmap.print_absmap()
+                        self.__print_status()
                 else:
                     print("turn syntax error !!!")
 
@@ -1752,7 +1780,7 @@ class Game:
 
 
     @staticmethod
-    def stringify_move(move_steps):
+    def __stringify_move(move_steps):
         """Convert all steps of the given move as a string."""
 
         move_text = ""
@@ -1795,14 +1823,14 @@ class Game:
 
 
     @staticmethod
-    def textify_history(history):
+    def __textify_history(history):
         """Convert all played moves as a list of string."""
 
         lines = list()
 
         for (move_index, move_steps) in enumerate(history):
 
-            move_text = Game.stringify_move(move_steps)
+            move_text = Game.__stringify_move(move_steps)
 
             if move_index % 2 == 0:
                 lines.append(move_text)
@@ -1813,7 +1841,7 @@ class Game:
 
 
     @staticmethod
-    def textify_positions(positions):
+    def __textify_positions(positions):
         """Convert all given piece positions as a list of string."""
 
         lines = list()
@@ -1836,10 +1864,10 @@ class Game:
         return lines
 
 
-    def update_end_conditions(self):
+    def __update_end_conditions(self):
         """Determine conditions for ending a game."""
 
-        piece_count = self.graph.count_pieces_by_colors_and_shapes()
+        piece_count = self.absmap.count_pieces_by_colors_and_shapes()
 
         for color in piece_count.keys():
             self.score[color] = 1
@@ -1866,12 +1894,12 @@ class Game:
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
-        for line in Game.textify_positions(self.placement):
+        for line in Game.__textify_positions(self.placement):
             file_stream.write("%s\n" % line)
 
         file_stream.write("\n")
 
-        for line in Game.textify_history(self.history):
+        for line in Game.__textify_history(self.history):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
@@ -1884,7 +1912,7 @@ class Game:
 
         file_stream = open(os.path.join(os.curdir, file_path), 'w')
 
-        for line in Game.textify_positions(self.graph.export_positions()):
+        for line in Game.__textify_positions(self.absmap.export_positions()):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
