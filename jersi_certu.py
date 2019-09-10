@@ -1223,10 +1223,8 @@ class Absmap:
 
 
 class Game:
-    """Provide services for playing, saving and reloading a game of JERSI.
-    Manage JERSI rule related to the dynamics like the alternance rule
-    between the two players and the end of game.
-    """
+    """Manage JERSI rule related to the dynamics like the alternance rule
+    between the two players and the end of game."""
 
 
     def __init__(self):
@@ -1245,7 +1243,7 @@ class Game:
 
         self.absmap = Absmap(hexmap=Hexmap(5))
         self.init_game()
-        self.__new_standard_game()
+        self.new_standard_game()
 
 
     def __deepcopy__(self, memo):
@@ -1280,7 +1278,7 @@ class Game:
             self.score[color] = 0
 
 
-    def __new_free_game(self):
+    def new_free_game(self):
         """Initialize the game with a free placement
         i.e. no piece yet placed."""
 
@@ -1292,7 +1290,7 @@ class Game:
         self.__print_status()
 
 
-    def __new_random_game(self):
+    def new_random_game(self):
         """Initialize the game with a random placement."""
 
         self.init_game()
@@ -1306,7 +1304,7 @@ class Game:
         self.__print_status()
 
 
-    def __new_standard_game(self):
+    def new_standard_game(self):
         """Initialize the game with a standard/symmetric placement."""
 
         self.init_game()
@@ -1320,10 +1318,8 @@ class Game:
         self.__print_status()
 
 
-    def __parse_and_play_instruction(self, instruction):
+    def parse_and_play_instruction(self, instruction):
         """Parse and play an instruction."""
-
-        instruction_validated = False
 
         positions = dict()
         moves = list()
@@ -1343,11 +1339,10 @@ class Game:
                 playing_validated = self.__play_moves(moves)
 
             if playing_validated:
-                instruction_validated = True
+                self.absmap.print_absmap()
+                self.__print_status()
             else:
                 self.__restore_game(saved_game)
-
-        return instruction_validated
 
 
     @staticmethod
@@ -1428,6 +1423,11 @@ class Game:
                 step_count = 1
                 annotated_steps = list()
 
+                jersi_assert(len(move_steps) in [1, 2],
+                             "a move should have one or two steps")
+
+                first_piece_count = None
+
                 for (piece_count, src_label, dst_label) in move_steps:
 
                     jersi_assert(src_label in self.absmap.nodes.keys(),
@@ -1443,6 +1443,12 @@ class Game:
 
                     jersi_assert(src_node.get_top_color() == move_color,
                                  "moved color should be valid")
+
+                    if first_piece_count is None:
+                        first_piece_count = piece_count
+                    else:
+                        jersi_assert(piece_count != first_piece_count,
+                                     "the two steps should move different number of pieces")
 
                     if piece_count == 1:
                         (piece_captured,
@@ -1522,27 +1528,7 @@ class Game:
         return play_validated
 
 
-    @staticmethod
-    def print_help():
-        """Print help about the commands."""
-
-        print()
-        print("commands:")
-        print("    a1-b1=d1 | a1=c1-d1 | a1-b1 | a1=c1 : examples of move in one or two steps")
-        print("                          a1:K  | h1:c  : examples of placement")
-        print("      h: help")
-        print("      q: quit")
-        print("     ns: new game with standard positions")
-        print("     nr: new game with random positions")
-        print("     nf: new game with free positions")
-        print("     ph: print game history (only moves; not placement)")
-        print("   rg f: read the game from the given file 'f'")
-        print("   rp f: read the positions from the given file 'f'")
-        print("   wg f: write the game into the given file 'f'")
-        print("   wp f: write the positions into the given file 'f'")
-
-
-    def __print_history(self):
+    def print_history(self):
         """Print the history of moves. Placement is not printed."""
 
         print()
@@ -1696,82 +1682,6 @@ class Game:
         self.__dict__.update(saved_game.__dict__)
 
 
-    def run(self):
-        """Run all entered commands until the command for quitting."""
-
-        continue_running = True
-
-        while continue_running:
-
-            command_line = input("command? ")
-            command_args = command_line.split()
-
-            if not command_args:
-                # len(command_args) == 0
-                print("turn syntax error !!!")
-
-            elif command_args[0] == "h":
-                Game.print_help()
-
-            elif command_args[0] == "nf":
-                self.__new_free_game()
-
-            elif command_args[0] == "nr":
-                self.__new_random_game()
-
-            elif command_args[0] == "ns":
-                self.__new_standard_game()
-
-            elif command_args[0] == "ph":
-                self.__print_history()
-
-            elif command_args[0] == "q":
-                continue_running = False
-
-            elif command_args[0] == "rg":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.read_game(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "rp":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.read_positions(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "wg":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.write_game(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "wp":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.write_positions(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            else:
-                if len(command_args) == 1:
-                    instruction = command_args[0]
-                    instruction_validated = self.__parse_and_play_instruction(instruction)
-
-                    if instruction_validated:
-                        self.absmap.print_absmap()
-                        self.__print_status()
-                else:
-                    print("turn syntax error !!!")
-
-
     def save_game(self):
         """Save all atributes of the game."""
 
@@ -1920,12 +1830,113 @@ class Game:
         print("saving positions in file '%s' done" % file_path)
 
 
+class Runner:
+    """Provide services for playing, saving and reloading a game of JERSI."""
+
+    def __init__(self):
+        """Initialize a Runner of the Game."""
+        self.game = Game()
+
+
+    @staticmethod
+    def print_help():
+        """Print help about the commands."""
+
+        print()
+        print("commands:")
+        print("    a1-b1=d1 | a1=c1-d1 | a1-b1 | a1=c1 : examples of move in one or two steps")
+        print("                          a1:K  | h1:c  : examples of placement")
+        print("      h: help")
+        print("      q: quit")
+        print("     ns: new game with standard positions")
+        print("     nr: new game with random positions")
+        print("     nf: new game with free positions")
+        print("     ph: print game history (only moves; not placement)")
+        print("   rg f: read the game from the given file 'f'")
+        print("   rp f: read the positions from the given file 'f'")
+        print("   wg f: write the game into the given file 'f'")
+        print("   wp f: write the positions into the given file 'f'")
+
+
+    def run(self):
+        """Run all entered commands until the command for quitting."""
+
+        continue_running = True
+
+        while continue_running:
+
+            command_line = input("command? ")
+            command_args = command_line.split()
+
+            if not command_args:
+                # len(command_args) == 0
+                print("turn syntax error !!!")
+
+            elif command_args[0] == "h":
+                Runner.print_help()
+
+            elif command_args[0] == "nf":
+                self.game.new_free_game()
+
+            elif command_args[0] == "nr":
+                self.game.new_random_game()
+
+            elif command_args[0] == "ns":
+                self.game.new_standard_game()
+
+            elif command_args[0] == "ph":
+                self.game.print_history()
+
+            elif command_args[0] == "q":
+                continue_running = False
+
+            elif command_args[0] == "rg":
+
+                if len(command_args) == 2:
+                    file_path = command_args[1]
+                    self.game.read_game(file_path)
+                else:
+                    print("turn syntax error !!!")
+
+            elif command_args[0] == "rp":
+
+                if len(command_args) == 2:
+                    file_path = command_args[1]
+                    self.game.read_positions(file_path)
+                else:
+                    print("turn syntax error !!!")
+
+            elif command_args[0] == "wg":
+
+                if len(command_args) == 2:
+                    file_path = command_args[1]
+                    self.game.write_game(file_path)
+                else:
+                    print("turn syntax error !!!")
+
+            elif command_args[0] == "wp":
+
+                if len(command_args) == 2:
+                    file_path = command_args[1]
+                    self.game.write_positions(file_path)
+                else:
+                    print("turn syntax error !!!")
+
+            else:
+                if len(command_args) == 1:
+                    instruction = command_args[0]
+                    self.game.parse_and_play_instruction(instruction)
+
+                else:
+                    print("turn syntax error !!!")
+
+
 def main():
     """Start JERSI."""
 
     print(_COPYRIGHT_AND_LICENSE)
-    my_game = Game()
-    my_game.run()
+    my_runner = Runner()
+    my_runner.run()
 
 
 if __name__ == "__main__":
