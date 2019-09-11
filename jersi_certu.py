@@ -1261,6 +1261,71 @@ class Game:
         return new_one
 
 
+    def __find_moves(self, color, find_one=False):
+        """Find possible moves for the given color.
+        If find_one then just return the first found move."""
+
+        move_list = list()
+
+        for src_node in self.__find_nodes(color):
+
+            for dst_node in src_node.nodes_at_one_link:
+                if dst_node is not None:
+                    moves = list()
+                    moves.append([(1, src_node.label, dst_node.label)])
+
+                    playing_validated = self.__play_moves(moves, dry_mode=True)
+                    if playing_validated:
+                        move_list.extend(moves)
+                        if find_one:
+                            return move_list
+
+                        for fin_node in dst_node.nodes_at_two_links:
+                            if fin_node is not None:
+                                moves = list()
+                                moves.append([(1, src_node.label, dst_node.label),
+                                              (2, dst_node.label, fin_node.label)])
+                                playing_validated = self.__play_moves(moves, dry_mode=True)
+                                if playing_validated:
+                                    move_list.extend(moves)
+
+            for dst_node in src_node.nodes_at_two_links:
+                if dst_node is not None:
+                    moves = list()
+                    moves.append([(2, src_node.label, dst_node.label)])
+
+                    playing_validated = self.__play_moves(moves, dry_mode=True)
+                    if playing_validated:
+                        move_list.extend(moves)
+                        if find_one:
+                            return move_list
+
+                        for fin_node in dst_node.nodes_at_one_link:
+                            if fin_node is not None:
+                                moves = list()
+                                moves.append([(2, src_node.label, dst_node.label),
+                                              (1, dst_node.label, fin_node.label)])
+                                playing_validated = self.__play_moves(moves, dry_mode=True)
+                                if playing_validated:
+                                    move_list.extend(moves)
+        return move_list
+
+
+    def __find_nodes(self, color):
+        """Find nodes of the givent color."""
+
+        nodes = list()
+
+        for shape in Shape.get_indices():
+            for piece in self.absmap.pieces[color][shape]:
+                if piece.node is not None:
+                    node = piece.node
+                    if node.get_top() == piece:
+                        nodes.append(node)
+
+        return nodes
+
+
     def init_game(self):
         """Initialize or re-initialize the game."""
 
@@ -1328,8 +1393,6 @@ class Game:
 
         if parsing_validated:
 
-            saved_game = self.save_game()
-
             assert len(positions) == 1 or len(moves) == 1
 
             if len(positions) == 1:
@@ -1341,8 +1404,6 @@ class Game:
             if playing_validated:
                 self.absmap.print_absmap()
                 self.__print_status()
-            else:
-                self.__restore_game(saved_game)
 
 
     @staticmethod
@@ -1408,10 +1469,11 @@ class Game:
         return instruction_validated
 
 
-    def __play_moves(self, moves):
+    def __play_moves(self, moves, dry_mode=False):
         """Play the given moves."""
 
         play_validated = True
+        saved_game = self.save_game()
 
         try:
             for move_steps in moves:
@@ -1465,16 +1527,22 @@ class Game:
                                             piece_captured, kunti_captured))
                     step_count += 1
 
-                self.history.append(annotated_steps)
-                self.move_count += 1
-                print("move %s OK" % Game.__stringify_move(annotated_steps))
+                if not dry_mode:
+                    self.history.append(annotated_steps)
+                    self.move_count += 1
+                    print("move %s OK" % Game.__stringify_move(annotated_steps))
 
-                self.__update_end_conditions()
+                    self.__update_end_conditions()
 
         except(JersiError) as jersi_assertion_error:
-            print("assertion failed: %s !!!" % jersi_assertion_error.message)
-            print("move %s KO !!!" % Game.__stringify_move(move_steps))
+            if not dry_mode:
+                print("assertion failed: %s !!!" % jersi_assertion_error.message)
+                print("move %s KO !!!" % Game.__stringify_move(move_steps))
             play_validated = False
+            self.__restore_game(saved_game)
+
+        if dry_mode:
+            self.__restore_game(saved_game)
 
         return play_validated
 
@@ -1483,6 +1551,7 @@ class Game:
         """Play the given positions as a placement."""
 
         play_validated = True
+        saved_game = self.save_game()
 
         try:
             assert len(positions) == 1
@@ -1524,8 +1593,21 @@ class Game:
         except(JersiError) as jersi_assertion_error:
             print("assertion failed: %s !!!" % jersi_assertion_error.message)
             play_validated = False
+            self.__restore_game(saved_game)
 
         return play_validated
+
+
+    def print_possiblities(self):
+        """Print the possible moves for the current color."""
+
+        move_color = (self.move_count - 1) % Color.get_count()
+        move_list = self.__find_moves(move_color)
+
+        print()
+        print("%d possible moves:" % len(move_list))
+        for line in Game.__textify_moves(move_list):
+            print(line)
 
 
     def print_history(self):
@@ -1533,7 +1615,7 @@ class Game:
 
         print()
         print("move history:")
-        for line in Game.__textify_history(self.history):
+        for line in Game.__textify_moves(self.history):
             print(line)
 
 
@@ -1601,21 +1683,21 @@ class Game:
             saved_game = self.save_game()
             self.init_game()
 
+            placement_validated = True
             playing_validated = True
 
             try:
                 self.absmap.import_placement(positions)
                 self.placement_over = True
 
-                play_moves_validated = self.__play_moves(moves)
-                if not play_moves_validated:
-                    playing_validated = False
-
             except(JersiError) as jersi_assertion_error:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
-                playing_validated = False
+                placement_validated = False
 
-            if playing_validated:
+            if placement_validated:
+                playing_validated = self.__play_moves(moves)
+
+            if placement_validated and playing_validated:
                 print()
                 print("game from file '%s'" % file_path)
                 self.absmap.print_absmap()
@@ -1733,12 +1815,12 @@ class Game:
 
 
     @staticmethod
-    def __textify_history(history):
-        """Convert all played moves as a list of string."""
+    def __textify_moves(moves):
+        """Convert given moves as a list of string."""
 
         lines = list()
 
-        for (move_index, move_steps) in enumerate(history):
+        for (move_index, move_steps) in enumerate(moves):
 
             move_text = Game.__stringify_move(move_steps)
 
@@ -1797,6 +1879,17 @@ class Game:
                 if self.last_count == 0:
                     self.game_over = True
 
+        if not self.game_over:
+            # Possible moves for current player?
+            move_color = (self.move_count - 1) % Color.get_count()
+            move_list = self.__find_moves(move_color, find_one=True)
+            if not move_list:
+                self.game_over = True
+                self.score[move_color] = 0
+                for color in Color.get_count():
+                    if color != move_color:
+                        self.score[color] = 1
+
 
     def write_game(self, file_path):
         """Write a game into a file: set initial positions of pieces (placement)
@@ -1809,7 +1902,7 @@ class Game:
 
         file_stream.write("\n")
 
-        for line in Game.__textify_history(self.history):
+        for line in Game.__textify_moves(self.history):
             file_stream.write("%s\n" % line)
 
         file_stream.close()
@@ -1852,6 +1945,7 @@ class Runner:
         print("     nr: new game with random positions")
         print("     nf: new game with free positions")
         print("     ph: print game history (only moves; not placement)")
+        print("     pp: print possiblities of moves for current color")
         print("   rg f: read the game from the given file 'f'")
         print("   rp f: read the positions from the given file 'f'")
         print("   wg f: write the game into the given file 'f'")
@@ -1886,6 +1980,9 @@ class Runner:
 
             elif command_args[0] == "ph":
                 self.game.print_history()
+
+            elif command_args[0] == "pp":
+                self.game.print_possiblities()
 
             elif command_args[0] == "q":
                 continue_running = False
