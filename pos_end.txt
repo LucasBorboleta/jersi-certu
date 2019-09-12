@@ -1,0 +1,8 @@
+a2:R    a2:K
+a3:N    a4:R
+a4:C    c7:K
+b2:R    b3:C
+b4:K    b5:R
+
+a5:n
+

@@ -1886,7 +1886,7 @@ class Game:
             if not move_list:
                 self.game_over = True
                 self.score[move_color] = 0
-                for color in Color.get_count():
+                for color in Color.get_indices():
                     if color != move_color:
                         self.score[color] = 1
 
