@@ -5,9 +5,8 @@
 # -*- coding: utf-8 -*-
 
 import copy
-import os
-import re
 import random
+import re
 import string
 
 
@@ -360,6 +359,7 @@ class Hexmap:
     def print_hexmap(self):
         """Print the hexmap using the table representation."""
 
+        print()
         for cell_y in range(self.__ny + 1):
             line = self.__left_labels[cell_y] + Hexmap.__CELL_SPACE
             for cell_x in range(self.__nx + 1):
@@ -982,19 +982,20 @@ class Absmap:
 
         positions = dict()
 
-        for (color, shape) in zip(Color.get_indices(), Shape.get_indices()):
-            for piece in self.pieces[color][shape]:
-                if piece.node is not None:
-                    node = piece.node
-                    node_label = node.label
-                    if node_label not in positions:
-                        positions[node_label] = list()
+        for color in Color.get_indices():
+            for shape in Shape.get_indices():
+                for piece in self.pieces[color][shape]:
+                    if piece.node is not None:
+                        node = piece.node
+                        node_label = node.label
+                        if node_label not in positions:
+                            positions[node_label] = list()
 
-                        if node.pieces[0] is not None:
-                            positions[node_label].append(node.pieces[0].get_name())
+                            if node.pieces[0] is not None:
+                                positions[node_label].append(node.pieces[0].get_name())
 
-                        if node.pieces[1] is not None:
-                            positions[node_label].append(node.pieces[1].get_name())
+                            if node.pieces[1] is not None:
+                                positions[node_label].append(node.pieces[1].get_name())
 
         return positions
 
@@ -1530,14 +1531,14 @@ class Game:
                 if not dry_mode:
                     self.history.append(annotated_steps)
                     self.move_count += 1
-                    print("move %s OK" % Game.__stringify_move(annotated_steps))
+                    print("move %s OK" % Game.__stringify_move_steps(annotated_steps))
 
                     self.__update_end_conditions()
 
         except(JersiError) as jersi_assertion_error:
             if not dry_mode:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
-                print("move %s KO !!!" % Game.__stringify_move(move_steps))
+                print("move %s KO !!!" % Game.__stringify_move_steps(move_steps))
             play_validated = False
             self.__restore_game(saved_game)
 
@@ -1578,6 +1579,7 @@ class Game:
             self.move_count += 1
 
             has_available_piece = False
+            piece_count = self.absmap.count_pieces_by_colors_and_shapes()
             for color in piece_count.keys():
                 for shape in piece_count[color].keys():
                     if piece_count[color][shape] < Shape.get_max_occurrences(shape):
@@ -1659,7 +1661,11 @@ class Game:
         moves = list()
         parsing_validated = True
 
-        file_stream = open(os.path.join(os.curdir, file_path), 'r')
+        try:
+            file_stream = open(file_path, 'r')
+        except OSError:
+            print("cannot read game from file '%s'" % file_path)
+            return
 
         for line in file_stream:
 
@@ -1688,6 +1694,7 @@ class Game:
 
             try:
                 self.absmap.import_placement(positions)
+                self.placement = self.absmap.export_positions()
                 self.placement_over = True
 
             except(JersiError) as jersi_assertion_error:
@@ -1715,7 +1722,11 @@ class Game:
         moves = list()
         parsing_validated = True
 
-        file_stream = open(os.path.join(os.curdir, file_path), 'r')
+        try:
+            file_stream = open(file_path, 'r')
+        except OSError:
+            print("cannot read positions from file '%s'" % file_path)
+            return
 
         for line in file_stream:
             if re.match(r"^s*$", line):
@@ -1741,8 +1752,8 @@ class Game:
                 jersi_assert(not moves, "file should not have moves") # assert len(moves) == 0
 
                 self.absmap.import_positions(positions)
-                self.placement_over = True
                 self.placement = self.absmap.export_positions()
+                self.placement_over = True
 
             except(JersiError) as jersi_assertion_error:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -1772,7 +1783,7 @@ class Game:
 
 
     @staticmethod
-    def __stringify_move(move_steps):
+    def __stringify_move_steps(move_steps):
         """Convert all steps of the given move as a string."""
 
         move_text = ""
@@ -1828,7 +1839,7 @@ class Game:
 
         for (move_index, move_steps) in enumerate(moves):
 
-            move_text = Game.__stringify_move(move_steps)
+            move_text = Game.__stringify_move_steps(move_steps)
 
             if move_index % 2 == 0:
                 lines.append(move_text)
@@ -1901,7 +1912,11 @@ class Game:
         """Write a game into a file: set initial positions of pieces (placement)
         and play read moves."""
 
-        file_stream = open(os.path.join(os.curdir, file_path), 'w')
+        try:
+            file_stream = open(file_path, 'w')
+        except OSError:
+            print("cannot write game to file '%s'" % file_path)
+            return
 
         for line in Game.__textify_positions(self.placement):
             file_stream.write("%s\n" % line)
@@ -1919,7 +1934,11 @@ class Game:
     def write_positions(self, file_path):
         """Write into a file the actual positions of pieces."""
 
-        file_stream = open(os.path.join(os.curdir, file_path), 'w')
+        try:
+            file_stream = open(file_path, 'w')
+        except OSError:
+            print("cannot write positions to file '%s'" % file_path)
+            return
 
         for line in Game.__textify_positions(self.absmap.export_positions()):
             file_stream.write("%s\n" % line)
