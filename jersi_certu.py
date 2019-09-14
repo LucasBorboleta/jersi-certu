@@ -1271,48 +1271,48 @@ class Game:
 
             for dst_node in src_node.nodes_at_one_link:
                 if dst_node is not None:
-                    moves = list()
-                    moves.append([(1, src_node.label, dst_node.label)])
+                    move_steps = list()
+                    move_steps.append([(1, src_node.label, dst_node.label)])
 
-                    playing_validated = self.__play_moves(moves, dry_mode=True)
+                    playing_validated = self.__play_moves(move_steps, dry_mode=True)
                     if playing_validated:
-                        move_list.extend(moves)
+                        move_list.extend(move_steps)
                         if find_one:
                             return move_list
 
                         for fin_node in dst_node.nodes_at_two_links:
                             if fin_node is not None:
-                                moves = list()
-                                moves.append([(1, src_node.label, dst_node.label),
-                                              (2, dst_node.label, fin_node.label)])
-                                playing_validated = self.__play_moves(moves, dry_mode=True)
+                                move_steps = list()
+                                move_steps.append([(1, src_node.label, dst_node.label),
+                                                   (2, dst_node.label, fin_node.label)])
+                                playing_validated = self.__play_moves(move_steps, dry_mode=True)
                                 if playing_validated:
-                                    move_list.extend(moves)
+                                    move_list.extend(move_steps)
 
             for dst_node in src_node.nodes_at_two_links:
                 if dst_node is not None:
-                    moves = list()
-                    moves.append([(2, src_node.label, dst_node.label)])
+                    move_steps = list()
+                    move_steps.append([(2, src_node.label, dst_node.label)])
 
-                    playing_validated = self.__play_moves(moves, dry_mode=True)
+                    playing_validated = self.__play_moves(move_steps, dry_mode=True)
                     if playing_validated:
-                        move_list.extend(moves)
+                        move_list.extend(move_steps)
                         if find_one:
                             return move_list
 
                         for fin_node in dst_node.nodes_at_one_link:
                             if fin_node is not None:
-                                moves = list()
-                                moves.append([(2, src_node.label, dst_node.label),
-                                              (1, dst_node.label, fin_node.label)])
-                                playing_validated = self.__play_moves(moves, dry_mode=True)
+                                move_steps = list()
+                                move_steps.append([(2, src_node.label, dst_node.label),
+                                                   (1, dst_node.label, fin_node.label)])
+                                playing_validated = self.__play_moves(move_steps, dry_mode=True)
                                 if playing_validated:
-                                    move_list.extend(moves)
+                                    move_list.extend(move_steps)
         return move_list
 
 
     def __find_nodes(self, color):
-        """Find nodes of the givent color."""
+        """Find nodes with pieces of the given color."""
 
         nodes = list()
 
@@ -1776,6 +1776,7 @@ class Game:
         """Convert all steps of the given move as a string."""
 
         move_text = ""
+        max_move_text_len = None
 
         for (step_index, step) in enumerate(move_steps):
 
@@ -1789,6 +1790,9 @@ class Game:
 
             else:
                 assert False
+
+            if max_move_text_len is None:
+                max_move_text_len = 3*len(src_label) + len("-")+ len("=") + 4*len("!")
 
             step_text = ""
 
@@ -1811,6 +1815,8 @@ class Game:
 
             move_text += step_text
 
+        move_text = move_text.ljust(max_move_text_len, " ")
+
         return move_text
 
 
@@ -1827,7 +1833,7 @@ class Game:
             if move_index % 2 == 0:
                 lines.append(move_text)
             else:
-                lines[-1] += " "*4 + move_text
+                lines[-1] += " "*2 + move_text
 
         return lines
 
@@ -1849,7 +1855,7 @@ class Game:
                 if start_index % 2 == 0:
                     lines.append(piece_text)
                 else:
-                    lines[-1] += " "*4 + piece_text
+                    lines[-1] += " "*2 + piece_text
 
                 start_index += 1
 
