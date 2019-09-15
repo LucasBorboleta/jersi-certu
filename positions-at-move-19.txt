@@ -1,0 +1,15 @@
+# positions at move 19 from the game fox versus lucas
+# 2019-07-14
+# https://www.youtube.com/watch?v=rbWzO0nIt6E&t=133s
+
+a2:R  a3:N
+a4:R  a4:C
+b3:C  b4:K
+c3:C  c3:K
+d5:c  d6:C
+e6:r  f5:R
+g5:r  g6:r
+g7:k  h1:c
+h3:k  h6:k
+i1:k  i2:r
+i2:c  i3:n

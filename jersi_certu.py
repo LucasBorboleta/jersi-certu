@@ -1888,9 +1888,13 @@ class Game:
 
             if self.last_count is None:
                 for color in piece_count.keys():
+                    shape_count = 0
                     for shape in piece_count[color].keys():
-                        if piece_count[color][shape] == 0:
-                            self.last_count = 20
+                        if piece_count[color][shape] > 0:
+                            shape_count += 1
+                    if shape_count <= 2:
+                        # Only kunti + another type of shape
+                        self.last_count = 20
             else:
                 self.last_count -= 1
                 if self.last_count == 0:
