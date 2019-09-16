@@ -2,19 +2,19 @@
 
 ## Command line interface
 
-| Command                | Description                                   |
-| ---------------------- | --------------------------------------------- |
-| **`era`**              | enable red algorithm                          |
-| **`eba`**              | enable blue algorithm                         |
-| **`dra`**              | disable red algorithm                         |
-| **`dba`**              | disable blue algorithm                        |
-| **`cra algo`**         | change red algorithm; example **`cra certu`** |
-| **`cba algo`**         | change blue algorithm                         |
-| **`sra option=value`** | set red algorithm; example **`sra depth=3`**  |
-| **`sba option=value`** | set blue algorithm                            |
-| **`aa`**               | ask algorithm for the current color           |
-| **`ra`**               | resume algorithms                             |
-| **`sa moves`**         | stop algorithms after # moves                 |
+| Command                | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| **`era`**              | enable red algorithm                                         |
+| **`eba`**              | enable blue algorithm                                        |
+| **`dra`**              | disable red algorithm                                        |
+| **`dba`**              | disable blue algorithm                                       |
+| **`cra algo`**         | change red algorithm; example **`cra certu`**                |
+| **`cba algo`**         | change blue algorithm                                        |
+| **`sra option=value`** | set red algorithm; example **`sra depth=3`**                 |
+| **`sba option=value`** | set blue algorithm                                           |
+| **`aa`**               | ask algorithm for the current color                          |
+| **`ram`**              | resume algorithm match (red algorithm versus blue algorithm) |
+| **`pam moves`**        | pause algorithm match after the given moves                  |
 
 ## Relationship with the other classes
 
@@ -27,4 +27,5 @@
   * The algorithm returns the  advised move as a string.
   * Runner uses the return string instead of the human input.
 * When both red and blue algorithms are enabled, Runner chains them until
-  a limit is reached. The user has to enter `ra` to resume the chaining.
+  a limit is reached. The user has to enter `ram` to resume the chaining.
+
