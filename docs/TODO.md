@@ -1,5 +1,6 @@
 # TODO
 The foreseen tasks on jersi-certi are as follows:
 
-- [ ] Start a first IA that decides for random but valid moves.
+- [ ] Start min-max algorithm.
+- [ ] Update and complete the AI Design document.
 - [ ] Complete documentation and information relevant for GitHub publishing (code of conduct, etc.).

@@ -1327,6 +1327,17 @@ class Game:
         return nodes
 
 
+    def get_move_color(self):
+        """Return the color of tne actual player."""
+
+        if not self.game_over:
+            move_color = (self.move_count - 1) % Color.get_count()
+        else:
+            move_color = None
+
+        return move_color
+
+
     def init_game(self):
         """Initialize or re-initialize the game."""
 
@@ -1952,37 +1963,42 @@ class Game:
         print("saving positions in file '%s' done" % file_path)
 
 
-class Algo:
+class Algorithm:
     """Algorithm for playing JERSI, a.k.a. Artificial Intelligence."""
-    
-    def __init__(self):
+
+    def __init__(self, color):
         """Initialize an algorithm."""
+        self.__color = color
         self.__enabled = False
-        
-        
+
+
     def enable(self, condition):
         """Change the algorithm status."""
         self.__enabled = condition
-        
-        
+
+
     def is_enabled(self):
         """Is the algorithm enabled?"""
         return self.__enabled
-    
-    
+
+
     def get_advice(self, game):
         """Return an advice for playing the next move."""
-        
-        move_color = (game.move_count - 1) % Color.get_count()
-        move_list = game.find_moves(move_color, find_one=True)
 
-        if move_list:
-            move = random.choice(move_list)
-            move_string = Game.stringify_move_steps(move)
-            move_string = move_string.strip()
-        else:
-            move_string = None
-            
+        move_string = None
+
+        move_color = game.get_move_color()
+
+        if move_color is not None:
+            assert move_color == self.__color
+
+            move_list = game.find_moves(move_color, find_one=False)
+
+            if move_list:
+                move = random.choice(move_list)
+                move_string = Game.stringify_move_steps(move)
+                move_string = move_string.strip()
+
         return move_string
 
 
@@ -1992,12 +2008,35 @@ class Runner:
     def __init__(self):
         """Initialize a Runner of the Game."""
         self.game = Game()
-        
-        self.algos = dict()
+
+        self.algorithms = dict()
         for color in Color.get_indices():
-            algo = Algo()
-            algo.enable(False)
-            self.algos[color] = algo
+            algorithm = Algorithm(color)
+            algorithm.enable(False)
+            self.algorithms[color] = algorithm
+
+
+    def apply_algo_advice(self):
+        """Apply the advice of the current color algorithm."""
+
+        move_string = self.get_algo_advice()
+        if move_string is not None:
+            print()
+            print("apply %s algorithm advice" % Color.get_name(self.game.get_move_color()))
+            self.game.parse_and_play_instruction(move_string)
+
+
+    def get_algo_advice(self):
+        """Return the advice of the current color algorithm."""
+
+        move_color = self.game.get_move_color()
+        if move_color is not None:
+            algorithm = self.algorithms[move_color]
+            move_string = algorithm.get_advice(self.game)
+        else:
+            move_string = None
+
+        return move_string
 
 
     @staticmethod
@@ -2019,7 +2058,13 @@ class Runner:
         print("   rp f: read the positions from the given file 'f'")
         print("   wg f: write the game into the given file 'f'")
         print("   wp f: write the positions into the given file 'f'")
-        print("     aa: ask algo advice for the current color.")
+        print("     aa: ask algorithm advice for the current color.")
+        print("    eba: enable blue algorithm.")
+        print("    era: enable red algorithm.")
+        print("    dba: disable blue algorithm.")
+        print("    dra: disable red algorithm.")
+        print("    pas: print algorithms status.")
+        print("  rea n: repeat n times the enabled blue-red algorithms.")
 
 
     def run(self):
@@ -2090,49 +2135,84 @@ class Runner:
                     print("turn syntax error !!!")
 
             elif command_args[0] == "eba":
-                algo = self.algos[Color.blue]
-                algo.enable(True)
+                self.algorithms[Color.blue].enable(True)
                 print()
-                print("blue algo enabled")
+                print("blue algorithm enabled")
+                if Color.blue == self.game.get_move_color():
+                    self.apply_algo_advice()
 
             elif command_args[0] == "era":
-                algo = self.algos[Color.red]
-                algo.enable(True)
+                self.algorithms[Color.red].enable(True)
                 print()
-                print("red algo enabled")
+                print("red algorithm enabled")
+                if Color.red == self.game.get_move_color():
+                    self.apply_algo_advice()
 
             elif command_args[0] == "dba":
-                algo = self.algos[Color.blue]
-                algo.enable(False)
+                self.algorithms[Color.blue].enable(False)
                 print()
-                print("blue algo disabled")
+                print("blue algorithm disabled")
 
             elif command_args[0] == "dra":
-                algo = self.algos[Color.red]
-                algo.enable(False)
+                self.algorithms[Color.red].enable(False)
                 print()
-                print("red algo disabled")
+                print("red algorithm disabled")
 
             elif command_args[0] == "aa":
-                move_color = (self.game.move_count - 1) % Color.get_count()
-                algo = self.algos[move_color]
-                move_string = algo.get_advice(self.game)
+                move_string = self.get_algo_advice()
                 print()
-                print("algo advice: %s" % move_string)
-                
-            else:
-                if len(command_args) == 1:
-                    instruction = command_args[0]
-                    self.game.parse_and_play_instruction(instruction)
+                if move_string is not None:
+                    print("algorithm advice: %s" % move_string)
+                else:
+                    print("algorithm advice: None !!!")
 
-                    move_color = (self.game.move_count - 1) % Color.get_count()
-                    
-                    algo = self.algos[move_color]
-                    if algo.is_enabled():
-                        move_string = algo.get_advice(self.game)
-                        self.game.parse_and_play_instruction(move_string)
+            elif command_args[0] == "pas":
+                print()
+                for color in self.algorithms:
+                    if self.algorithms[color].is_enabled():
+                        print("%s algorithm is enabled" % Color.get_name(color))
+                    else:
+                        print("%s algorithm is disabled" % Color.get_name(color))
+
+            elif command_args[0] == "rea":
+
+                if len(command_args) == 2:
+                    try:
+                        ntimes = int(command_args[1])
+                        assert ntimes > 0
+                    except ValueError:
+                        print("not an positive integer !!!")
+                        ntimes = 0
+
+                    blue_algorithm_enabled = self.algorithms[Color.blue].is_enabled()
+                    red_algorithm_enabled = self.algorithms[Color.red].is_enabled()
+
+                    if blue_algorithm_enabled and red_algorithm_enabled:
+                        for _ in range(2*ntimes):
+                            self.apply_algo_advice()
+                    else:
+                        print("blue and red algorithms are not both enabled !!!")
+
                 else:
                     print("turn syntax error !!!")
+
+            else:
+                blue_algorithm_enabled = self.algorithms[Color.blue].is_enabled()
+                red_algorithm_enabled = self.algorithms[Color.red].is_enabled()
+
+                if blue_algorithm_enabled and red_algorithm_enabled:
+                    print("blue and red algorithms enabled; no move input is expected !!!")
+
+                else:
+                    if len(command_args) == 1:
+                        instruction = command_args[0]
+                        self.game.parse_and_play_instruction(instruction)
+
+                        if blue_algorithm_enabled or red_algorithm_enabled:
+                            self.apply_algo_advice()
+
+                    else:
+                        print("turn syntax error !!!")
 
 
 def main():
