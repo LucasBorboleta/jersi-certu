@@ -1262,7 +1262,7 @@ class Game:
         return new_one
 
 
-    def __find_moves(self, color, find_one=False):
+    def find_moves(self, color, find_one=False):
         """Find possible moves for the given color.
         If find_one then just return the first found move."""
 
@@ -1531,14 +1531,14 @@ class Game:
                 if not dry_mode:
                     self.history.append(annotated_steps)
                     self.move_count += 1
-                    print("move %s OK" % Game.__stringify_move_steps(annotated_steps))
+                    print("move %s OK" % Game.stringify_move_steps(annotated_steps))
 
                     self.__update_end_conditions()
 
         except(JersiError) as jersi_assertion_error:
             if not dry_mode:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
-                print("move %s KO !!!" % Game.__stringify_move_steps(move_steps))
+                print("move %s KO !!!" % Game.stringify_move_steps(move_steps))
             play_validated = False
             self.__restore_game(saved_game)
 
@@ -1604,7 +1604,7 @@ class Game:
         """Print the possible moves for the current color."""
 
         move_color = (self.move_count - 1) % Color.get_count()
-        move_list = self.__find_moves(move_color)
+        move_list = self.find_moves(move_color)
 
         print()
         print("%d possible moves:" % len(move_list))
@@ -1783,7 +1783,7 @@ class Game:
 
 
     @staticmethod
-    def __stringify_move_steps(move_steps):
+    def stringify_move_steps(move_steps):
         """Convert all steps of the given move as a string."""
 
         move_text = ""
@@ -1839,7 +1839,7 @@ class Game:
 
         for (move_index, move_steps) in enumerate(moves):
 
-            move_text = Game.__stringify_move_steps(move_steps)
+            move_text = Game.stringify_move_steps(move_steps)
 
             if move_index % 2 == 0:
                 lines.append(move_text)
@@ -1903,7 +1903,7 @@ class Game:
         if not self.game_over:
             # Possible moves for current player?
             move_color = (self.move_count - 1) % Color.get_count()
-            move_list = self.__find_moves(move_color, find_one=True)
+            move_list = self.find_moves(move_color, find_one=True)
             if not move_list:
                 self.game_over = True
                 self.score[move_color] = 0
@@ -1952,12 +1952,52 @@ class Game:
         print("saving positions in file '%s' done" % file_path)
 
 
+class Algo:
+    """Algorithm for playing JERSI, a.k.a. Artificial Intelligence."""
+    
+    def __init__(self):
+        """Initialize an algorithm."""
+        self.__enabled = False
+        
+        
+    def enable(self, condition):
+        """Change the algorithm status."""
+        self.__enabled = condition
+        
+        
+    def is_enabled(self):
+        """Is the algorithm enabled?"""
+        return self.__enabled
+    
+    
+    def get_advice(self, game):
+        """Return an advice for playing the next move."""
+        
+        move_color = (game.move_count - 1) % Color.get_count()
+        move_list = game.find_moves(move_color, find_one=True)
+
+        if move_list:
+            move = random.choice(move_list)
+            move_string = Game.stringify_move_steps(move)
+            move_string = move_string.strip()
+        else:
+            move_string = None
+            
+        return move_string
+
+
 class Runner:
     """Provide services for playing, saving and reloading a game of JERSI."""
 
     def __init__(self):
         """Initialize a Runner of the Game."""
         self.game = Game()
+        
+        self.algos = dict()
+        for color in Color.get_indices():
+            algo = Algo()
+            algo.enable(False)
+            self.algos[color] = algo
 
 
     @staticmethod
@@ -1979,6 +2019,7 @@ class Runner:
         print("   rp f: read the positions from the given file 'f'")
         print("   wg f: write the game into the given file 'f'")
         print("   wp f: write the positions into the given file 'f'")
+        print("     aa: ask algo advice for the current color.")
 
 
     def run(self):
@@ -2048,11 +2089,48 @@ class Runner:
                 else:
                     print("turn syntax error !!!")
 
+            elif command_args[0] == "eba":
+                algo = self.algos[Color.blue]
+                algo.enable(True)
+                print()
+                print("blue algo enabled")
+
+            elif command_args[0] == "era":
+                algo = self.algos[Color.red]
+                algo.enable(True)
+                print()
+                print("red algo enabled")
+
+            elif command_args[0] == "dba":
+                algo = self.algos[Color.blue]
+                algo.enable(False)
+                print()
+                print("blue algo disabled")
+
+            elif command_args[0] == "dra":
+                algo = self.algos[Color.red]
+                algo.enable(False)
+                print()
+                print("red algo disabled")
+
+            elif command_args[0] == "aa":
+                move_color = (self.game.move_count - 1) % Color.get_count()
+                algo = self.algos[move_color]
+                move_string = algo.get_advice(self.game)
+                print()
+                print("algo advice: %s" % move_string)
+                
             else:
                 if len(command_args) == 1:
                     instruction = command_args[0]
                     self.game.parse_and_play_instruction(instruction)
 
+                    move_color = (self.game.move_count - 1) % Color.get_count()
+                    
+                    algo = self.algos[move_color]
+                    if algo.is_enabled():
+                        move_string = algo.get_advice(self.game)
+                        self.game.parse_and_play_instruction(move_string)
                 else:
                     print("turn syntax error !!!")
 
