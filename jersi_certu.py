@@ -1398,6 +1398,8 @@ class Game:
     def parse_and_play_instruction(self, instruction):
         """Parse and play an instruction."""
 
+        playing_validated = False
+
         positions = dict()
         moves = list()
 
@@ -1416,6 +1418,8 @@ class Game:
             if playing_validated:
                 self.absmap.print_absmap()
                 self.__print_status()
+
+        return playing_validated
 
 
     @staticmethod
@@ -1964,12 +1968,15 @@ class Game:
 
 
 class Algorithm:
-    """Algorithm for playing JERSI, a.k.a. Artificial Intelligence."""
+    """Algorithm for playing JERSI."""
+
+    classes = dict()
 
     def __init__(self, color):
-        """Initialize an algorithm."""
+        """Initialize the algorithm."""
         self.__color = color
         self.__enabled = False
+        self.__options = dict()
 
 
     def enable(self, condition):
@@ -1995,11 +2002,96 @@ class Algorithm:
             move_list = game.find_moves(move_color, find_one=False)
 
             if move_list:
+                if "move_list_max_len" in self.__options:
+                    move_list_max_len = self.__options["move_list_max_len"]
+                    move_list = move_list[:move_list_max_len]
+
                 move = random.choice(move_list)
                 move_string = Game.stringify_move_steps(move)
                 move_string = move_string.strip()
 
         return move_string
+
+
+    def get_color(self):
+        """Return the color for which the algorithm is dedicated."""
+        return self.__color
+
+
+    @staticmethod
+    def register_algorithm_class(algorithm_class):
+        """Register a new class of algorithm."""
+        assert algorithm_class.__name__ not in Algorithm.classes
+        Algorithm.classes[algorithm_class.__name__] = algorithm_class
+
+
+    def set_options(self, options):
+        """Set options of algorithm."""
+        self.__options.update(options)
+
+
+class AlgorithmFindOne(Algorithm):
+    """Algorithm for playing JERSI. Find one move."""
+
+
+    def __init__(self, color):
+        """Initialize the algorithm."""
+        Algorithm.__init__(self, color)
+
+
+    def get_advice(self, game):
+        """Return an advice for playing the next move."""
+
+        move_string = None
+
+        move_color = game.get_move_color()
+
+        if move_color is not None:
+            assert move_color == self.get_color()
+
+            move_list = game.find_moves(move_color, find_one=True)
+
+            move = move_list[0]
+
+            move_string = Game.stringify_move_steps(move)
+            move_string = move_string.strip()
+
+        return move_string
+
+
+Algorithm.register_algorithm_class(AlgorithmFindOne)
+
+
+class AlgorithmFindAll(Algorithm):
+    """Algorithm for playing JERSI. Find all moves and randomly choice one."""
+
+
+    def __init__(self, color):
+        """Initialize the algorithm."""
+        Algorithm.__init__(self, color)
+
+
+    def get_advice(self, game):
+        """Return an advice for playing the next move."""
+
+        move_string = None
+
+        move_color = game.get_move_color()
+
+        if move_color is not None:
+            assert move_color == self.get_color()
+
+            move_list = game.find_moves(move_color, find_one=False)
+
+            move = random.choice(move_list)
+
+            move_string = Game.stringify_move_steps(move)
+            move_string = move_string.strip()
+
+        return move_string
+
+
+Algorithm.register_algorithm_class(AlgorithmFindAll)
 
 
 class Runner:
@@ -2011,7 +2103,8 @@ class Runner:
 
         self.algorithms = dict()
         for color in Color.get_indices():
-            algorithm = Algorithm(color)
+            algorithm_class = Algorithm.classes["AlgorithmFindAll"]
+            algorithm = algorithm_class(color)
             algorithm.enable(False)
             self.algorithms[color] = algorithm
 
@@ -2206,10 +2299,11 @@ class Runner:
                 else:
                     if len(command_args) == 1:
                         instruction = command_args[0]
-                        self.game.parse_and_play_instruction(instruction)
+                        playing_validated = self.game.parse_and_play_instruction(instruction)
 
-                        if blue_algorithm_enabled or red_algorithm_enabled:
-                            self.apply_algo_advice()
+                        if playing_validated:
+                            if blue_algorithm_enabled or red_algorithm_enabled:
+                                self.apply_algo_advice()
 
                     else:
                         print("turn syntax error !!!")
