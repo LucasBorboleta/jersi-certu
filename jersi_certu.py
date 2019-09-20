@@ -1974,19 +1974,19 @@ class Algorithm:
 
     def __init__(self, color):
         """Initialize the algorithm."""
-        self.__color = color
-        self.__enabled = False
-        self.__options = dict()
+        self._color = color
+        self._enabled = False
+        self._options = dict()
 
 
     def enable(self, condition):
         """Change the algorithm status."""
-        self.__enabled = condition
+        self._enabled = condition
 
 
     def is_enabled(self):
         """Is the algorithm enabled?"""
-        return self.__enabled
+        return self._enabled
 
 
     def get_advice(self, game):
@@ -1997,13 +1997,13 @@ class Algorithm:
         move_color = game.get_move_color()
 
         if move_color is not None:
-            assert move_color == self.__color
+            assert move_color == self._color
 
             move_list = game.find_moves(move_color, find_one=False)
 
             if move_list:
-                if "move_list_max_len" in self.__options:
-                    move_list_max_len = self.__options["move_list_max_len"]
+                if "move_list_max_len" in self._options:
+                    move_list_max_len = self._options["move_list_max_len"]
                     move_list = move_list[:move_list_max_len]
 
                 move = random.choice(move_list)
@@ -2015,19 +2015,33 @@ class Algorithm:
 
     def get_color(self):
         """Return the color for which the algorithm is dedicated."""
-        return self.__color
+        return self._color
+
+
+    def get_name(self):
+        """Return name of algorithm."""
+        name = None
+        for (algorithm_name, algorithm_class) in Algorithm.classes.items():
+            if self.__class__ == algorithm_class:
+                name = algorithm_name
+        return name
+
+
+    def get_options(self):
+        """Return options of algorithm."""
+        return self._options
 
 
     @staticmethod
-    def register_algorithm_class(algorithm_class):
+    def register_algorithm_class(algorithm_name, algorithm_class):
         """Register a new class of algorithm."""
-        assert algorithm_class.__name__ not in Algorithm.classes
-        Algorithm.classes[algorithm_class.__name__] = algorithm_class
+        assert algorithm_name not in Algorithm.classes
+        Algorithm.classes[algorithm_name] = algorithm_class
 
 
     def set_options(self, options):
         """Set options of algorithm."""
-        self.__options.update(options)
+        self._options.update(options)
 
 
 class AlgorithmFindOne(Algorithm):
@@ -2037,6 +2051,8 @@ class AlgorithmFindOne(Algorithm):
     def __init__(self, color):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
+        self._options["aaa"] = "aaa-value"
+        self._options["bbb"] = "bbb-value"
 
 
     def get_advice(self, game):
@@ -2059,7 +2075,7 @@ class AlgorithmFindOne(Algorithm):
         return move_string
 
 
-Algorithm.register_algorithm_class(AlgorithmFindOne)
+Algorithm.register_algorithm_class("find-one", AlgorithmFindOne)
 
 
 class AlgorithmFindAll(Algorithm):
@@ -2069,7 +2085,8 @@ class AlgorithmFindAll(Algorithm):
     def __init__(self, color):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
-
+        self._options["xxx"] = "xxx-value"
+        self._options["zzz"] = "zzz-value"
 
     def get_advice(self, game):
         """Return an advice for playing the next move."""
@@ -2091,7 +2108,7 @@ class AlgorithmFindAll(Algorithm):
         return move_string
 
 
-Algorithm.register_algorithm_class(AlgorithmFindAll)
+Algorithm.register_algorithm_class("find-all", AlgorithmFindAll)
 
 
 class Runner:
@@ -2103,7 +2120,7 @@ class Runner:
 
         self.algorithms = dict()
         for color in Color.get_indices():
-            algorithm_class = Algorithm.classes["AlgorithmFindAll"]
+            algorithm_class = Algorithm.classes["find-all"]
             algorithm = algorithm_class(color)
             algorithm.enable(False)
             self.algorithms[color] = algorithm
@@ -2142,21 +2159,29 @@ class Runner:
         print("                          a1:K  | h1:c  : examples of placement")
         print("      h: help")
         print("      q: quit")
-        print("     ns: new game with standard positions")
-        print("     nr: new game with random positions")
+        print()
         print("     nf: new game with free positions")
+        print("     nr: new game with random positions")
+        print("     ns: new game with standard positions")
+        print()
         print("     ph: print game history (only moves; not placement)")
         print("     pp: print possiblities of moves for current color")
+        print()
         print("   rg f: read the game from the given file 'f'")
         print("   rp f: read the positions from the given file 'f'")
         print("   wg f: write the game into the given file 'f'")
         print("   wp f: write the positions into the given file 'f'")
-        print("     aa: ask algorithm advice for the current color.")
+        print()
+        print("  cba n: change blue algorithm for 'n'.")
+        print("  cra n: change red algorithm for 'n'.")
         print("    eba: enable blue algorithm.")
         print("    era: enable red algorithm.")
         print("    dba: disable blue algorithm.")
         print("    dra: disable red algorithm.")
-        print("    pas: print algorithms status.")
+        print("     pa: print algorithms (name, status and options).")
+        print("    paa: print available algorithms.")
+        print()
+        print("     aa: ask algorithm advice for the current color.")
         print("  rea n: repeat n times the enabled blue-red algorithms.")
 
 
@@ -2177,6 +2202,10 @@ class Runner:
             elif command_args[0] == "h":
                 Runner.print_help()
 
+            elif command_args[0] == "q":
+                continue_running = False
+
+
             elif command_args[0] == "nf":
                 self.game.new_free_game()
 
@@ -2186,14 +2215,13 @@ class Runner:
             elif command_args[0] == "ns":
                 self.game.new_standard_game()
 
+
             elif command_args[0] == "ph":
                 self.game.print_history()
 
             elif command_args[0] == "pp":
                 self.game.print_possiblities()
 
-            elif command_args[0] == "q":
-                continue_running = False
 
             elif command_args[0] == "rg":
 
@@ -2227,6 +2255,33 @@ class Runner:
                 else:
                     print("turn syntax error !!!")
 
+
+            elif command_args[0] == "cba":
+
+                if len(command_args) == 2:
+                    algorithm_name = command_args[1]
+                    if algorithm_name in Algorithm.classes:
+                        algorithm_class = Algorithm.classes[algorithm_name]
+                        algorithm = algorithm_class(Color.blue)
+                        self.algorithms[Color.blue] = algorithm
+                    else:
+                        print("%s is not known" % algorithm_name)
+                else:
+                    print("turn syntax error !!!")
+
+            elif command_args[0] == "cra":
+
+                if len(command_args) == 2:
+                    algorithm_name = command_args[1]
+                    if algorithm_name in Algorithm.classes:
+                        algorithm_class = Algorithm.classes[algorithm_name]
+                        algorithm = algorithm_class(Color.red)
+                        self.algorithms[Color.red] = algorithm
+                    else:
+                        print("%s is not known" % algorithm_name)
+                else:
+                    print("turn syntax error !!!")
+
             elif command_args[0] == "eba":
                 self.algorithms[Color.blue].enable(True)
                 print()
@@ -2251,6 +2306,26 @@ class Runner:
                 print()
                 print("red algorithm disabled")
 
+            elif command_args[0] == "pa":
+                for (color, algorithm) in self.algorithms.items():
+                    print()
+                    print("%s algorithm is %s" % (Color.get_name(color), algorithm.get_name()))
+
+                    if self.algorithms[color].is_enabled():
+                        print("    enabled")
+                    else:
+                        print("    disabled")
+
+                    for (option, value) in algorithm.get_options().items():
+                        print("    %s = %s" % (option, value))
+
+            elif command_args[0] == "paa":
+                print()
+                print("available algorithms:")
+                for algorithm_name in Algorithm.classes:
+                    print("    %s" % algorithm_name)
+
+
             elif command_args[0] == "aa":
                 move_string = self.get_algo_advice()
                 print()
@@ -2258,14 +2333,6 @@ class Runner:
                     print("algorithm advice: %s" % move_string)
                 else:
                     print("algorithm advice: None !!!")
-
-            elif command_args[0] == "pas":
-                print()
-                for color in self.algorithms:
-                    if self.algorithms[color].is_enabled():
-                        print("%s algorithm is enabled" % Color.get_name(color))
-                    else:
-                        print("%s algorithm is disabled" % Color.get_name(color))
 
             elif command_args[0] == "rea":
 
