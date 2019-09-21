@@ -6,6 +6,7 @@
 
 import ast
 import copy
+import math
 import random
 import re
 import string
@@ -269,6 +270,25 @@ class Hexmap:
     def clear_node_at_label(self, label):
         """Clear node text at the given label."""
         self.set_node_at_label(label, "")
+
+
+    def compute_distance(self, fst_label, snd_label):
+        """Compute the manhattan distance between two labels."""
+
+        distance = None
+
+        (fst_u, fst_v) = self.__labels_to_nodes[fst_label]
+        (snd_u, snd_v) = self.__labels_to_nodes[snd_label]
+
+        delta_u = fst_u - snd_u
+        delta_v = fst_v - snd_v
+
+        if math.copysign(1., delta_u) == math.copysign(1., delta_v):
+            distance = math.fabs(delta_u + delta_v)
+        else:
+            distance = max(math.fabs(delta_u), math.fabs(delta_v))
+
+        return distance
 
 
     def get_labels_at_one_link(self, label):
@@ -1396,7 +1416,7 @@ class Game:
         self.__print_status()
 
 
-    def parse_and_play_instruction(self, instruction):
+    def parse_and_play_instruction(self, instruction, dry_mode=False):
         """Parse and play an instruction."""
 
         playing_validated = False
@@ -1414,9 +1434,9 @@ class Game:
                 playing_validated = self.__play_placement(positions)
 
             elif len(moves) == 1:
-                playing_validated = self.__play_moves(moves)
+                playing_validated = self.__play_moves(moves, dry_mode)
 
-            if playing_validated:
+            if playing_validated and not dry_mode:
                 self.absmap.print_absmap()
                 self.__print_status()
 
@@ -2123,8 +2143,9 @@ class AlgorithmCertu(Algorithm):
     def __init__(self, color):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
-        self._options["debug"] = True
-        self._options["depth"] = 2
+        self._options["debug"] = False
+        self._options["max_depth"] = 2
+        self._options["max_width"] = 8
 
 
     def get_advice(self, game):
@@ -2137,18 +2158,225 @@ class AlgorithmCertu(Algorithm):
         if move_color is not None:
             assert move_color == self.get_color()
 
-            move_list = game.find_moves(move_color, find_one=False)
+            min_max_root = MinMaxNode(game, debug=self._options["debug"])
 
-            if move_list:
-                move = random.choice(move_list)
+            min_max_root.build_children(max_depth=self._options["max_depth"],
+                                        max_width=self._options["max_width"])
 
-                move_string = Game.stringify_move_steps(move)
-                move_string = move_string.strip()
+            min_max_root.compute_score()
+            move_string = min_max_root.find_child_with_min_score()
 
         return move_string
 
 
 Algorithm.register_algorithm_class("certu", AlgorithmCertu)
+
+
+class MinMaxNode:
+    """Node of the exploration tree of the MinMax strategy."""
+
+    def __init__(self, game, move_string=None, depth=0, debug=False):
+        """Initialize a MinMaxNode."""
+
+        assert (move_string is None and depth == 0) or (move_string is not None and depth > 0)
+
+        self.move_string = move_string
+        self.depth = depth
+        self.debug = debug
+
+        if self.debug:
+            print()
+            print("debug: MinMaxNode.__init__: move_string=", self.move_string)
+            print("debug: MinMaxNode.__init__: depth=", self.depth)
+
+        if self.move_string is None:
+            self.game = game
+        else:
+            self.game = copy.deepcopy(game)
+            self.game.parse_and_play_instruction(self.move_string, dry_mode=not self.debug)
+
+        self.move_color = self.game.get_move_color()
+        self.is_player = (self.depth % 2 == 0)
+
+        self.children = dict()
+        self.score = None
+
+
+    def build_children(self, max_depth, max_width=None):
+        """Build children from the current MinMaxNode down to the given depth."""
+
+        if self.depth < max_depth:
+
+            if self.debug:
+                print()
+                print("debug: MinMaxNode.build_children: move_string=", self.move_string)
+                print("debug: MinMaxNode.build_children: depth=", self.depth)
+
+            move_color = self.game.get_move_color()
+            move_list = self.game.find_moves(move_color, find_one=False)
+
+            if max_width is not None:
+                if len(move_list) > max_width:
+                    move_list = random.sample(move_list, max_width)
+
+            for move in move_list:
+                move_string = Game.stringify_move_steps(move)
+                move_string = move_string.strip()
+
+                self.children[move_string] = MinMaxNode(self.game, move_string, 
+                             self.depth + 1, self.debug)
+                
+                self.children[move_string].build_children(max_depth, max_width)
+
+
+    def compute_leaf_score(self):
+        """Compute the score of a leaf node."""
+
+        assert not self.children
+
+        if self.score is None:
+
+            self.score = 0
+
+            if self.game.game_over:
+
+                if self.is_player:
+                    self.score += 1.e30
+                else:
+                    self.score += -1.e30
+            else:
+                piece_count = self.game.absmap.count_pieces_by_colors_and_shapes()
+
+                if self.is_player:
+                    player_color = (self.move_color + 1) % Color.get_count()
+                else:
+                    player_color = self.move_color
+
+                opponent_color = (player_color + 1) % Color.get_count()
+
+                player_piece_count = 0
+                for shape in piece_count[player_color].keys():
+                    player_piece_count += piece_count[player_color][shape]
+
+                opponent_piece_count = 0
+                for shape in piece_count[opponent_color].keys():
+                    opponent_piece_count += piece_count[opponent_color][shape]
+
+                if self.is_player:
+                    self.score += (player_piece_count - opponent_piece_count)*1.e2
+                else:
+                    self.score += -(player_piece_count - opponent_piece_count)*1.e2
+
+                # compute fly distance to kunti
+                hexmap = self.game.absmap.hexmap
+
+                player_kunti = self.game.absmap.pieces[player_color][Shape.kunti][0]
+                player_kunti_label = player_kunti.node.label
+
+                opponent_kunti = self.game.absmap.pieces[opponent_color][Shape.kunti][0]
+                opponent_kunti_label = opponent_kunti.node.label
+
+                player_kunti_distance_sum = 0
+                player_kunti_distance_min = None
+                for shape in Shape.get_indices():
+                    if shape != Shape.kunti:
+                        for piece in self.game.absmap.pieces[player_color][shape]:
+                            if piece.node is not None:
+                                piece_label = piece.node.label
+                                distance = hexmap.compute_distance(opponent_kunti_label, piece_label)
+                                player_kunti_distance_sum += distance
+                                if player_kunti_distance_min is None or distance < player_kunti_distance_min:
+                                    player_kunti_distance_min = distance
+
+                opponent_kunti_distance_sum = 0
+                opponent_kunti_distance_min = None
+                for shape in Shape.get_indices():
+                    if shape != Shape.kunti:
+                        for piece in self.game.absmap.pieces[opponent_color][shape]:
+                            if piece.node is not None:
+                                piece_label = piece.node.label
+                                distance = hexmap.compute_distance(player_kunti_label, piece_label)
+                                opponent_kunti_distance_sum += distance
+                                if opponent_kunti_distance_min is None or distance < opponent_kunti_distance_min:
+                                    opponent_kunti_distance_min = distance
+
+                if self.is_player:
+                    self.score += (opponent_kunti_distance_min - player_kunti_distance_min)*1.e3
+                else:
+                    self.score += -(opponent_kunti_distance_min - player_kunti_distance_min)*1.e3
+
+                if self.is_player:
+                    self.score += (opponent_kunti_distance_sum - player_kunti_distance_sum)*1.e2
+                else:
+                    self.score += -(opponent_kunti_distance_sum - player_kunti_distance_sum)*1.e2
+
+
+        if self.debug:
+            print()
+            print()
+            print("debug: MinMaxNode.compute_leaf_score: move_string=", self.move_string)
+            print("debug: MinMaxNode.compute_leaf_score: depth=", self.depth)
+            if self.move_color is not None:
+                print("debug: MinMaxNode.compute_leaf_score: move_color=", Color.get_name(self.move_color))
+            print("debug: MinMaxNode.compute_leaf_score: score=", self.score)
+
+        return self.score
+
+
+    def compute_score(self):
+        """Compute the score of the current node."""
+
+        if self.debug:
+            print()
+            print("debug: MinMaxNode.compute_score: move_string=", self.move_string)
+            print("debug: MinMaxNode.compute_score: depth=", self.depth)
+
+        if self.score is None:
+
+            if len(self.children) == 0:
+                self.score = self.compute_leaf_score()
+
+            elif self.is_player:
+                score_max = None
+                for child in self.children.values():
+                    child_score = child.compute_score()
+                    if score_max is None or child_score > score_max:
+                        score_max = child_score
+                self.score = score_max
+
+            else:
+                score_min = None
+                for child in self.children.values():
+                    child_score = child.compute_score()
+                    if score_min is None or child_score < score_min:
+                        score_min = child_score
+                self.score = score_min
+
+        return self.score
+
+
+    def find_child_with_min_score(self):
+        """Find the child with the min score."""
+
+        move_string = None
+        score_min = None
+
+        for child in self.children.values():
+            child_score = child.score
+            if score_min is None or child_score < score_min:
+                score_min = child_score
+                move_string = child.move_string
+
+            if self.debug:
+                print()
+                print("debug: MinMaxNode.find_child_with_min_score: child.move_string=", child.move_string)
+                print("debug: MinMaxNode.find_child_with_min_score: child.score=", child.score)
+
+        if self.debug:
+            print()
+            print("debug: MinMaxNode.find_child_with_min_score: score_min=", score_min)
+
+        return move_string
 
 
 class Runner:
@@ -2160,7 +2388,7 @@ class Runner:
 
         self.__algorithms = dict()
         for color in Color.get_indices():
-            algorithm_class = Algorithm.classes["find-all"]
+            algorithm_class = Algorithm.classes["certu"]
             algorithm = algorithm_class(color)
             algorithm.enable(False)
             self.__algorithms[color] = algorithm
