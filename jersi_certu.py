@@ -2116,33 +2116,35 @@ class Runner:
 
     def __init__(self):
         """Initialize a Runner of the Game."""
-        self.game = Game()
+        self.__game = Game()
 
-        self.algorithms = dict()
+        self.__algorithms = dict()
         for color in Color.get_indices():
             algorithm_class = Algorithm.classes["find-all"]
             algorithm = algorithm_class(color)
             algorithm.enable(False)
-            self.algorithms[color] = algorithm
+            self.__algorithms[color] = algorithm
+
+        self.__continue_running = False
 
 
-    def apply_algo_advice(self):
+    def __apply_algo_advice(self):
         """Apply the advice of the current color algorithm."""
 
-        move_string = self.get_algo_advice()
+        move_string = self.__get_algo_advice()
         if move_string is not None:
             print()
-            print("apply %s algorithm advice" % Color.get_name(self.game.get_move_color()))
-            self.game.parse_and_play_instruction(move_string)
+            print("apply %s algorithm advice" % Color.get_name(self.__game.get_move_color()))
+            self.__game.parse_and_play_instruction(move_string)
 
 
-    def get_algo_advice(self):
+    def __get_algo_advice(self):
         """Return the advice of the current color algorithm."""
 
-        move_color = self.game.get_move_color()
+        move_color = self.__game.get_move_color()
         if move_color is not None:
-            algorithm = self.algorithms[move_color]
-            move_string = algorithm.get_advice(self.game)
+            algorithm = self.__algorithms[move_color]
+            move_string = algorithm.get_advice(self.__game)
         else:
             move_string = None
 
@@ -2150,7 +2152,7 @@ class Runner:
 
 
     @staticmethod
-    def print_help():
+    def __run_help(_):
         """Print help about the commands."""
 
         print()
@@ -2185,12 +2187,267 @@ class Runner:
         print("  rea n: repeat n times the enabled blue-red algorithms.")
 
 
+    def __run_quit(self, _):
+        """Quit the run loop."""
+        self.__continue_running = False
+
+
+    def __run_new_free_game(self, _):
+        """Set up a new free game."""
+        self.__game.new_free_game()
+
+
+    def __run_new_random_game(self, _):
+        """Set up a new random game."""
+        self.__game.new_random_game()
+
+
+    def __run_new_standard_game(self, _):
+        """Set up a new standard game."""
+        self.__game.new_standard_game()
+
+
+    def __run_print_history(self, _):
+        """Print history."""
+        self.__game.print_history()
+
+
+    def __run_print_possiblities(self, _):
+        """Print possiblities."""
+        self.__game.print_possiblities()
+
+
+    def __run_read_game(self, command_args):
+        """Read game from fle."""
+
+        if len(command_args) == 2:
+            file_path = command_args[1]
+            self.__game.read_game(file_path)
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_read_positions(self, command_args):
+        """Read positions from fle."""
+
+        if len(command_args) == 2:
+            file_path = command_args[1]
+            self.__game.read_positions(file_path)
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_write_game(self, command_args):
+        """Write game to fle."""
+
+        if len(command_args) == 2:
+            file_path = command_args[1]
+            self.__game.write_game(file_path)
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_write_positions(self, command_args):
+        """Write positions to fle."""
+
+        if len(command_args) == 2:
+            file_path = command_args[1]
+            self.__game.write_positions(file_path)
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_change_blue_algorithm(self, command_args):
+        """Change blue algorithm."""
+        self.__run_change_color_algorithm(Color.blue, command_args)
+
+
+    def __run_change_red_algorithm(self, command_args):
+        """Change red algorithm."""
+        self.__run_change_color_algorithm(Color.red, command_args)
+
+
+    def __run_change_color_algorithm(self, color, command_args):
+        """Change algorithm of the given color."""
+
+        assert color in self.__algorithms
+
+        if len(command_args) == 2:
+            algorithm_name = command_args[1]
+            if algorithm_name in Algorithm.classes:
+                algorithm_class = Algorithm.classes[algorithm_name]
+                algorithm = algorithm_class(color)
+                self.__algorithms[color] = algorithm
+                print()
+                print("%s algorithm changed" % Color.get_name(color))
+
+            else:
+                print("%s is not known" % algorithm_name)
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_enable_blue_algorithm(self, command_args):
+        """Enable blue algorithm."""
+        self.run_enable_color_algorithm(Color.blue, command_args)
+
+
+    def __run_enable_red_algorithm(self, command_args):
+        """Enable red algorithm."""
+        self.run_enable_color_algorithm(Color.red, command_args)
+
+
+    def run_enable_color_algorithm(self, color, _):
+        """Enable algorithm of the given color."""
+
+        assert color in self.__algorithms
+
+        self.__algorithms[color].enable(True)
+        print()
+        print("%s algorithm enabled" % Color.get_name(color))
+        if color == self.__game.get_move_color():
+            self.__apply_algo_advice()
+
+
+    def __run_disable_blue_algorithm(self, command_args):
+        """Disable blue algorithm."""
+        self.__run_disable_color_algorithm(Color.blue, command_args)
+
+
+    def __run_disable_red_algorithm(self, command_args):
+        """Disable red algorithm."""
+        self.__run_disable_color_algorithm(Color.red, command_args)
+
+
+    def __run_disable_color_algorithm(self, color, _):
+        """Disable algorithm of the given color."""
+
+        assert color in self.__algorithms
+
+        self.__algorithms[color].enable(False)
+        print()
+        print("%s algorithm disabled" % Color.get_name(color))
+
+
+    def __run_print_algorithms(self, _):
+        """Print algorithms (name, status, options)."""
+
+        for (color, algorithm) in self.__algorithms.items():
+            print()
+            print("%s algorithm is %s" % (Color.get_name(color), algorithm.get_name()))
+
+            if self.__algorithms[color].is_enabled():
+                print("    enabled")
+            else:
+                print("    disabled")
+
+            for (option, value) in algorithm.get_options().items():
+                print("    %s = %s" % (option, value))
+
+
+    @staticmethod
+    def __run_print_available_algorithms(_):
+        """Print available algorithms."""
+
+        print()
+        print("available algorithms:")
+        for algorithm_name in Algorithm.classes:
+            print("    %s" % algorithm_name)
+
+
+    def __run_algorithm_advice(self, _):
+        """Ask algorithm advice."""
+
+        move_string = self.__get_algo_advice()
+        print()
+        if move_string is not None:
+            print("algorithm advice: %s" % move_string)
+        else:
+            print("no algorithm advice !!!")
+
+
+    def __run_enabled_algorithms(self, command_args):
+        """Run enabled algorithms (if both blue and red are enabled)."""
+
+        if len(command_args) == 2:
+            try:
+                ntimes = int(command_args[1])
+                assert ntimes > 0
+            except ValueError:
+                print("not an positive integer !!!")
+                ntimes = 0
+
+            blue_algorithm_enabled = self.__algorithms[Color.blue].is_enabled()
+            red_algorithm_enabled = self.__algorithms[Color.red].is_enabled()
+
+            if blue_algorithm_enabled and red_algorithm_enabled:
+                for _ in range(2*ntimes):
+                    self.__apply_algo_advice()
+            else:
+                print("blue and red algorithms are not both enabled !!!")
+
+        else:
+            print("turn syntax error !!!")
+
+
+    def __run_instruction(self, command_args):
+        """Run either a placement or move instruction."""
+
+        blue_algorithm_enabled = self.__algorithms[Color.blue].is_enabled()
+        red_algorithm_enabled = self.__algorithms[Color.red].is_enabled()
+
+        if blue_algorithm_enabled and red_algorithm_enabled:
+            print("blue and red algorithms enabled; no move input is expected !!!")
+
+        else:
+            if len(command_args) == 1:
+                instruction = command_args[0]
+                playing_validated = self.__game.parse_and_play_instruction(instruction)
+
+                if playing_validated:
+                    if blue_algorithm_enabled or red_algorithm_enabled:
+                        self.__apply_algo_advice()
+
+            else:
+                print("turn syntax error !!!")
+
+
     def run(self):
         """Run all entered commands until the command for quitting."""
 
-        continue_running = True
+        run_commands = dict()
 
-        while continue_running:
+        run_commands["h"] = self.__run_help
+        run_commands["q"] = self.__run_quit
+
+        run_commands["nf"] = self.__run_new_free_game
+        run_commands["nr"] = self.__run_new_random_game
+        run_commands["ns"] = self.__run_new_standard_game
+
+        run_commands["ph"] = self.__run_print_history
+        run_commands["pp"] = self.__run_print_possiblities
+
+        run_commands["rg"] = self.__run_read_game
+        run_commands["rp"] = self.__run_read_positions
+        run_commands["wg"] = self.__run_write_game
+        run_commands["wp"] = self.__run_write_positions
+
+        run_commands["cba"] = self.__run_change_blue_algorithm
+        run_commands["cra"] = self.__run_change_red_algorithm
+        run_commands["eba"] = self.__run_enable_blue_algorithm
+        run_commands["era"] = self.__run_enable_red_algorithm
+        run_commands["dba"] = self.__run_disable_blue_algorithm
+        run_commands["dra"] = self.__run_disable_red_algorithm
+        run_commands["pa"] = self.__run_print_algorithms
+        run_commands["paa"] = self.__run_print_available_algorithms
+
+        run_commands["aa"] = self.__run_algorithm_advice
+        run_commands["rea"] = self.__run_enabled_algorithms
+        run_commands[""] = self.__run_instruction
+
+        self.__continue_running = True
+
+        while self.__continue_running:
 
             command_line = input("command? ")
             command_args = command_line.split()
@@ -2199,181 +2456,12 @@ class Runner:
                 # len(command_args) == 0
                 print("turn syntax error !!!")
 
-            elif command_args[0] == "h":
-                Runner.print_help()
 
-            elif command_args[0] == "q":
-                continue_running = False
-
-
-            elif command_args[0] == "nf":
-                self.game.new_free_game()
-
-            elif command_args[0] == "nr":
-                self.game.new_random_game()
-
-            elif command_args[0] == "ns":
-                self.game.new_standard_game()
-
-
-            elif command_args[0] == "ph":
-                self.game.print_history()
-
-            elif command_args[0] == "pp":
-                self.game.print_possiblities()
-
-
-            elif command_args[0] == "rg":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.game.read_game(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "rp":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.game.read_positions(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "wg":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.game.write_game(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "wp":
-
-                if len(command_args) == 2:
-                    file_path = command_args[1]
-                    self.game.write_positions(file_path)
-                else:
-                    print("turn syntax error !!!")
-
-
-            elif command_args[0] == "cba":
-
-                if len(command_args) == 2:
-                    algorithm_name = command_args[1]
-                    if algorithm_name in Algorithm.classes:
-                        algorithm_class = Algorithm.classes[algorithm_name]
-                        algorithm = algorithm_class(Color.blue)
-                        self.algorithms[Color.blue] = algorithm
-                    else:
-                        print("%s is not known" % algorithm_name)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "cra":
-
-                if len(command_args) == 2:
-                    algorithm_name = command_args[1]
-                    if algorithm_name in Algorithm.classes:
-                        algorithm_class = Algorithm.classes[algorithm_name]
-                        algorithm = algorithm_class(Color.red)
-                        self.algorithms[Color.red] = algorithm
-                    else:
-                        print("%s is not known" % algorithm_name)
-                else:
-                    print("turn syntax error !!!")
-
-            elif command_args[0] == "eba":
-                self.algorithms[Color.blue].enable(True)
-                print()
-                print("blue algorithm enabled")
-                if Color.blue == self.game.get_move_color():
-                    self.apply_algo_advice()
-
-            elif command_args[0] == "era":
-                self.algorithms[Color.red].enable(True)
-                print()
-                print("red algorithm enabled")
-                if Color.red == self.game.get_move_color():
-                    self.apply_algo_advice()
-
-            elif command_args[0] == "dba":
-                self.algorithms[Color.blue].enable(False)
-                print()
-                print("blue algorithm disabled")
-
-            elif command_args[0] == "dra":
-                self.algorithms[Color.red].enable(False)
-                print()
-                print("red algorithm disabled")
-
-            elif command_args[0] == "pa":
-                for (color, algorithm) in self.algorithms.items():
-                    print()
-                    print("%s algorithm is %s" % (Color.get_name(color), algorithm.get_name()))
-
-                    if self.algorithms[color].is_enabled():
-                        print("    enabled")
-                    else:
-                        print("    disabled")
-
-                    for (option, value) in algorithm.get_options().items():
-                        print("    %s = %s" % (option, value))
-
-            elif command_args[0] == "paa":
-                print()
-                print("available algorithms:")
-                for algorithm_name in Algorithm.classes:
-                    print("    %s" % algorithm_name)
-
-
-            elif command_args[0] == "aa":
-                move_string = self.get_algo_advice()
-                print()
-                if move_string is not None:
-                    print("algorithm advice: %s" % move_string)
-                else:
-                    print("algorithm advice: None !!!")
-
-            elif command_args[0] == "rea":
-
-                if len(command_args) == 2:
-                    try:
-                        ntimes = int(command_args[1])
-                        assert ntimes > 0
-                    except ValueError:
-                        print("not an positive integer !!!")
-                        ntimes = 0
-
-                    blue_algorithm_enabled = self.algorithms[Color.blue].is_enabled()
-                    red_algorithm_enabled = self.algorithms[Color.red].is_enabled()
-
-                    if blue_algorithm_enabled and red_algorithm_enabled:
-                        for _ in range(2*ntimes):
-                            self.apply_algo_advice()
-                    else:
-                        print("blue and red algorithms are not both enabled !!!")
-
-                else:
-                    print("turn syntax error !!!")
+            elif command_args[0] in run_commands:
+                run_commands[command_args[0]](command_args)
 
             else:
-                blue_algorithm_enabled = self.algorithms[Color.blue].is_enabled()
-                red_algorithm_enabled = self.algorithms[Color.red].is_enabled()
-
-                if blue_algorithm_enabled and red_algorithm_enabled:
-                    print("blue and red algorithms enabled; no move input is expected !!!")
-
-                else:
-                    if len(command_args) == 1:
-                        instruction = command_args[0]
-                        playing_validated = self.game.parse_and_play_instruction(instruction)
-
-                        if playing_validated:
-                            if blue_algorithm_enabled or red_algorithm_enabled:
-                                self.apply_algo_advice()
-
-                    else:
-                        print("turn syntax error !!!")
+                run_commands[""](command_args)
 
 
 def main():
