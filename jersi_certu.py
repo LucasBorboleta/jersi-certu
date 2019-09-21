@@ -4,6 +4,7 @@
 
 # -*- coding: utf-8 -*-
 
+import ast
 import copy
 import random
 import re
@@ -2089,6 +2090,7 @@ class AlgorithmFindAll(Algorithm):
         self._options["xxx"] = "xxx-value"
         self._options["zzz"] = "zzz-value"
 
+
     def get_advice(self, game):
         """Return an advice for playing the next move."""
 
@@ -2111,6 +2113,42 @@ class AlgorithmFindAll(Algorithm):
 
 
 Algorithm.register_algorithm_class("find-all", AlgorithmFindAll)
+
+
+
+class AlgorithmCertu(Algorithm):
+    """Algorithm for playing JERSI. MinMax type of algorithm."""
+
+
+    def __init__(self, color):
+        """Initialize the algorithm."""
+        Algorithm.__init__(self, color)
+        self._options["debug"] = True
+        self._options["depth"] = 2
+
+
+    def get_advice(self, game):
+        """Return an advice for playing the next move."""
+
+        move_string = None
+
+        move_color = game.get_move_color()
+
+        if move_color is not None:
+            assert move_color == self.get_color()
+
+            move_list = game.find_moves(move_color, find_one=False)
+
+            if move_list:
+                move = random.choice(move_list)
+
+                move_string = Game.stringify_move_steps(move)
+                move_string = move_string.strip()
+
+        return move_string
+
+
+Algorithm.register_algorithm_class("certu", AlgorithmCertu)
 
 
 class Runner:
@@ -2353,7 +2391,7 @@ class Runner:
                 print("    disabled")
 
             for (option, value) in algorithm.get_options().items():
-                print("    %s = %s" % (option, value))
+                print("    %s = %s" % (option, str(value)))
 
 
     @staticmethod
@@ -2362,7 +2400,7 @@ class Runner:
 
         print()
         print("available algorithms:")
-        for algorithm_name in Algorithm.classes:
+        for algorithm_name in sorted(Algorithm.classes):
             print("    %s" % algorithm_name)
 
 
@@ -2387,8 +2425,16 @@ class Runner:
         for option_string in command_args[1:]:
             option_items = option_string.split("=")
             if len(option_items) == 2:
-                (key, value) = option_items
-                options[key] = value
+                key = option_items[0]
+
+                try:
+                    value = ast.literal_eval(option_items[1])
+                except ValueError:
+                    options_well_parsed = False
+                    print("evaluation error of value in key-value pair '%s'" % option_string)
+
+                if options_well_parsed:
+                    options[key] = value
             else:
                 options_well_parsed = False
                 print("syntax error in key-value pair '%s'" % option_string)
