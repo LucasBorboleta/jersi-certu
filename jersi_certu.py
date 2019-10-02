@@ -1272,12 +1272,16 @@ class Game:
         return new_one
 
 
-    def find_moves(self, color, find_one=False):
+    def find_moves(self, color, find_one=False, save_games=False):
         """Find possible moves for the given color.
         If find_one then just return the first found move."""
 
         move_list = list()
-        game_list = list()
+
+        if save_games:
+            game_list = list()
+        else:
+            game_list = None
 
         for src_node in self.__find_nodes(color):
 
@@ -1289,7 +1293,10 @@ class Game:
                     (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
                     if playing_validated:
                         move_list.extend(move_steps)
-                        game_list.append(played_game)
+                        if save_games:
+                            played_game.move_count += 1
+                            played_game.update_end_conditions()
+                            game_list.append(played_game)
                         if find_one:
                             return (move_list, game_list)
 
@@ -1298,10 +1305,14 @@ class Game:
                                 move_steps = list()
                                 move_steps.append([(1, src_node.label, dst_node.label),
                                                    (2, dst_node.label, fin_node.label)])
-                                (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
+                                (playing_validated, played_game) = self.__play_moves(move_steps,
+                                                                                     dry_mode=True)
                                 if playing_validated:
                                     move_list.extend(move_steps)
-                                    game_list.append(played_game)
+                                    if save_games:
+                                        played_game.move_count += 1
+                                        played_game.update_end_conditions()
+                                        game_list.append(played_game)
 
 
             for dst_node in src_node.nodes_at_two_links:
@@ -1312,7 +1323,10 @@ class Game:
                     (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
                     if playing_validated:
                         move_list.extend(move_steps)
-                        game_list.append(played_game)
+                        if save_games:
+                            played_game.move_count += 1
+                            played_game.update_end_conditions()
+                            game_list.append(played_game)
                         if find_one:
                             return (move_list, game_list)
 
@@ -1321,10 +1335,14 @@ class Game:
                                 move_steps = list()
                                 move_steps.append([(2, src_node.label, dst_node.label),
                                                    (1, dst_node.label, fin_node.label)])
-                                (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
+                                (playing_validated, played_game) = self.__play_moves(move_steps,
+                                                                                     dry_mode=True)
                                 if playing_validated:
                                     move_list.extend(move_steps)
-                                    game_list.append(played_game)
+                                    if save_games:
+                                        played_game.move_count += 1
+                                        played_game.update_end_conditions()
+                                        game_list.append(played_game)
 
         return (move_list, game_list)
 
@@ -1565,7 +1583,7 @@ class Game:
                     self.history.append(annotated_steps)
                     self.move_count += 1
                     self.update_end_conditions()
-                    
+
                     if do_print:
                         print("move %s OK" % Game.stringify_move_steps(annotated_steps))
 
@@ -1929,7 +1947,7 @@ class Game:
 
     def update_end_conditions(self):
         """Determine conditions for ending a game."""
-        
+
         piece_count = self.absmap.count_pieces_by_colors_and_shapes()
 
         for color in piece_count.keys():
@@ -2198,11 +2216,10 @@ class MinMaxNode:
 
         assert (move_string is None and depth == 0) or (move_string is not None and depth > 0)
 
+        self.game = game
         self.move_string = move_string
         self.depth = depth
         self.debug = debug
-
-        self.game = game
 
         self.move_color = self.game.get_move_color()
         self.is_player = (self.depth % 2 == 0)
@@ -2229,31 +2246,23 @@ class MinMaxNode:
                 print("debug: MinMaxNode.build_children: depth=", self.depth)
 
             if self.move_color is not None:
-                (move_list, game_list) = self.game.find_moves(self.move_color, find_one=False)
+                (move_list, game_list) = self.game.find_moves(self.move_color,
+                                                              find_one=False,
+                                                              save_games=True)
+
+                move_game_list = list(zip(move_list, game_list))
 
                 if max_width is not None:
                     if len(move_list) > max_width:
-                        index_list = random.sample(range(len(move_list)), max_width)
-                        new_move_list = list()
-                        new_game_list = list()
-                        for index in index_list:
-                            new_move_list.append(move_list[index])
-                            new_game_list.append(game_list[index])
-                        move_list = new_move_list
-                        game_list = new_game_list
-                        del new_move_list
-                        del new_game_list
+                        move_game_list = random.sample(move_game_list, max_width)
 
-                for (move, game) in zip(move_list, game_list):
+                for (move, game) in move_game_list:
                     move_string = Game.stringify_move_steps(move)
                     move_string = move_string.strip()
-                    
-                    # Indeed the game is not updated when obatained from find_moves
-                    game.move_count += 1
-                    game.update_end_conditions()
 
                     self.children[move_string] = MinMaxNode(game, move_string,
-                                 self.depth + 1, self.debug)
+                                                            self.depth + 1,
+                                                            self.debug)
 
                     self.children[move_string].build_children(max_depth, max_width)
 
@@ -2308,9 +2317,15 @@ class MinMaxNode:
                         for piece in self.game.absmap.pieces[player_color][shape]:
                             if piece.node is not None:
                                 piece_label = piece.node.label
-                                distance = hexmap.compute_distance(opponent_kunti_label, piece_label)
+
+                                distance = hexmap.compute_distance(opponent_kunti_label,
+                                                                   piece_label)
+
                                 player_kunti_distance_sum += distance
-                                if player_kunti_distance_min is None or distance < player_kunti_distance_min:
+
+                                if player_kunti_distance_min is None:
+                                    player_kunti_distance_min = distance
+                                elif distance < player_kunti_distance_min:
                                     player_kunti_distance_min = distance
 
                 opponent_kunti_distance_sum = 0
@@ -2320,9 +2335,15 @@ class MinMaxNode:
                         for piece in self.game.absmap.pieces[opponent_color][shape]:
                             if piece.node is not None:
                                 piece_label = piece.node.label
-                                distance = hexmap.compute_distance(player_kunti_label, piece_label)
+
+                                distance = hexmap.compute_distance(player_kunti_label,
+                                                                   piece_label)
+
                                 opponent_kunti_distance_sum += distance
-                                if opponent_kunti_distance_min is None or distance < opponent_kunti_distance_min:
+
+                                if opponent_kunti_distance_min is None:
+                                    opponent_kunti_distance_min = distance
+                                elif distance < opponent_kunti_distance_min:
                                     opponent_kunti_distance_min = distance
 
 
@@ -2348,13 +2369,19 @@ class MinMaxNode:
             print()
             print("debug: MinMaxNode.compute_leaf_score: move_string=", self.move_string)
             print("debug: MinMaxNode.compute_leaf_score: depth=", self.depth)
+
             if not self.game.game_over:
-                print("debug: MinMaxNode.compute_leaf_score: move_color=", Color.get_name(self.move_color))
+                print("debug: MinMaxNode.compute_leaf_score: move_color=",
+                      Color.get_name(self.move_color))
 
+                print("debug: MinMaxNode.compute_leaf_score: diff_piece_count=",
+                      diff_piece_count)
 
-                print("debug: MinMaxNode.compute_leaf_score: diff_piece_count=", diff_piece_count)
-                print("debug: MinMaxNode.compute_leaf_score: diff_kunti_distance_min=", diff_kunti_distance_min)
-                print("debug: MinMaxNode.compute_leaf_score: diff_kunti_distance_sum=", diff_kunti_distance_sum)
+                print("debug: MinMaxNode.compute_leaf_score: diff_kunti_distance_min=",
+                      diff_kunti_distance_min)
+
+                print("debug: MinMaxNode.compute_leaf_score: diff_kunti_distance_sum=",
+                      diff_kunti_distance_sum)
 
             print("debug: MinMaxNode.compute_leaf_score: score=", self.score)
 
@@ -2406,8 +2433,12 @@ class MinMaxNode:
 
             if self.debug:
                 print()
-                print("debug: MinMaxNode.find_child_with_min_score: child.move_string=", child.move_string)
-                print("debug: MinMaxNode.find_child_with_min_score: child.score=", child.score)
+
+                print("debug: MinMaxNode.find_child_with_min_score: child.move_string=",
+                      child.move_string)
+
+                print("debug: MinMaxNode.find_child_with_min_score: child.score=",
+                      child.score)
 
         if self.debug:
             print()
