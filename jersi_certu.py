@@ -1272,13 +1272,38 @@ class Game:
         return new_one
 
 
-    def find_moves(self, color, find_one=False, save_games=False):
+    def __can_move(self, color):
+        """Can the given color move some piece?"""
+
+        move_list = self.find_moves(color, find_one=True)
+        can = bool(move_list)
+        return can
+
+
+    def find_moves(self, color, find_one=False):
         """Find possible moves for the given color.
         If find_one then just return the first found move."""
 
+        (move_list, _) = self.__find_moves_and_games(color, find_one)
+        return move_list
+
+
+    def find_moves_and_games(self, color, find_one=False):
+        """Find possible moves and associated games for the given color.
+        If find_one then just return the first found move and associated game."""
+
+        (move_list, game_list) = self.__find_moves_and_games(color, find_one, do_save_games=True)
+        move_game_list = list(zip(move_list, game_list))
+        return move_game_list
+
+
+    def __find_moves_and_games(self, color, find_one=False, do_save_games=False):
+        """Find possible moves for the given color, and optionaly return associated games.
+        If find_one then just return the first found move,and optionnaly first associated game."""
+
         move_list = list()
 
-        if save_games:
+        if do_save_games:
             game_list = list()
         else:
             game_list = None
@@ -1290,13 +1315,15 @@ class Game:
                     move_steps = list()
                     move_steps.append([(1, src_node.label, dst_node.label)])
 
-                    (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
-                    if playing_validated:
+                    (play_validated, tried_game) = self.__play_moves(move_steps,
+                                                                     do_try=True,
+                                                                     do_save_try=do_save_games)
+                    if play_validated:
                         move_list.extend(move_steps)
-                        if save_games:
-                            played_game.move_count += 1
-                            played_game.update_end_conditions()
-                            game_list.append(played_game)
+
+                        if do_save_games:
+                            game_list.append(tried_game)
+
                         if find_one:
                             return (move_list, game_list)
 
@@ -1305,14 +1332,15 @@ class Game:
                                 move_steps = list()
                                 move_steps.append([(1, src_node.label, dst_node.label),
                                                    (2, dst_node.label, fin_node.label)])
-                                (playing_validated, played_game) = self.__play_moves(move_steps,
-                                                                                     dry_mode=True)
-                                if playing_validated:
+
+                                (play_validated, tried_game) = self.__play_moves(move_steps,
+                                                                                 do_try=True,
+                                                                                 do_save_try=do_save_games)
+                                if play_validated:
                                     move_list.extend(move_steps)
-                                    if save_games:
-                                        played_game.move_count += 1
-                                        played_game.update_end_conditions()
-                                        game_list.append(played_game)
+
+                                    if do_save_games:
+                                        game_list.append(tried_game)
 
 
             for dst_node in src_node.nodes_at_two_links:
@@ -1320,13 +1348,15 @@ class Game:
                     move_steps = list()
                     move_steps.append([(2, src_node.label, dst_node.label)])
 
-                    (playing_validated, played_game) = self.__play_moves(move_steps, dry_mode=True)
-                    if playing_validated:
+                    (play_validated, tried_game) = self.__play_moves(move_steps,
+                                                                     do_try=True,
+                                                                     do_save_try=do_save_games)
+                    if play_validated:
                         move_list.extend(move_steps)
-                        if save_games:
-                            played_game.move_count += 1
-                            played_game.update_end_conditions()
-                            game_list.append(played_game)
+
+                        if do_save_games:
+                            game_list.append(tried_game)
+
                         if find_one:
                             return (move_list, game_list)
 
@@ -1335,14 +1365,15 @@ class Game:
                                 move_steps = list()
                                 move_steps.append([(2, src_node.label, dst_node.label),
                                                    (1, dst_node.label, fin_node.label)])
-                                (playing_validated, played_game) = self.__play_moves(move_steps,
-                                                                                     dry_mode=True)
-                                if playing_validated:
+
+                                (play_validated, tried_game) = self.__play_moves(move_steps,
+                                                                                 do_try=True,
+                                                                                 do_save_try=do_save_games)
+                                if play_validated:
                                     move_list.extend(move_steps)
-                                    if save_games:
-                                        played_game.move_count += 1
-                                        played_game.update_end_conditions()
-                                        game_list.append(played_game)
+
+                                    if do_save_games:
+                                        game_list.append(tried_game)
 
         return (move_list, game_list)
 
@@ -1434,7 +1465,7 @@ class Game:
     def parse_and_play_instruction(self, instruction, do_print=True):
         """Parse and play an instruction."""
 
-        playing_validated = False
+        play_validated = False
 
         positions = dict()
         moves = list()
@@ -1446,16 +1477,16 @@ class Game:
             assert len(positions) == 1 or len(moves) == 1
 
             if len(positions) == 1:
-                playing_validated = self.__play_placement(positions)
+                play_validated = self.__play_placement(positions)
 
             elif len(moves) == 1:
-                (playing_validated, _) = self.__play_moves(moves, do_print=do_print)
+                (play_validated, _) = self.__play_moves(moves, do_print=do_print)
 
-            if playing_validated and do_print:
+            if play_validated and do_print:
                 self.absmap.print_absmap()
                 self.__print_status()
 
-        return playing_validated
+        return play_validated
 
 
     @staticmethod
@@ -1521,8 +1552,11 @@ class Game:
         return instruction_validated
 
 
-    def __play_moves(self, moves, dry_mode=False, do_print=True):
+    def __play_moves(self, moves, do_try=False, do_save_try=False, do_print=True):
         """Play the given moves."""
+
+        if do_save_try:
+            assert do_try
 
         play_validated = True
         saved_game = self.save_game()
@@ -1579,7 +1613,7 @@ class Game:
                                             piece_captured, kunti_captured))
                     step_count += 1
 
-                if not dry_mode:
+                if not do_try:
                     self.history.append(annotated_steps)
                     self.move_count += 1
                     self.update_end_conditions()
@@ -1588,18 +1622,20 @@ class Game:
                         print("move %s OK" % Game.stringify_move_steps(annotated_steps))
 
         except(JersiError) as jersi_assertion_error:
-            if not dry_mode:
+            if not do_try:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
                 print("move %s KO !!!" % Game.stringify_move_steps(move_steps))
             play_validated = False
             self.__restore_game(saved_game)
 
-        if dry_mode:
-            played_game = self.__swap_game(saved_game)
+        if do_try and do_save_try:
+            tried_game = self.__swap_game(saved_game)
+            tried_game.move_count += 1
+            tried_game.update_end_conditions()
         else:
-            played_game = None
+            tried_game = None
 
-        return (play_validated, played_game)
+        return (play_validated, tried_game)
 
 
     def __play_placement(self, positions):
@@ -1658,7 +1694,7 @@ class Game:
         """Print the possible moves for the current color."""
 
         move_color = (self.move_count - 1) % Color.get_count()
-        (move_list, _) = self.find_moves(move_color)
+        move_list = self.find_moves(move_color)
 
         print()
         print("%d possible moves:" % len(move_list))
@@ -1750,7 +1786,7 @@ class Game:
             self.init_game()
 
             placement_validated = True
-            playing_validated = True
+            play_validated = True
 
             try:
                 self.absmap.import_placement(positions)
@@ -1762,9 +1798,9 @@ class Game:
                 placement_validated = False
 
             if placement_validated:
-                (playing_validated, _) = self.__play_moves(moves)
+                (play_validated, _) = self.__play_moves(moves)
 
-            if placement_validated and playing_validated:
+            if placement_validated and play_validated:
                 print()
                 print("game from file '%s'" % file_path)
                 self.absmap.print_absmap()
@@ -1975,13 +2011,11 @@ class Game:
         if not self.game_over:
             # Possible moves for current player?
             move_color = (self.move_count - 1) % Color.get_count()
-            (move_list, _) = self.find_moves(move_color, find_one=True)
-            if not move_list:
-                self.game_over = True
-                self.score[move_color] = 0
+            if not self.__can_move(move_color):
                 for color in Color.get_indices():
-                    if color != move_color:
-                        self.score[color] = 1
+                    self.score[color] = 1
+                self.game_over = True
+                self.score[move_color] = 1
 
 
     def write_game(self, file_path):
@@ -2056,12 +2090,12 @@ class Algorithm:
         if move_color is not None:
             assert move_color == self._color
 
-            (move_list, _) = game.find_moves(move_color, find_one=False)
+            move_list = game.find_moves(move_color, find_one=False)
 
             if move_list:
-                if "move_list_max_len" in self._options:
-                    move_list_max_len = self._options["move_list_max_len"]
-                    move_list = move_list[:move_list_max_len]
+                if "max_width" in self._options:
+                    max_width = self._options["max_width"]
+                    move_list = move_list[:max_width]
 
                 move = random.choice(move_list)
                 move_string = Game.stringify_move_steps(move)
@@ -2108,8 +2142,6 @@ class AlgorithmFindOne(Algorithm):
     def __init__(self, color):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
-        self._options["aaa"] = "aaa-value"
-        self._options["bbb"] = "bbb-value"
 
 
     def get_advice(self, game):
@@ -2122,7 +2154,7 @@ class AlgorithmFindOne(Algorithm):
         if move_color is not None:
             assert move_color == self.get_color()
 
-            (move_list, _) = game.find_moves(move_color, find_one=True)
+            move_list = game.find_moves(move_color, find_one=True)
 
             if move_list:
                 move = move_list[0]
@@ -2143,8 +2175,6 @@ class AlgorithmFindAll(Algorithm):
     def __init__(self, color):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
-        self._options["xxx"] = "xxx-value"
-        self._options["zzz"] = "zzz-value"
 
 
     def get_advice(self, game):
@@ -2157,7 +2187,7 @@ class AlgorithmFindAll(Algorithm):
         if move_color is not None:
             assert move_color == self.get_color()
 
-            (move_list, _) = game.find_moves(move_color, find_one=False)
+            move_list = game.find_moves(move_color, find_one=False)
 
             if move_list:
                 move = random.choice(move_list)
@@ -2199,7 +2229,12 @@ class AlgorithmCertu(Algorithm):
             min_max_root.build_children(max_depth=self._options["max_depth"],
                                         max_width=self._options["max_width"])
 
+
             min_max_root.compute_score()
+
+            print()
+            print("MinMaxNode: evaluated %d leaves" % min_max_root.count_leaves())
+
             move_string = min_max_root.find_child_with_min_score()
 
         return move_string
@@ -2246,14 +2281,11 @@ class MinMaxNode:
                 print("debug: MinMaxNode.build_children: depth=", self.depth)
 
             if self.move_color is not None:
-                (move_list, game_list) = self.game.find_moves(self.move_color,
-                                                              find_one=False,
-                                                              save_games=True)
 
-                move_game_list = list(zip(move_list, game_list))
+                move_game_list = self.game.find_moves_and_games(self.move_color, find_one=False)
 
                 if max_width is not None:
-                    if len(move_list) > max_width:
+                    if len(move_game_list) > max_width:
                         move_game_list = random.sample(move_game_list, max_width)
 
                 for (move, game) in move_game_list:
@@ -2418,6 +2450,20 @@ class MinMaxNode:
                 self.score = score_min
 
         return self.score
+
+
+    def count_leaves(self):
+        """Count leaves"""
+
+        if not self.children:
+            count = 1
+
+        else:
+            count = 0
+            for child in self.children.values():
+                count += child.count_leaves()
+
+        return count
 
 
     def find_child_with_min_score(self):
@@ -2788,9 +2834,9 @@ class Runner:
         else:
             if len(command_args) == 2:
                 instruction = command_args[1]
-                playing_validated = self.__game.parse_and_play_instruction(instruction)
+                play_validated = self.__game.parse_and_play_instruction(instruction)
 
-                if playing_validated:
+                if play_validated:
                     if blue_algorithm_enabled or red_algorithm_enabled:
                         self.__apply_algo_advice()
 
