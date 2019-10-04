@@ -2459,7 +2459,12 @@ class MinMaxNode:
 
 
                 diff_piece_count = player_piece_count - opponent_piece_count
-                diff_kunti_distance_min = opponent_kunti_distance_min - player_kunti_distance_min
+
+                if player_kunti_distance_min is None or opponent_kunti_distance_min is None:
+                    diff_kunti_distance_min = 0
+                else:
+                    diff_kunti_distance_min = opponent_kunti_distance_min - player_kunti_distance_min
+
                 diff_kunti_distance_sum = opponent_kunti_distance_sum - player_kunti_distance_sum
 
                 if not self.is_player:
