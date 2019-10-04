@@ -708,7 +708,7 @@ class Node:
         self.nodes_at_two_links = nodes_at_two_links
 
 
-    def move_one_piece(self, dst_node):
+    def move_one_piece(self, dst_node, undo_list):
         """Move one piece from this node to the destination node."""
 
         piece_captured = False
@@ -724,15 +724,22 @@ class Node:
         top = self.get_top()
 
         if dst_node.has_zero_piece():
+
             self.unset_piece(top)
+            undo_list.append((lambda node, piece: lambda: node.set_piece(piece))(self, top))
+
             dst_node.set_piece(top)
+            undo_list.append((lambda node, piece: lambda: node.unset_piece(piece))(dst_node, top))
 
         elif dst_node.get_top_color() == self.get_top_color():
             jersi_assert(dst_node.has_zero_or_one_piece(),
                          "source should have zero or one piece")
 
             self.unset_piece(top)
+            undo_list.append((lambda node, piece: lambda: node.set_piece(piece))(self, top))
+
             dst_node.set_piece(top)
+            undo_list.append((lambda node, piece: lambda: node.unset_piece(piece))(dst_node, top))
 
         else:
             jersi_assert(Shape.beats(self.get_top_shape(), dst_node.get_top_shape()),
@@ -748,14 +755,28 @@ class Node:
                 if dst_node.pieces[0].shape == Shape.kunti:
                     kunti_captured = True
 
+            if dst_node.pieces[1] is not None:
+                undo_list.append((lambda node, piece:
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[1]))
+
+            if dst_node.pieces[0] is not None:
+                undo_list.append((lambda node, piece:
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[0]))
+
             dst_node.unset_pieces()
+
             self.unset_piece(top)
+            undo_list.append((lambda node, piece:
+                              lambda: node.set_piece(piece))(self, top))
+
             dst_node.set_piece(top)
+            undo_list.append((lambda node, piece:
+                              lambda: node.unset_piece(piece))(dst_node, top))
 
         return (piece_captured, kunti_captured)
 
 
-    def move_two_pieces(self, dst_node):
+    def move_two_pieces(self, dst_node, undo_list):
         """Move two pieces from this node to the destination node."""
 
         piece_captured = False
@@ -796,16 +817,29 @@ class Node:
                 if dst_node.pieces[0].shape == Shape.kunti:
                     kunti_captured = True
 
+            if dst_node.pieces[1] is not None:
+                undo_list.append((lambda node, piece:
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[1]))
+
+            if dst_node.pieces[0] is not None:
+                undo_list.append((lambda node, piece:
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[0]))
+
             dst_node.unset_pieces()
 
         top = self.get_top()
         self.unset_piece(top)
+        undo_list.append((lambda node, piece: lambda: node.set_piece(piece))(self, top))
 
         bottom = self.get_top()
         self.unset_piece(bottom)
+        undo_list.append((lambda node, piece: lambda: node.set_piece(piece))(self, bottom))
 
         dst_node.set_piece(bottom)
+        undo_list.append((lambda node, piece: lambda: node.unset_piece(piece))(dst_node, bottom))
+
         dst_node.set_piece(top)
+        undo_list.append((lambda node, piece: lambda: node.unset_piece(piece))(dst_node, top))
 
         return (piece_captured, kunti_captured)
 
@@ -1041,20 +1075,20 @@ class Absmap:
                 count[color][shape] += 1
 
 
-    def move_one_piece(self, src_label, dst_label):
+    def move_one_piece(self, src_label, dst_label, undo_list):
         """Move one piece from a source label to a destination label."""
 
         src_node = self.nodes[src_label]
         dst_node = self.nodes[dst_label]
-        return src_node.move_one_piece(dst_node)
+        return src_node.move_one_piece(dst_node, undo_list)
 
 
-    def move_two_pieces(self, src_label, dst_label):
+    def move_two_pieces(self, src_label, dst_label, undo_list):
         """Move two pieces from a source label to a destination label."""
 
         src_node = self.nodes[src_label]
         dst_node = self.nodes[dst_label]
-        return src_node.move_two_pieces(dst_node)
+        return src_node.move_two_pieces(dst_node, undo_list)
 
 
     def print_absmap(self):
@@ -1253,7 +1287,7 @@ class Game:
         self.time = None
 
         self.absmap = Absmap(hexmap=Hexmap(5))
-        self.init_game()
+        self.__init_game()
         self.new_standard_game()
 
 
@@ -1275,8 +1309,18 @@ class Game:
     def __can_move(self, color):
         """Can the given color move some piece?"""
 
-        move_list = self.find_moves(color, find_one=True)
-        can = bool(move_list)
+        can = False
+        for src_node in self.__find_nodes(color):
+            for dst_node in src_node.nodes_at_one_link:
+                if dst_node is not None:
+                    if dst_node.has_zero_piece():
+                        can = True
+                        break
+
+        if not can:
+            move_list = self.find_moves(color, find_one=True)
+            can = bool(move_list)
+
         return can
 
 
@@ -1404,7 +1448,7 @@ class Game:
         return move_color
 
 
-    def init_game(self):
+    def __init_game(self):
         """Initialize or re-initialize the game."""
 
         self.absmap.unset_pieces()
@@ -1426,7 +1470,7 @@ class Game:
         """Initialize the game with a free placement
         i.e. no piece yet placed."""
 
-        self.init_game()
+        self.__init_game()
 
         print()
         print("new free game")
@@ -1437,7 +1481,7 @@ class Game:
     def new_random_game(self):
         """Initialize the game with a random placement."""
 
-        self.init_game()
+        self.__init_game()
         self.absmap.place_pieces_at_random_positions()
         self.placement = self.absmap.export_positions()
         self.placement_over = True
@@ -1451,7 +1495,7 @@ class Game:
     def new_standard_game(self):
         """Initialize the game with a standard/symmetric placement."""
 
-        self.init_game()
+        self.__init_game()
         self.absmap.place_pieces_at_standard_positions()
         self.placement = self.absmap.export_positions()
         self.placement_over = True
@@ -1559,7 +1603,8 @@ class Game:
             assert do_try
 
         play_validated = True
-        saved_game = self.save_game()
+        undo_list = list()
+        saved_game_partial = self.__save_game_partial()
 
         try:
             for move_steps in moves:
@@ -1600,11 +1645,15 @@ class Game:
 
                     if piece_count == 1:
                         (piece_captured,
-                         kunti_captured) = self.absmap.move_one_piece(src_label, dst_label)
+                         kunti_captured) = self.absmap.move_one_piece(src_label,
+                                                                      dst_label,
+                                                                      undo_list)
 
                     elif piece_count == 2:
                         (piece_captured,
-                         kunti_captured) = self.absmap.move_two_pieces(src_label, dst_label)
+                         kunti_captured) = self.absmap.move_two_pieces(src_label,
+                                                                       dst_label,
+                                                                       undo_list)
 
                     else:
                         assert False
@@ -1626,12 +1675,19 @@ class Game:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
                 print("move %s KO !!!" % Game.stringify_move_steps(move_steps))
             play_validated = False
-            self.__restore_game(saved_game)
+            for undo in reversed(undo_list):
+                undo()
+            self.__restore_game_partial(saved_game_partial)
 
-        if do_try and do_save_try:
-            tried_game = self.__swap_game(saved_game)
+        if play_validated and do_try and do_save_try:
+            tried_game = self.__save_game()
             tried_game.move_count += 1
             tried_game.update_end_conditions()
+
+            for undo in reversed(undo_list):
+                undo()
+            self.__restore_game_partial(saved_game_partial)
+
         else:
             tried_game = None
 
@@ -1642,7 +1698,7 @@ class Game:
         """Play the given positions as a placement."""
 
         play_validated = True
-        saved_game = self.save_game()
+        saved_game = self.__save_game()
 
         try:
             assert len(positions) == 1
@@ -1782,8 +1838,8 @@ class Game:
 
         if parsing_validated:
 
-            saved_game = self.save_game()
-            self.init_game()
+            saved_game = self.__save_game()
+            self.__init_game()
 
             placement_validated = True
             play_validated = True
@@ -1840,8 +1896,8 @@ class Game:
 
         if parsing_validated:
 
-            saved_game = self.save_game()
-            self.init_game()
+            saved_game = self.__save_game()
+            self.__init_game()
 
             importing_validated = True
             try:
@@ -1871,10 +1927,33 @@ class Game:
         self.__dict__.update(saved_game.__dict__)
 
 
-    def save_game(self):
+    def __restore_game_partial(self, saved_game):
+        """Restore all saved attributes of the game, but not absmap."""
+
+        self.__dict__.update(saved_game.__dict__)
+
+
+    def __save_game(self):
         """Save all atributes of the game."""
 
         saved_game = copy.deepcopy(self)
+        return saved_game
+
+
+    def __save_game_partial(self):
+        """Save all atributes of the game, but not absmap."""
+
+        cls = self.__class__
+        saved_game = cls.__new__(cls)
+
+        saved_game.placement = copy.copy(self.placement)
+        saved_game.history = copy.copy(self.history)
+        saved_game.game_over = self.game_over
+        saved_game.placement_over = self.placement_over
+        saved_game.last_count = self.last_count
+        saved_game.move_count = self.move_count
+        saved_game.score = copy.copy(self.score)
+
         return saved_game
 
 
@@ -2565,14 +2644,16 @@ class Runner:
         print("   wg f: write the game into the given file 'f'")
         print("   wp f: write the positions into the given file 'f'")
         print()
-        print("  cba n: change blue algorithm for 'n'.")
-        print("  cra n: change red algorithm for 'n'.")
-        print("    eba: enable blue algorithm.")
-        print("    era: enable red algorithm.")
-        print("    dba: disable blue algorithm.")
-        print("    dra: disable red algorithm.")
-        print("     pa: print algorithms (name, status and options).")
-        print("    paa: print available algorithms.")
+        print("    cba n: change blue algorithm for 'n'.")
+        print("    cra n: change red algorithm for 'n'.")
+        print("  sba o=v: set blue algorithm with o=v.")
+        print("  sra o=v: set red algorithm with o=v.")
+        print("      eba: enable blue algorithm.")
+        print("      era: enable red algorithm.")
+        print("      dba: disable blue algorithm.")
+        print("      dra: disable red algorithm.")
+        print("       pa: print algorithms (name, status and options).")
+        print("      paa: print available algorithms.")
         print()
         print("     aa: ask algorithm advice for the current color.")
         print("  rea n: repeat n times the enabled blue-red algorithms.")
