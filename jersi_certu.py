@@ -2312,7 +2312,7 @@ class AlgorithmCertu(Algorithm):
             min_max_root.compute_score()
 
             print()
-            print("MinMaxNode: evaluated %d leaves" % min_max_root.count_leaves())
+            print("MinMaxNode: %d evaluated leaves" % min_max_root.count_leaves())
 
             move_string = min_max_root.find_child_with_min_score()
 
