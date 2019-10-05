@@ -2555,11 +2555,17 @@ class MinMaxNode:
 
         move_string = None
         score_min = None
+        move_string_list = None
 
         for child in self.children.values():
+
             if score_min is None or child.score < score_min:
                 score_min = child.score
-                move_string = child.move_string
+                move_string_list = list()
+                move_string_list.append(child.move_string)
+
+            elif child.score == score_min:
+                move_string_list.append(child.move_string)
 
             if self.debug:
                 print()
@@ -2570,9 +2576,20 @@ class MinMaxNode:
                 print("debug: MinMaxNode.find_child_with_min_score: child.score=",
                       child.score)
 
+        assert score_min is not None
+        assert move_string_list is not None
+
         if self.debug:
             print()
             print("debug: MinMaxNode.find_child_with_min_score: score_min=", score_min)
+
+            print("debug: MinMaxNode.find_child_with_min_score: %d move(s) with score_min"
+                  % len(move_string_list))
+
+            for move_string in move_string_list:
+                print("debug: MinMaxNode.find_child_with_min_score: move=", move_string)
+
+        move_string = random.choice(move_string_list)
 
         return move_string
 
