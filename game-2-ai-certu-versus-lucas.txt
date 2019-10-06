@@ -1,0 +1,27 @@
+a1:C  a2:R
+a2:K  a3:N
+a4:R  a4:C
+a5:K  b1:K
+b2:R  b3:C
+b4:K  b5:R
+b6:C  h1:c
+h2:r  h3:k
+h4:c  h5:r
+h6:k  i1:k
+i2:r  i2:c
+i3:n  i4:r
+i4:k  i5:c
+
+a4-b4=d6      i1-h1=f1    
+d6=f5-g4      h3-g4!      
+f5-g5         h5-h4=g5!   
+a5-b5=d5      i5-h6=g7    
+d5=f4-g3      i2=h3-h4    
+f4-g4!        h2-g3!      
+a1-b1=d3      f1=f3-g2    
+d3=f4-g3!     g2-g3!      
+f4-f3!        h4-g4!      
+f3-g2         h3-g3=g2!   
+a2-b3=d5      g5=e5-d5!   
+a2-b2=d2      e5-d5=b3    
+d2=f3-g3      b3-a3!!     
