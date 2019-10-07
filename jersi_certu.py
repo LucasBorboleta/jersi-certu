@@ -1043,6 +1043,20 @@ class Absmap:
         return positions
 
 
+    def get_pieces_by_colors(self):
+        """Return alive pieces by color."""
+
+        pieces = dict()
+
+        for color in Color.get_indices():
+            pieces[color] = list()
+            for shape in Shape.get_indices():
+                for piece in self.pieces[color][shape]:
+                    if piece.node is not None:
+                        pieces[color].append(piece)
+        return pieces
+
+
     def import_placement(self, positions):
         """Import and place pieces at given positions."""
         self.import_positions(positions, check_placement=True)
@@ -1906,6 +1920,7 @@ class Game:
                 self.absmap.import_positions(positions)
                 self.placement = self.absmap.export_positions()
                 self.placement_over = True
+                self.update_end_conditions()
 
             except(JersiError) as jersi_assertion_error:
                 print("assertion failed: %s !!!" % jersi_assertion_error.message)
@@ -2390,9 +2405,9 @@ class MinMaxNode:
             if self.game.game_over:
 
                 if self.is_player:
-                    self.score += 1.e30
+                    self.score += int(1.e30)
                 else:
-                    self.score += -1.e30
+                    self.score += int(-1.e30)
             else:
                 piece_count = self.game.absmap.count_pieces_by_colors_and_shapes()
 
@@ -2411,6 +2426,42 @@ class MinMaxNode:
                 opponent_piece_count = 0
                 for shape in piece_count[opponent_color].keys():
                     opponent_piece_count += piece_count[opponent_color][shape]
+
+                # compute defended pairs
+                pieces = self.game.absmap.get_pieces_by_colors()
+
+                player_defended_pair_count = 0
+                for fst_piece in pieces[player_color]:
+                    for snd_piece in pieces[player_color]:
+                        if fst_piece != snd_piece and fst_piece.shape != Shape.kunti and snd_piece.shape != Shape.kunti:
+                            fst_node = fst_piece.node
+                            snd_node = snd_piece.node
+                            if snd_node in fst_node.nodes_at_one_link:
+                                fst_shape = fst_node.get_top_shape()
+                                snd_shape = snd_node.get_top_shape()
+                                if fst_shape != Shape.kunti and snd_shape != Shape.kunti:
+                                    for shape in Shape.get_indices():
+                                        if Shape.beats(shape, fst_shape):
+                                            if Shape.beats(snd_shape, shape):
+                                                player_defended_pair_count += 1
+
+                opponent_defended_pair_count = 0
+                for fst_piece in pieces[opponent_color]:
+                    for snd_piece in pieces[opponent_color]:
+                        if fst_piece != snd_piece and fst_piece.shape != Shape.kunti and snd_piece.shape != Shape.kunti:
+                            fst_node = fst_piece.node
+                            snd_node = snd_piece.node
+                            if snd_node in fst_node.nodes_at_one_link:
+                                fst_shape = fst_node.get_top_shape()
+                                snd_shape = snd_node.get_top_shape()
+                                if fst_shape != Shape.kunti and snd_shape != Shape.kunti:
+                                    for shape in Shape.get_indices():
+                                        if Shape.beats(shape, fst_shape):
+                                            if Shape.beats(snd_shape, shape):
+                                                opponent_defended_pair_count += 1
+
+                diff_defended_pair_count = player_defended_pair_count - opponent_defended_pair_count
+
 
                 # compute fly distance to kunti
                 hexmap = self.game.absmap.hexmap
@@ -2469,14 +2520,17 @@ class MinMaxNode:
 
                 if not self.is_player:
                     diff_piece_count *= -1
+                    diff_defended_pair_count *= -1
                     diff_kunti_distance_min *= -1
                     diff_kunti_distance_sum *= -1
 
-                weight_piece_count = 1.e8
-                weight_kunti_distance_min = 1.e4
-                weight_kunti_distance_sum = 1.e0
+                weight_piece_count = 20
+                weight_defended_pair_count = 10
+                weight_kunti_distance_min = 10
+                weight_kunti_distance_sum = 1
 
                 self.score += diff_piece_count*weight_piece_count
+                self.score += diff_defended_pair_count*weight_defended_pair_count
                 self.score += diff_kunti_distance_min*weight_kunti_distance_min
                 self.score += diff_kunti_distance_sum*weight_kunti_distance_sum
 
