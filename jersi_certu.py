@@ -2524,10 +2524,10 @@ class MinMaxNode:
                     diff_kunti_distance_min *= -1
                     diff_kunti_distance_sum *= -1
 
-                weight_piece_count = 20
-                weight_defended_pair_count = 10
-                weight_kunti_distance_min = 10
-                weight_kunti_distance_sum = 1
+                weight_piece_count = int(1.e8)
+                weight_kunti_distance_min = int(1.e4)
+                weight_kunti_distance_sum = int(1.)
+                weight_defended_pair_count = int(1.)
 
                 self.score += diff_piece_count*weight_piece_count
                 self.score += diff_defended_pair_count*weight_defended_pair_count
