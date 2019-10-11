@@ -2305,7 +2305,7 @@ class AlgorithmCertu(Algorithm):
         Algorithm.__init__(self, color)
         self._options["debug"] = False
         self._options["max_depth"] = 2
-        self._options["max_width"] = None
+        self._options["max_width"] = [None, None]
 
 
     def get_advice(self, game):
@@ -2360,7 +2360,8 @@ class MinMaxNode:
             print()
             print("debug: MinMaxNode.__init__: move_string=", self.move_string)
             print("debug: MinMaxNode.__init__: depth=", self.depth)
-            print("debug: MinMaxNode.__init__: move_color=", Color.get_name(self.move_color))
+            if self.move_color is not None:
+                print("debug: MinMaxNode.__init__: move_color=", Color.get_name(self.move_color))
             print("debug: MinMaxNode.__init__: is_player=", self.is_player)
 
 
@@ -2378,9 +2379,19 @@ class MinMaxNode:
 
                 move_game_list = self.game.find_moves_and_games(self.move_color, find_one=False)
 
+                move_count_max = None
                 if max_width is not None:
-                    if len(move_game_list) > max_width:
-                        move_game_list = random.sample(move_game_list, max_width)
+                    if self.depth < len(max_width):
+                        move_count_max = max_width[self.depth]
+                    else:
+                        move_count_max = max_width[-1]
+
+                if move_count_max is not None:
+                    if len(move_game_list) > move_count_max:
+                        move_game_list = random.sample(move_game_list, move_count_max)
+                        if self.debug:
+                            print()
+                            print("debug: MinMaxNode.build_children: move_count_max=", move_count_max)
 
                 for (move, game) in move_game_list:
                     move_string = Game.stringify_move_steps(move)
