@@ -1439,16 +1439,12 @@ class Game:
     def __find_nodes(self, color):
         """Find nodes with pieces of the given color."""
 
-        nodes = list()
-
         for shape in Shape.get_indices():
             for piece in self.absmap.pieces[color][shape]:
                 if piece.node is not None:
                     node = piece.node
                     if node.get_top() == piece:
-                        nodes.append(node)
-
-        return nodes
+                        yield node
 
 
     def get_move_color(self):
@@ -2187,9 +2183,9 @@ class Algorithm:
             move_list = game.find_moves(move_color, find_one=False)
 
             if move_list:
-                if "max_width" in self._options:
-                    max_width = self._options["max_width"]
-                    move_list = move_list[:max_width]
+                if "width_ratio" in self._options:
+                    width_ratio = self._options["width_ratio"]
+                    move_list = move_list[:width_ratio]
 
                 move = random.choice(move_list)
                 move_string = Game.stringify_move_steps(move)
@@ -2304,8 +2300,8 @@ class AlgorithmCertu(Algorithm):
         """Initialize the algorithm."""
         Algorithm.__init__(self, color)
         self._options["debug"] = False
-        self._options["max_depth"] = 2
-        self._options["max_width"] = [None, None]
+        self._options["depth_max"] = 2
+        self._options["width_ratio"] = [None, None]
 
 
     def get_advice(self, game):
@@ -2320,8 +2316,8 @@ class AlgorithmCertu(Algorithm):
 
             min_max_root = MinMaxNode(game, debug=self._options["debug"])
 
-            min_max_root.build_children(max_depth=self._options["max_depth"],
-                                        max_width=self._options["max_width"])
+            min_max_root.build_children(depth_max=self._options["depth_max"],
+                                        width_ratio=self._options["width_ratio"])
 
 
             min_max_root.compute_score()
@@ -2365,10 +2361,10 @@ class MinMaxNode:
             print("debug: MinMaxNode.__init__: is_player=", self.is_player)
 
 
-    def build_children(self, max_depth, max_width=None):
+    def build_children(self, depth_max, width_ratio=None):
         """Build children from the current MinMaxNode down to the given depth."""
 
-        if self.depth < max_depth:
+        if self.depth < depth_max:
 
             if self.debug:
                 print()
@@ -2377,31 +2373,34 @@ class MinMaxNode:
 
             if self.move_color is not None:
 
-                move_game_list = self.game.find_moves_and_games(self.move_color, find_one=False)
+                if width_ratio is None:
+                    actual_width_ratio = None
+                    
+                elif self.depth < len(width_ratio):
+                    actual_width_ratio = width_ratio[self.depth]
+                else:
+                    actual_width_ratio = width_ratio[-1]
 
-                move_count_max = None
-                if max_width is not None:
-                    if self.depth < len(max_width):
-                        move_count_max = max_width[self.depth]
-                    else:
-                        move_count_max = max_width[-1]
 
-                if move_count_max is not None:
-                    if len(move_game_list) > move_count_max:
-                        move_game_list = random.sample(move_game_list, move_count_max)
-                        if self.debug:
-                            print()
-                            print("debug: MinMaxNode.build_children: move_count_max=", move_count_max)
+                move_count = 0
+                
+                for (move, game) in self.game.find_moves_and_games(self.move_color, find_one=False):
+                    
+                    if actual_width_ratio is None or random.random() <= actual_width_ratio:
+                        move_count += 1
 
-                for (move, game) in move_game_list:
-                    move_string = Game.stringify_move_steps(move)
-                    move_string = move_string.strip()
+                        move_string = Game.stringify_move_steps(move)
+                        move_string = move_string.strip()
 
-                    self.children[move_string] = MinMaxNode(game, move_string,
-                                                            self.depth + 1,
-                                                            self.debug)
+                        self.children[move_string] = MinMaxNode(game, move_string,
+                                                                self.depth + 1,
+                                                                self.debug)
 
-                    self.children[move_string].build_children(max_depth, max_width)
+                        self.children[move_string].build_children(depth_max, width_ratio)
+
+                if self.debug:
+                    print()
+                    print("debug: MinMaxNode.build_children: move_count=", move_count)
 
 
     def compute_leaf_score(self):
@@ -2411,14 +2410,14 @@ class MinMaxNode:
 
         if self.score is None:
 
-            self.score = 0
+            self.score = 0.
 
             if self.game.game_over:
 
                 if self.is_player:
-                    self.score += int(1.e30)
+                    self.score += 1.e30
                 else:
-                    self.score += int(-1.e30)
+                    self.score += -1.e30
             else:
                 piece_count = self.game.absmap.count_pieces_by_colors_and_shapes()
 
@@ -2535,15 +2534,15 @@ class MinMaxNode:
                     diff_kunti_distance_min *= -1
                     diff_kunti_distance_sum *= -1
 
-                weight_piece_count = int(1.e8)
-                weight_kunti_distance_min = int(1.e4)
-                weight_kunti_distance_sum = int(1.)
-                weight_defended_pair_count = int(1.)
+                weight_piece_count = 1.e8
+                weight_kunti_distance_min = 1.e4
+                weight_kunti_distance_sum = 1.
+                weight_defended_pair_count = 1.
 
-                self.score += diff_piece_count*weight_piece_count
-                self.score += diff_defended_pair_count*weight_defended_pair_count
-                self.score += diff_kunti_distance_min*weight_kunti_distance_min
-                self.score += diff_kunti_distance_sum*weight_kunti_distance_sum
+                self.score += float(diff_piece_count)*weight_piece_count
+                self.score += float(diff_kunti_distance_min)*weight_kunti_distance_min
+                self.score += float(diff_kunti_distance_sum)*weight_kunti_distance_sum
+                self.score += float(diff_defended_pair_count)*weight_defended_pair_count
 
         if self.debug:
             print()
@@ -2563,6 +2562,9 @@ class MinMaxNode:
 
                 print("debug: MinMaxNode.compute_leaf_score: diff_kunti_distance_sum=",
                       diff_kunti_distance_sum)
+
+                print("debug: MinMaxNode.compute_leaf_score: weight_defended_pair_count=",
+                      weight_defended_pair_count)
 
             print("debug: MinMaxNode.compute_leaf_score: score=", self.score)
 
