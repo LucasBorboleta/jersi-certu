@@ -1688,18 +1688,19 @@ class Game:
             for undo in reversed(undo_list):
                 undo()
             self.__restore_game_partial(saved_game_partial)
+        
+        tried_game = None
 
-        if play_validated and do_try and do_save_try:
-            tried_game = self.__save_game()
-            tried_game.move_count += 1
-            tried_game.update_end_conditions()
+        if play_validated and do_try:
+            
+            if do_save_try:
+                tried_game = self.__save_game()
+                tried_game.move_count += 1
+                tried_game.update_end_conditions()
 
             for undo in reversed(undo_list):
                 undo()
             self.__restore_game_partial(saved_game_partial)
-
-        else:
-            tried_game = None
 
         return (play_validated, tried_game)
 
@@ -2173,24 +2174,8 @@ class Algorithm:
     def get_advice(self, game):
         """Return an advice for playing the next move."""
 
+        assert False # Must be redfined by some inherited class
         move_string = None
-
-        move_color = game.get_move_color()
-
-        if move_color is not None:
-            assert move_color == self._color
-
-            move_list = game.find_moves(move_color, find_one=False)
-
-            if move_list:
-                if "width_ratio" in self._options:
-                    width_ratio = self._options["width_ratio"]
-                    move_list = move_list[:width_ratio]
-
-                move = random.choice(move_list)
-                move_string = Game.stringify_move_steps(move)
-                move_string = move_string.strip()
-
         return move_string
 
 
@@ -2225,8 +2210,8 @@ class Algorithm:
         self._options.update(options)
 
 
-class AlgorithmFindOne(Algorithm):
-    """Algorithm for playing JERSI. Find one move."""
+class AlgorithmFirstMove(Algorithm):
+    """Algorithm for playing JERSI. Select first found move."""
 
 
     def __init__(self, color):
@@ -2255,11 +2240,11 @@ class AlgorithmFindOne(Algorithm):
         return move_string
 
 
-Algorithm.register_algorithm_class("find-one", AlgorithmFindOne)
+Algorithm.register_algorithm_class("first-move", AlgorithmFirstMove)
 
 
-class AlgorithmFindAll(Algorithm):
-    """Algorithm for playing JERSI. Find all moves and randomly choice one."""
+class AlgorithmRandomMove(Algorithm):
+    """Algorithm for playing JERSI. Randomly select a move."""
 
 
     def __init__(self, color):
@@ -2288,7 +2273,7 @@ class AlgorithmFindAll(Algorithm):
         return move_string
 
 
-Algorithm.register_algorithm_class("find-all", AlgorithmFindAll)
+Algorithm.register_algorithm_class("random-move", AlgorithmRandomMove)
 
 
 
