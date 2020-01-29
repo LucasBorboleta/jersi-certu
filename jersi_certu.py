@@ -1437,14 +1437,18 @@ class Game:
 
 
     def __find_nodes(self, color):
-        """Find nodes with pieces of the given color."""
+        """Find nodes with alive pieces of the given color."""
 
+        color_nodes = list()
+        
         for shape in Shape.get_indices():
             for piece in self.absmap.pieces[color][shape]:
                 if piece.node is not None:
                     node = piece.node
                     if node.get_top() == piece:
-                        yield node
+                        # this avoid counting twice a node with of stack of height 2
+                        color_nodes.append(node)
+        return color_nodes
 
 
     def get_move_color(self):
