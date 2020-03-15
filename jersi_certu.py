@@ -96,6 +96,19 @@ class Hexmap:
     __CELL_SIZE = 2
     __CELL_SPACE = __SPACE * __CELL_SIZE
     __CELL_FILLER = __FILLER * __CELL_SIZE
+    
+    __slots__ = ("__nodes_per_side", "__n", 
+                 "__count_labels",
+                 "__has_node_values",
+                 "__labels_from_nodes",
+                 "__labels_to_nodes",
+                 "__left_labels",
+                 "__u_list", "__v_list",
+                 "__node_directions",
+                 "__right_labels",
+                 "__row_labels",
+                 "__table", "__nx", "__ny",
+                 )
 
 
     def __init__(self, nodes_per_side):
@@ -420,9 +433,9 @@ class Hexmap:
 class Shape:
     """Capture the knowlege about Shape in JERSI."""
 
-    __names = ["N", "K", "R", "C"]
-    __max_count = [1, 4, 4, 4]
-    __long_names = ["kunti", "cukla", "kurfa", "kuctai"]
+    __names = ("N", "K", "R", "C")
+    __max_count = (1, 4, 4, 4)
+    __long_names = ("kunti", "cukla", "kurfa", "kuctai")
     __indices = list(range(len(__names)))
     assert len(__long_names) == len(__names)
     assert len(__max_count) == len(__names)
@@ -526,7 +539,7 @@ class Shape:
 class Color:
     """Capture the knowlege about Color in JERSI."""
 
-    __names = ["blue", "red"]
+    __names = ("blue", "red")
     __indices = list(range(len(__names)))
     __transformers = [str.upper, str.lower]
     assert len(__indices) == 2
@@ -583,6 +596,8 @@ class Color:
 
 class Piece:
     """Capture knowlege about Piece in JERSI."""
+    
+    __slots__ = ("shape", "color", "node")
 
     def __init__(self, shape, color):
         """Initialize a piece of a given shape and color,
@@ -627,12 +642,14 @@ class Node:
     A Node hosts stacked Pieces.
     """
 
+    __slots__ = ("label", "piece_one", "piece_two", "nodes_at_one_link", "nodes_at_two_links")
 
     def __init__(self, label):
         """Initialize a node at a given label."""
 
         self.label = label
-        self.pieces = [None, None]
+        self.piece_one = None
+        self.piece_two = None
         self.nodes_at_one_link = list()
         self.nodes_at_two_links = list()
 
@@ -640,11 +657,11 @@ class Node:
     def get_top(self):
         """Return the top of the stacked pieces at this node."""
 
-        if self.pieces[1] is not None:
-            top = self.pieces[1]
+        if self.piece_two is not None:
+            top = self.piece_two
 
-        elif self.pieces[0] is not None:
-            top = self.pieces[0]
+        elif self.piece_one is not None:
+            top = self.piece_one
 
         else:
             top = None
@@ -680,22 +697,22 @@ class Node:
 
     def has_one_or_two_pieces(self):
         """Does this node have either one or two pieces?"""
-        return self.pieces[0] is not None
+        return self.piece_one is not None
 
 
     def has_two_pieces(self):
         """Does this node have two pieces?"""
-        return self.pieces[1] is not None
+        return self.piece_two is not None
 
 
     def has_zero_piece(self):
         """Does this node have no piece?"""
-        return self.pieces[0] is None
+        return self.piece_one is None
 
 
     def has_zero_or_one_piece(self):
         """Does this node have either zero or one piece?"""
-        return self.pieces[1] is None
+        return self.piece_two is None
 
 
     def init_nodes_at_one_link(self, nodes_at_one_link):
@@ -747,21 +764,21 @@ class Node:
 
             piece_captured = True
 
-            if dst_node.pieces[1] is not None:
-                if dst_node.pieces[1].shape == Shape.kunti:
+            if dst_node.piece_two is not None:
+                if dst_node.piece_two.shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.pieces[0] is not None:
-                if dst_node.pieces[0].shape == Shape.kunti:
+            if dst_node.piece_one is not None:
+                if dst_node.piece_one.shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.pieces[1] is not None:
+            if dst_node.piece_two is not None:
                 undo_list.append((lambda node, piece:
-                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[1]))
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.piece_two))
 
-            if dst_node.pieces[0] is not None:
+            if dst_node.piece_one is not None:
                 undo_list.append((lambda node, piece:
-                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[0]))
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.piece_one))
 
             dst_node.unset_pieces()
 
@@ -809,21 +826,21 @@ class Node:
 
             piece_captured = True
 
-            if dst_node.pieces[1] is not None:
-                if dst_node.pieces[1].shape == Shape.kunti:
+            if dst_node.piece_two is not None:
+                if dst_node.piece_two.shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.pieces[0] is not None:
-                if dst_node.pieces[0].shape == Shape.kunti:
+            if dst_node.piece_one is not None:
+                if dst_node.piece_one.shape == Shape.kunti:
                     kunti_captured = True
 
-            if dst_node.pieces[1] is not None:
+            if dst_node.piece_two is not None:
                 undo_list.append((lambda node, piece:
-                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[1]))
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.piece_two))
 
-            if dst_node.pieces[0] is not None:
+            if dst_node.piece_one is not None:
                 undo_list.append((lambda node, piece:
-                                  lambda: node.set_piece(piece))(dst_node, dst_node.pieces[0]))
+                                  lambda: node.set_piece(piece))(dst_node, dst_node.piece_one))
 
             dst_node.unset_pieces()
 
@@ -852,18 +869,18 @@ class Node:
 
         jersi_assert(piece.node is None, "the set piece should be free.")
 
-        if self.pieces[0] is None:
-            self.pieces[0] = piece
+        if self.piece_one is None:
+            self.piece_one = piece
             piece.node = self
 
         else:
-            jersi_assert(self.pieces[0].color == piece.color,
+            jersi_assert(self.piece_one.color == piece.color,
                          "stacked pieces should have same color")
 
-            jersi_assert(self.pieces[0].shape != Shape.kunti,
+            jersi_assert(self.piece_one.shape != Shape.kunti,
                          "no piece should be stacked above kunti")
 
-            self.pieces[1] = piece
+            self.piece_two = piece
             piece.node = self
 
 
@@ -872,11 +889,11 @@ class Node:
 
         assert self == piece.node
 
-        if self.pieces[1] == piece:
-            self.pieces[1] = None
+        if self.piece_two == piece:
+            self.piece_two = None
 
-        elif self.pieces[0] == piece:
-            self.pieces[0] = None
+        elif self.piece_one == piece:
+            self.piece_one = None
 
         piece.node = None
 
@@ -884,13 +901,13 @@ class Node:
     def unset_pieces(self):
         """Remove all pieces from this node."""
 
-        if self.pieces[1] is not None:
-            self.pieces[1].node = None
-            self.pieces[1] = None
+        if self.piece_two is not None:
+            self.piece_two.node = None
+            self.piece_two = None
 
-        if self.pieces[0] is not None:
-            self.pieces[0].node = None
-            self.pieces[0] = None
+        if self.piece_one is not None:
+            self.piece_one.node = None
+            self.piece_one = None
 
 
 class Absmap:
@@ -898,6 +915,8 @@ class Absmap:
     Absmap relies on Hexmap for geometrial knowledge. But Unlike Hexmap,
     Absmap knows some rules of JERSI about Nodes and Pieces.
     """
+
+    __slots__ = ("hexmap", "placement_labels", "nodes", "pieces")
 
 
     def __init__(self, hexmap):
@@ -920,7 +939,9 @@ class Absmap:
         cls = self.__class__
         new_one = cls.__new__(cls)
         memo[id(self)] = new_one
-        new_one.__dict__.update(self.__dict__)
+        # Implementation of: new_one.__dict__.update(self.__dict__)
+        for key in self.__slots__:
+            setattr(new_one, key, getattr(self, key))
 
         new_one.nodes = copy.deepcopy(self.nodes, memo)
         new_one.pieces = copy.deepcopy(self.pieces, memo)
@@ -1034,11 +1055,11 @@ class Absmap:
                         if node_label not in positions:
                             positions[node_label] = list()
 
-                            if node.pieces[0] is not None:
-                                positions[node_label].append(node.pieces[0].get_name())
+                            if node.piece_one is not None:
+                                positions[node_label].append(node.piece_one.get_name())
 
-                            if node.pieces[1] is not None:
-                                positions[node_label].append(node.pieces[1].get_name())
+                            if node.piece_two is not None:
+                                positions[node_label].append(node.piece_two.get_name())
 
         return positions
 
@@ -1120,11 +1141,11 @@ class Absmap:
         for node in self.nodes.values():
             cell_text = ""
 
-            if node.pieces[0] is not None:
-                cell_text = node.pieces[0].get_name() + cell_text
+            if node.piece_one is not None:
+                cell_text = node.piece_one.get_name() + cell_text
 
-            if node.pieces[1] is not None:
-                cell_text = node.pieces[1].get_name() + cell_text
+            if node.piece_two is not None:
+                cell_text = node.piece_two.get_name() + cell_text
 
             self.hexmap.set_node_at_label(node.label, cell_text)
 
@@ -1283,6 +1304,9 @@ class Absmap:
 class Game:
     """Manage JERSI rule related to the dynamics like the alternance rule
     between the two players and the end of game."""
+    
+    __slots__ = ("absmap", "placement", "history", "game_over", 
+                 "placement_over", "last_count", "move_count", "score", "time")
 
 
     def __init__(self):
@@ -1311,8 +1335,10 @@ class Game:
         cls = self.__class__
         new_one = cls.__new__(cls)
         memo[id(self)] = new_one
-        new_one.__dict__.update(self.__dict__)
-
+        # Implementation of: new_one.__dict__.update(self.__dict__)
+        for key in self.__slots__:
+            setattr(new_one, key, getattr(self, key))
+            
         new_one.absmap = copy.deepcopy(self.absmap, memo)
         new_one.placement = copy.copy(self.placement)
         new_one.history = copy.copy(self.history)
@@ -1946,7 +1972,15 @@ class Game:
     def __restore_game_partial(self, saved_game):
         """Restore all saved attributes of the game, but not absmap."""
 
-        self.__dict__.update(saved_game.__dict__)
+        # without __slots__ could be implemented as:
+        # self.__dict__.update(saved_game.__dict__)
+        self.placement = saved_game.placement
+        self.history = saved_game.history
+        self.game_over = saved_game.game_over
+        self.placement_over = saved_game.placement_over
+        self.last_count = saved_game.last_count
+        self.move_count = saved_game.move_count
+        self.score = saved_game.score
 
 
     def __save_game(self):
@@ -2155,6 +2189,8 @@ class Game:
 
 class Algorithm:
     """Algorithm for playing JERSI."""
+    
+    __slots__ = ("_color", "_enabled", "_options")
 
     classes = dict()
 
@@ -2324,6 +2360,9 @@ Algorithm.register_algorithm_class("certu", AlgorithmCertu)
 
 class MinMaxNode:
     """Node of the exploration tree of the MinMax strategy."""
+    
+    __slots__ = ("game", "move_string", "depth", "debug", 
+                 "move_color", "is_player", "children", "score")
 
     def __init__(self, game, move_string=None, depth=0, debug=False):
         """Initialize a MinMaxNode."""
@@ -2430,11 +2469,11 @@ class MinMaxNode:
                 pieces = self.game.absmap.get_pieces_by_colors()
 
                 player_defended_pair_count = 0
-                for fst_piece in pieces[player_color]:
-                    for snd_piece in pieces[player_color]:
-                        if fst_piece != snd_piece and fst_piece.shape != Shape.kunti and snd_piece.shape != Shape.kunti:
-                            fst_node = fst_piece.node
-                            snd_node = snd_piece.node
+                for piece_one in pieces[player_color]:
+                    for piece_two in pieces[player_color]:
+                        if piece_one != piece_two and piece_one.shape != Shape.kunti and piece_two.shape != Shape.kunti:
+                            fst_node = piece_one.node
+                            snd_node = piece_two.node
                             if snd_node in fst_node.nodes_at_one_link:
                                 fst_shape = fst_node.get_top_shape()
                                 snd_shape = snd_node.get_top_shape()
@@ -2445,11 +2484,11 @@ class MinMaxNode:
                                                 player_defended_pair_count += 1
 
                 opponent_defended_pair_count = 0
-                for fst_piece in pieces[opponent_color]:
-                    for snd_piece in pieces[opponent_color]:
-                        if fst_piece != snd_piece and fst_piece.shape != Shape.kunti and snd_piece.shape != Shape.kunti:
-                            fst_node = fst_piece.node
-                            snd_node = snd_piece.node
+                for piece_one in pieces[opponent_color]:
+                    for piece_two in pieces[opponent_color]:
+                        if piece_one != piece_two and piece_one.shape != Shape.kunti and piece_two.shape != Shape.kunti:
+                            fst_node = piece_one.node
+                            snd_node = piece_two.node
                             if snd_node in fst_node.nodes_at_one_link:
                                 fst_shape = fst_node.get_top_shape()
                                 snd_shape = snd_node.get_top_shape()
@@ -2652,6 +2691,8 @@ class MinMaxNode:
 
 class Runner:
     """Provide services for playing, saving and reloading a game of JERSI."""
+    
+    __slots__ = ("__game", "__algorithms", "__continue_running")
 
     def __init__(self):
         """Initialize a Runner of the Game."""
