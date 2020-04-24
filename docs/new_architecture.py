@@ -1,6 +1,6 @@
 #!/usr/bin/en python3
 
-"""New faster architecture for playing the jersi abstract game with an AI."""
+"""New faster architecture for playing the abstract game JERSI with an AI."""
 
 # -*- coding: utf-8 -*-
 
@@ -15,7 +15,6 @@ COLORS = np.arange(COLOR_COUNT)
 
 TYPE_NAMES = np.array(["bevri", "cmana", "cukla", "darsi", "kuctai", "kunti", "kurfa"])
 TYPE_NAMES.sort()
-
 TYPE_COUNT = TYPE_NAMES.size
 TYPES = np.arange(TYPE_COUNT)
 
@@ -48,7 +47,6 @@ OCCS[KURFA] = 4
 assert OCCS[KUNTI] == 1
 OCC_MAX = np.max(OCCS)
 OCC_SUM = np.sum(OCCS)
-PIECE_COUNT = COLOR_COUNT*OCC_SUM
 
 BEATS = np.full((TYPE_COUNT, TYPE_COUNT), False, dtype=bool)
 
@@ -75,6 +73,8 @@ BEATS[DARSI, KUNTI] = True
 BEATS[KUCTAI, KUNTI] = True
 BEATS[KURFA, KUNTI] = True
 
+PIECE_COUNT_PER_COLOR = OCC_SUM
+PIECE_COUNT = PIECE_COUNT_PER_COLOR*COLOR_COUNT
 PIECE_COLORS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 PIECE_TYPES = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
@@ -96,23 +96,50 @@ for color_index in COLORS:
             if type_index == KUNTI:
                 KUNTI_PER_COLOR[color_index] = piece_index
 
-LOCATION_COUNT = 100
-piece_at_location = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
+#>> The design of the location data must satisfiy the following requirements:
+#>> - Any allowed move can be implemented as a series of moves between 
+#>>   two locations.
+#>> - The state of game can be implemented as a single numy array in order
+#>>   to copy such state with high performance.                
 
+FIELD_CELL_COUNT = 69
+STACK_SIZE_MAX = 2
 
+RESERVE_CELL_COUNT_PER_COLOR = OCCS[BEVRI] + OCCS[CMANA]
+RESERVE_CELL_COUNT = RESERVE_CELL_COUNT_PER_COLOR*COLOR_COUNT
 
+JAIL_CELL_COUNT_PER_COLOR = PIECE_COUNT_PER_COLOR
+JAIL_CELL_COUNT = JAIL_CELL_COUNT_PER_COLOR*COLOR_COUNT
 
+LOCATION_COUNT = 0
+LOCATION_COUNT += FIELD_CELL_COUNT*STACK_SIZE_MAX
+LOCATION_COUNT += RESERVE_CELL_COUNT
+LOCATION_COUNT += JAIL_CELL_COUNT
 
-
+location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
 PIECE_INITIAL_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-
 PIECE_RESERVE_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-
 PIECE_JAIL_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-
 piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
+#-- Construct location_hosts from piece_locations
+location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
+location_hosts[piece_locations] = np.arange(PIECE_COUNT)
 
+LOCATION_COUNT = 10
+PIECE_COUNT = 3
+piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+piece_locations[0] = 7
+piece_locations[1] = 2
+piece_locations[2] = 5
+location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
+location_hosts[piece_locations] = np.arange(PIECE_COUNT)
+
+#-- Back to piece_locations
+back_piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+query_locations = np.arange(LOCATION_COUNT)[location_hosts != NOT_AN_INDEX]
+query_pieces = location_hosts[location_hosts != NOT_AN_INDEX]
+back_piece_locations[query_pieces] = query_locations
 
 def main():
     """Start JERSI."""
@@ -150,6 +177,16 @@ def main():
     print("PIECE_TYPES:", PIECE_TYPES)
     print()
     print("KUNTI_PER_COLOR:", KUNTI_PER_COLOR)
+    print()
+    print("LOCATION_COUNT:", LOCATION_COUNT)
+    print()
+    print("PIECE_COUNT:", PIECE_COUNT)
+    print()
+    print("piece_locations:", piece_locations)
+    print("location_hosts:", location_hosts)
+    print("query_locations:", query_locations)
+    print("query_pieces:", query_pieces)
+    print("back_piece_locations:", back_piece_locations)
 
 
 if __name__ == "__main__":
