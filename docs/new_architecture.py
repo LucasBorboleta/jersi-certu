@@ -8,45 +8,45 @@ import numpy as np
 
 NOT_AN_INDEX = -1 
 
-COLOR_NAMES = np.array(["black", "white"])
-COLOR_NAMES.sort()
-COLOR_COUNT = COLOR_NAMES.size
+NAME_OF_COLOR = np.array(["black", "white"])
+NAME_OF_COLOR.sort()
+COLOR_COUNT = NAME_OF_COLOR.size
 COLORS = np.arange(COLOR_COUNT)
 
-TYPE_NAMES = np.array(["bevri", "cmana", "cukla", "darsi", "kuctai", "kunti", "kurfa"])
-TYPE_NAMES.sort()
-TYPE_COUNT = TYPE_NAMES.size
+NAME_OF_TYPE = np.array(["bevri", "cmana", "cukla", "darsi", "kuctai", "kunti", "kurfa"])
+NAME_OF_TYPE.sort()
+TYPE_COUNT = NAME_OF_TYPE.size
 TYPES = np.arange(TYPE_COUNT)
 
-BEVRI = np.argwhere(TYPE_NAMES == "bevri")[0][0]
-CMANA = np.argwhere(TYPE_NAMES == "cmana")[0][0]
-CUKLA = np.argwhere(TYPE_NAMES == "cukla")[0][0]
-DARSI = np.argwhere(TYPE_NAMES == "darsi")[0][0]
-KUCTAI = np.argwhere(TYPE_NAMES == "kuctai")[0][0]
-KUNTI = np.argwhere(TYPE_NAMES == "kunti")[0][0]
-KURFA = np.argwhere(TYPE_NAMES == "kurfa")[0][0]
+BEVRI = np.argwhere(NAME_OF_TYPE == "bevri")[0][0]
+CMANA = np.argwhere(NAME_OF_TYPE == "cmana")[0][0]
+CUKLA = np.argwhere(NAME_OF_TYPE == "cukla")[0][0]
+DARSI = np.argwhere(NAME_OF_TYPE == "darsi")[0][0]
+KUCTAI = np.argwhere(NAME_OF_TYPE == "kuctai")[0][0]
+KUNTI = np.argwhere(NAME_OF_TYPE == "kunti")[0][0]
+KURFA = np.argwhere(NAME_OF_TYPE == "kurfa")[0][0]
 
-TYPE_KEYS = np.full(TYPE_COUNT, "??")
-TYPE_KEYS[BEVRI] = "BV"
-TYPE_KEYS[CMANA] = "CM"
-TYPE_KEYS[CUKLA] = "CK"
-TYPE_KEYS[DARSI] = "DR"
-TYPE_KEYS[KUCTAI] = "KC"
-TYPE_KEYS[KUNTI] = "KN"
-TYPE_KEYS[KURFA] = "KR"
+KEY_OF_TYPE = np.full(TYPE_COUNT, "??")
+KEY_OF_TYPE[BEVRI] = "BV"
+KEY_OF_TYPE[CMANA] = "CM"
+KEY_OF_TYPE[CUKLA] = "CK"
+KEY_OF_TYPE[DARSI] = "DR"
+KEY_OF_TYPE[KUCTAI] = "KC"
+KEY_OF_TYPE[KUNTI] = "KN"
+KEY_OF_TYPE[KURFA] = "KR"
 
-OCCS = np.zeros(TYPE_COUNT, dtype=int)
-OCCS[BEVRI] = 2
-OCCS[CMANA] = 4
-OCCS[CUKLA] = 4
-OCCS[DARSI] = 2
-OCCS[KUCTAI] = 4
-OCCS[KUNTI] = 1
-OCCS[KURFA] = 4
+OCC_OF_TYPE = np.zeros(TYPE_COUNT, dtype=int)
+OCC_OF_TYPE[BEVRI] = 2
+OCC_OF_TYPE[CMANA] = 4
+OCC_OF_TYPE[CUKLA] = 4
+OCC_OF_TYPE[DARSI] = 2
+OCC_OF_TYPE[KUCTAI] = 4
+OCC_OF_TYPE[KUNTI] = 1
+OCC_OF_TYPE[KURFA] = 4
 
-assert OCCS[KUNTI] == 1
-OCC_MAX = np.max(OCCS)
-OCC_SUM = np.sum(OCCS)
+assert OCC_OF_TYPE[KUNTI] == 1
+MAX_OCC_OF_TYPE = np.max(OCC_OF_TYPE)
+SUM_OCC_OF_TYPE = np.sum(OCC_OF_TYPE)
 
 BEATS = np.full((TYPE_COUNT, TYPE_COUNT), False, dtype=bool)
 
@@ -73,28 +73,29 @@ BEATS[DARSI, KUNTI] = True
 BEATS[KUCTAI, KUNTI] = True
 BEATS[KURFA, KUNTI] = True
 
-PIECE_COUNT_PER_COLOR = OCC_SUM
+PIECE_COUNT_PER_COLOR = SUM_OCC_OF_TYPE
 PIECE_COUNT = PIECE_COUNT_PER_COLOR*COLOR_COUNT
-PIECE_COLORS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-PIECE_TYPES = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+PIECES = np.arange(PIECE_COUNT)
 
-PIECE_BY_COLOR_TYPE_OCC = np.full((COLOR_COUNT, TYPE_COUNT, OCC_MAX), NOT_AN_INDEX, dtype=int)
+COLOR_OF_PIECE = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+TYPE_OF_PIECE = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
-KUNTI_PER_COLOR = np.full(COLOR_COUNT, NOT_AN_INDEX, dtype=int)
+PIECE_FROM_COLOR_TYPE_OCC = np.full((COLOR_COUNT, TYPE_COUNT, MAX_OCC_OF_TYPE), NOT_AN_INDEX, dtype=int)
+KUNTI_FROM_COLOR = np.full(COLOR_COUNT, NOT_AN_INDEX, dtype=int)
 
 piece_index = None
 for color_index in COLORS:
     for type_index in TYPES:
-        for occ_index in range(OCCS[type_index]):
+        for occ_index in range(OCC_OF_TYPE[type_index]):
             if piece_index is None:
                 piece_index = 0
             else:
                 piece_index += 1
-            PIECE_BY_COLOR_TYPE_OCC[color_index, type_index, occ_index] = piece_index
-            PIECE_COLORS[piece_index] = color_index
-            PIECE_TYPES[piece_index] = type_index
+            PIECE_FROM_COLOR_TYPE_OCC[color_index, type_index, occ_index] = piece_index           
+            COLOR_OF_PIECE[piece_index] = color_index
+            TYPE_OF_PIECE[piece_index] = type_index
             if type_index == KUNTI:
-                KUNTI_PER_COLOR[color_index] = piece_index
+                KUNTI_FROM_COLOR[color_index] = piece_index
 
 #>> The design of the location data must satisfiy the following requirements:
 #>> - Any allowed move can be implemented as a series of moves between 
@@ -105,7 +106,7 @@ for color_index in COLORS:
 FIELD_CELL_COUNT = 69
 STACK_SIZE_MAX = 2
 
-RESERVE_CELL_COUNT_PER_COLOR = OCCS[BEVRI] + OCCS[CMANA]
+RESERVE_CELL_COUNT_PER_COLOR = OCC_OF_TYPE[BEVRI] + OCC_OF_TYPE[CMANA]
 RESERVE_CELL_COUNT = RESERVE_CELL_COUNT_PER_COLOR*COLOR_COUNT
 
 JAIL_CELL_COUNT_PER_COLOR = PIECE_COUNT_PER_COLOR
@@ -116,30 +117,14 @@ LOCATION_COUNT += FIELD_CELL_COUNT*STACK_SIZE_MAX
 LOCATION_COUNT += RESERVE_CELL_COUNT
 LOCATION_COUNT += JAIL_CELL_COUNT
 
-location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
-PIECE_INITIAL_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+LOCATIONS = np.arange(LOCATION_COUNT)
+
+piece_from_location = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
+location_from_piece = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+
 PIECE_RESERVE_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 PIECE_JAIL_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
-#-- Construct location_hosts from piece_locations
-location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
-location_hosts[piece_locations] = np.arange(PIECE_COUNT)
-
-LOCATION_COUNT = 10
-PIECE_COUNT = 3
-piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-piece_locations[0] = 7
-piece_locations[1] = 2
-piece_locations[2] = 5
-location_hosts = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
-location_hosts[piece_locations] = np.arange(PIECE_COUNT)
-
-#-- Back to piece_locations
-back_piece_locations = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-query_locations = np.arange(LOCATION_COUNT)[location_hosts != NOT_AN_INDEX]
-query_pieces = location_hosts[location_hosts != NOT_AN_INDEX]
-back_piece_locations[query_pieces] = query_locations
 
 
 def test_locations_and_pieces_recovery():
@@ -196,12 +181,12 @@ def test_locations_and_pieces_recovery():
 
 def main():
     """Start JERSI."""
-    print("COLOR_NAMES:", COLOR_NAMES)
+    print("NAME_OF_COLOR:", NAME_OF_COLOR)
     print("COLOR_COUNT:", COLOR_COUNT)
     print("COLORS:", COLORS)
     print()
-    print("TYPE_NAMES:", TYPE_NAMES)
-    print("TYPE_KEYS:", TYPE_KEYS)
+    print("NAME_OF_TYPE:", NAME_OF_TYPE)
+    print("KEY_OF_TYPE:", KEY_OF_TYPE)
     print("TYPE_COUNT:", TYPE_COUNT)
     print("TYPES:", TYPES)
     print()
@@ -209,27 +194,27 @@ def main():
     for type_i in TYPES:
         for type_j in TYPES:
             if BEATS[type_i, type_j]:
-                print("%s > %s" % (TYPE_NAMES[type_i], TYPE_NAMES[type_j]))
+                print("%s > %s" % (NAME_OF_TYPE[type_i], NAME_OF_TYPE[type_j]))
 
     print()
-    print("OCCS:", OCCS)
+    print("OCC_OF_TYPE:", OCC_OF_TYPE)
     print("PIECE_COUNT:", PIECE_COUNT)
     print()
-    print("PIECE_COLORS:", PIECE_COLORS)
+    print("COLOR_OF_PIECE:", COLOR_OF_PIECE)
     print()
-    print("PIECE_TYPES:", PIECE_TYPES)
+    print("TYPE_OF_PIECE:", TYPE_OF_PIECE)
     print()
-    print("OCC_MAX:", OCC_MAX)
-    print("OCC_SUM:", OCC_SUM)
+    print("MAX_OCC_OF_TYPE:", MAX_OCC_OF_TYPE)
+    print("SUM_OCC_OF_TYPE:", SUM_OCC_OF_TYPE)
     print("PIECE_COUNT:", PIECE_COUNT)
     print()
-    print("PIECE_BY_COLOR_TYPE_OCC:", PIECE_BY_COLOR_TYPE_OCC)
+    print("PIECE_FROM_COLOR_TYPE_OCC:", PIECE_FROM_COLOR_TYPE_OCC)
     print()
-    print("PIECE_COLORS:", PIECE_COLORS)
+    print("COLOR_OF_PIECE:", COLOR_OF_PIECE)
     print()
-    print("PIECE_TYPES:", PIECE_TYPES)
+    print("TYPE_OF_PIECE:", TYPE_OF_PIECE)
     print()
-    print("KUNTI_PER_COLOR:", KUNTI_PER_COLOR)
+    print("KUNTI_FROM_COLOR:", KUNTI_FROM_COLOR)
     print()
     print("LOCATION_COUNT:", LOCATION_COUNT)
     print()
