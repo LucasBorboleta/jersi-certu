@@ -141,6 +141,59 @@ query_locations = np.arange(LOCATION_COUNT)[location_hosts != NOT_AN_INDEX]
 query_pieces = location_hosts[location_hosts != NOT_AN_INDEX]
 back_piece_locations[query_pieces] = query_locations
 
+
+def test_locations_and_pieces_recovery():
+    """This function shows, using a small example, that if one wants
+    to minimize the number of arrays, then it is better to keep
+    the array "location_from_piece" than the array "piece_from_location".
+    """
+    
+    print()
+    print("-- test_locations_and_pieces_recovery -- BEGIN")
+
+    LOCATION_COUNT = 10
+    PIECE_COUNT = 3
+    PIECES = np.arange(PIECE_COUNT)
+    LOCATIONS = np.arange(LOCATION_COUNT)
+    
+    print()
+    print("-- Define location_from_piece and deduce piece_from_location")
+
+    location_from_piece = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+    location_from_piece[0] = 7
+    location_from_piece[1] = 2
+    location_from_piece[2] = 5
+    print("location_from_piece:", location_from_piece)
+
+    piece_from_location = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
+    piece_from_location[location_from_piece] = PIECES
+    print("piece_from_location:", piece_from_location)
+
+    print()
+    print("-- Use piece_from_location and deduce location_from_piece")
+    
+    location_from_piece = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
+    print("location_from_piece (after reset):", location_from_piece)
+    print("piece_from_location:", piece_from_location)
+    
+    selector = (piece_from_location != NOT_AN_INDEX)
+    print()
+    print("selector:", selector)
+    
+    location_from_selector = LOCATIONS[selector]
+    print("location_from_selector:", location_from_selector)
+
+    piece_from_selector = piece_from_location[selector]
+    print("piece_from_selector:", piece_from_selector)
+
+    location_from_piece[piece_from_selector] = location_from_selector
+    print()
+    print("location_from_piece:", location_from_piece)
+    
+    print()
+    print("-- test_locations_and_pieces_recovery -- END")
+
+
 def main():
     """Start JERSI."""
     print("COLOR_NAMES:", COLOR_NAMES)
@@ -182,11 +235,9 @@ def main():
     print()
     print("PIECE_COUNT:", PIECE_COUNT)
     print()
-    print("piece_locations:", piece_locations)
-    print("location_hosts:", location_hosts)
-    print("query_locations:", query_locations)
-    print("query_pieces:", query_pieces)
-    print("back_piece_locations:", back_piece_locations)
+    
+    
+    test_locations_and_pieces_recovery()
 
 
 if __name__ == "__main__":
