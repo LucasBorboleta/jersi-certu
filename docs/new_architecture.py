@@ -80,22 +80,28 @@ PIECES = np.arange(PIECE_COUNT)
 COLOR_OF_PIECE = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 TYPE_OF_PIECE = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
-PIECE_FROM_COLOR_TYPE_OCC = np.full((COLOR_COUNT, TYPE_COUNT, MAX_OCC_OF_TYPE), NOT_AN_INDEX, dtype=int)
+PIECE_FROM_COLOR_TYPE_TYPE_OCC = np.full((COLOR_COUNT, TYPE_COUNT, MAX_OCC_OF_TYPE), NOT_AN_INDEX, dtype=int)
 KUNTI_FROM_COLOR = np.full(COLOR_COUNT, NOT_AN_INDEX, dtype=int)
+PIECE_FROM_COLOR_COLOR_OCC = np.full((COLOR_COUNT, PIECE_COUNT_PER_COLOR), NOT_AN_INDEX, dtype=int)
 
-piece_index = None
+piece_index = -1
 for color_index in COLORS:
+    color_occ_index = -1
+
     for type_index in TYPES:
-        for occ_index in range(OCC_OF_TYPE[type_index]):
-            if piece_index is None:
-                piece_index = 0
-            else:
-                piece_index += 1
-            PIECE_FROM_COLOR_TYPE_OCC[color_index, type_index, occ_index] = piece_index           
+        for type_occ_index in range(OCC_OF_TYPE[type_index]):
+            piece_index += 1
+                
+            PIECE_FROM_COLOR_TYPE_TYPE_OCC[color_index, type_index, type_occ_index] = piece_index           
             COLOR_OF_PIECE[piece_index] = color_index
             TYPE_OF_PIECE[piece_index] = type_index
+            
             if type_index == KUNTI:
                 KUNTI_FROM_COLOR[color_index] = piece_index
+                
+            color_occ_index += 1
+            PIECE_FROM_COLOR_COLOR_OCC[color_index, color_occ_index] = piece_index           
+
 
 #>> The design of the location data must satisfiy the following requirements:
 #>> - Any allowed move can be implemented as a series of moves between 
@@ -112,19 +118,23 @@ RESERVE_CELL_COUNT = RESERVE_CELL_COUNT_PER_COLOR*COLOR_COUNT
 JAIL_CELL_COUNT_PER_COLOR = PIECE_COUNT_PER_COLOR
 JAIL_CELL_COUNT = JAIL_CELL_COUNT_PER_COLOR*COLOR_COUNT
 
+QUEUE_CELL_COUNT_PER_COLOR = OCC_OF_TYPE[KUNTI]
+QUEUE_CELL_COUNT = QUEUE_CELL_COUNT_PER_COLOR*COLOR_COUNT
+
 LOCATION_COUNT = 0
 LOCATION_COUNT += FIELD_CELL_COUNT*STACK_SIZE_MAX
 LOCATION_COUNT += RESERVE_CELL_COUNT
 LOCATION_COUNT += JAIL_CELL_COUNT
+LOCATION_COUNT += QUEUE_CELL_COUNT
 
 LOCATIONS = np.arange(LOCATION_COUNT)
 
 piece_from_location = np.full(LOCATION_COUNT, NOT_AN_INDEX, dtype=int)
 location_from_piece = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
-PIECE_RESERVE_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
-PIECE_JAIL_LOCATIONS = np.full(PIECE_COUNT, NOT_AN_INDEX, dtype=int)
 
+#-- How to loop on alive pieces of a given color ?
+#-- How to differentiate field, jail and queue ?
 
 
 def test_locations_and_pieces_recovery():
@@ -208,7 +218,7 @@ def main():
     print("SUM_OCC_OF_TYPE:", SUM_OCC_OF_TYPE)
     print("PIECE_COUNT:", PIECE_COUNT)
     print()
-    print("PIECE_FROM_COLOR_TYPE_OCC:", PIECE_FROM_COLOR_TYPE_OCC)
+    print("PIECE_FROM_COLOR_TYPE_TYPE_OCC:", PIECE_FROM_COLOR_TYPE_TYPE_OCC)
     print()
     print("COLOR_OF_PIECE:", COLOR_OF_PIECE)
     print()
