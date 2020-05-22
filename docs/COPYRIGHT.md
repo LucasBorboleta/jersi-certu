@@ -1,5 +1,5 @@
 # COPYRIGHT
-JERSI-CERTU (the program) implements JERSI (the rules), an abstract board game.
+JERSI-CERTU (the program) implements JERSI (the rules), a strategy board game.
 
 Copyright (C) 2019 Lucas Borboleta (lucas.borboleta@free.fr).
 

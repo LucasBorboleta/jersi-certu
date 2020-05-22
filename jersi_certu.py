@@ -1,6 +1,6 @@
 #!/usr/bin/en python3
 
-"""Jersi-certu is a Python3 program for playing the jersi abstract game."""
+"""Jersi-certu is a Python3 program for playing the jersi strategy game."""
 
 # -*- coding: utf-8 -*-
 
@@ -16,7 +16,7 @@ import datetime
 
 
 _COPYRIGHT_AND_LICENSE = """
-JERSI-CERTU (the program) implements JERSI (the rules), an abstract board game.
+JERSI-CERTU (the program) implements JERSI (the rules), a strategy board game.
 
 Copyright (C) 2019 Lucas Borboleta (lucas.borboleta@free.fr).
 
@@ -96,8 +96,8 @@ class Hexmap:
     __CELL_SIZE = 2
     __CELL_SPACE = __SPACE * __CELL_SIZE
     __CELL_FILLER = __FILLER * __CELL_SIZE
-    
-    __slots__ = ("__nodes_per_side", "__n", 
+
+    __slots__ = ("__nodes_per_side", "__n",
                  "__count_labels",
                  "__has_node_values",
                  "__labels_from_nodes",
@@ -596,7 +596,7 @@ class Color:
 
 class Piece:
     """Capture knowlege about Piece in JERSI."""
-    
+
     __slots__ = ("shape", "color", "node")
 
     def __init__(self, shape, color):
@@ -1304,8 +1304,8 @@ class Absmap:
 class Game:
     """Manage JERSI rule related to the dynamics like the alternance rule
     between the two players and the end of game."""
-    
-    __slots__ = ("absmap", "placement", "history", "game_over", 
+
+    __slots__ = ("absmap", "placement", "history", "game_over",
                  "placement_over", "last_count", "move_count", "score", "time")
 
 
@@ -1338,7 +1338,7 @@ class Game:
         # Implementation of: new_one.__dict__.update(self.__dict__)
         for key in self.__slots__:
             setattr(new_one, key, getattr(self, key))
-            
+
         new_one.absmap = copy.deepcopy(self.absmap, memo)
         new_one.placement = copy.copy(self.placement)
         new_one.history = copy.copy(self.history)
@@ -1466,7 +1466,7 @@ class Game:
         """Find nodes with alive pieces of the given color."""
 
         color_nodes = list()
-        
+
         for shape in Shape.get_indices():
             for piece in self.absmap.pieces[color][shape]:
                 if piece.node is not None:
@@ -1718,11 +1718,11 @@ class Game:
             for undo in reversed(undo_list):
                 undo()
             self.__restore_game_partial(saved_game_partial)
-        
+
         tried_game = None
 
         if play_validated and do_try:
-            
+
             if do_save_try:
                 tried_game = self.__save_game()
                 tried_game.move_count += 1
@@ -2189,7 +2189,7 @@ class Game:
 
 class Algorithm:
     """Algorithm for playing JERSI."""
-    
+
     __slots__ = ("_color", "_enabled", "_options")
 
     classes = dict()
@@ -2360,8 +2360,8 @@ Algorithm.register_algorithm_class("certu", AlgorithmCertu)
 
 class MinMaxNode:
     """Node of the exploration tree of the MinMax strategy."""
-    
-    __slots__ = ("game", "move_string", "depth", "debug", 
+
+    __slots__ = ("game", "move_string", "depth", "debug",
                  "move_color", "is_player", "children", "score")
 
     def __init__(self, game, move_string=None, depth=0, debug=False):
@@ -2403,7 +2403,7 @@ class MinMaxNode:
 
                 if width_ratio is None:
                     actual_width_ratio = None
-                    
+
                 elif self.depth < len(width_ratio):
                     actual_width_ratio = width_ratio[self.depth]
                 else:
@@ -2411,9 +2411,9 @@ class MinMaxNode:
 
 
                 move_count = 0
-                
+
                 for (move, game) in self.game.find_moves_and_games(self.move_color, find_one=False):
-                    
+
                     if actual_width_ratio is None or random.random() <= actual_width_ratio:
                         move_count += 1
 
@@ -2691,7 +2691,7 @@ class MinMaxNode:
 
 class Runner:
     """Provide services for playing, saving and reloading a game of JERSI."""
-    
+
     __slots__ = ("__game", "__algorithms", "__continue_running")
 
     def __init__(self):
