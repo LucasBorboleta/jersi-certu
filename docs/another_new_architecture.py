@@ -9,26 +9,22 @@ import numpy as np
 print()
 print("Hello!")
 
-NOT_DEFINED = -1
+UNDEFINED = -1
 
 # Define cube color domain
 
 CUBE_COLOR_DOMAIN = np.array(["BLACK", "WHITE"])
 CUBE_COLOR_COUNT = CUBE_COLOR_DOMAIN.size
 CUBE_COLOR_CODOMAIN = np.arange(CUBE_COLOR_COUNT, dtype=np.int8)
-CUBE_COLOR_KEY = np.vectorize(lambda x:x[0])(CUBE_COLOR_DOMAIN)
-CUBE_COLOR_FUN = np.array([str.upper, str.lower])
+CUBE_COLOR_FUNCTION = np.array([str.upper, str.lower])
 
 print()
 print(f"{CUBE_COLOR_COUNT=!s}")
 print(f"{CUBE_COLOR_DOMAIN=!s}")
 print(f"{CUBE_COLOR_CODOMAIN=!s}")
-print(f"{CUBE_COLOR_KEY=!s}")
 
-assert CUBE_COLOR_KEY.size == CUBE_COLOR_COUNT
-assert CUBE_COLOR_FUN.size == CUBE_COLOR_COUNT
+assert CUBE_COLOR_FUNCTION.size == CUBE_COLOR_COUNT
 assert np.unique(CUBE_COLOR_DOMAIN).size == CUBE_COLOR_COUNT
-assert np.unique(CUBE_COLOR_KEY).size == CUBE_COLOR_COUNT
 
 CUBE_COLOR_BLACK = np.argwhere(CUBE_COLOR_DOMAIN == "BLACK")[0][0]
 CUBE_COLOR_WHITE = np.argwhere(CUBE_COLOR_DOMAIN == "WHITE")[0][0]
@@ -70,29 +66,29 @@ print(f"{CUBE_TYPE_SCISSORS=!s}")
 print(f"{CUBE_TYPE_WISE=!s}")
 
 
-# Define cube colored_type
+# Define cube colored type
 
 CUBE_CTYPE_COUNT = CUBE_COLOR_COUNT*CUBE_TYPE_COUNT
 CUBE_CTYPE_CODOMAIN = np.arange(CUBE_CTYPE_COUNT, dtype=np.int8)
-CUBE_CTYPE_COLOR = np.full(CUBE_CTYPE_COUNT, NOT_DEFINED, dtype=np.int8)
-CUBE_CTYPE_TYPE = np.full(CUBE_CTYPE_COUNT, NOT_DEFINED, dtype=np.int8)
+CUBE_CTYPE_COLOR = np.full(CUBE_CTYPE_COUNT, UNDEFINED, dtype=np.int8)
+CUBE_CTYPE_TYPE = np.full(CUBE_CTYPE_COUNT, UNDEFINED, dtype=np.int8)
 
-cube_ctype_list = list()
+cube_ctype_id_list = list()
 
 for cube_color_index in CUBE_COLOR_CODOMAIN:
-    cube_color_fun = CUBE_COLOR_FUN[cube_color_index]
+    cube_color_function = CUBE_COLOR_FUNCTION[cube_color_index]
 
     for (cube_type_index, cube_type_key) in enumerate(CUBE_TYPE_KEY):
 
-            cube_ctype_index = len(cube_ctype_list)
+            cube_ctype_index = len(cube_ctype_id_list)
 
-            cube_ctype_id = cube_color_fun(cube_type_key)
-            cube_ctype_list.append(cube_ctype_id)
+            cube_ctype_id = cube_color_function(cube_type_key)
+            cube_ctype_id_list.append(cube_ctype_id)
 
             CUBE_CTYPE_COLOR[cube_ctype_index] = cube_color_index
             CUBE_CTYPE_TYPE[cube_ctype_index] = cube_type_index
 
-CUBE_CTYPE_DOMAIN = np.array(cube_ctype_list)
+CUBE_CTYPE_DOMAIN = np.array(cube_ctype_id_list)
 
 print()
 print(f"{CUBE_CTYPE_DOMAIN=!s}")
@@ -147,20 +143,20 @@ print(f"{CUBE_STATUS_RESERVED=!s}")
 CUBE_ID_COUNT = CUBE_COLOR_COUNT*CUBE_TYPE_MULTIPLICITY_SUM
 CUBE_ID_CODOMAIN = np.arange(CUBE_ID_COUNT, dtype=np.int8)
 
-CUBE_COLOR = np.full(CUBE_ID_COUNT, NOT_DEFINED, dtype=np.int8)
-CUBE_TYPE = np.full(CUBE_ID_COUNT, NOT_DEFINED, dtype=np.int8)
+CUBE_COLOR = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
+CUBE_TYPE = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
 
 cube_id_list = list()
 
 for cube_color_index in CUBE_COLOR_CODOMAIN:
-    cube_color_fun = CUBE_COLOR_FUN[cube_color_index]
+    cube_color_function = CUBE_COLOR_FUNCTION[cube_color_index]
 
     for (cube_type_index, cube_type_key) in enumerate(CUBE_TYPE_KEY):
 
         for cube_type_occurrence in range(CUBE_TYPE_MULTIPLICITY[cube_type_index]):
             cube_index = len(cube_id_list)
 
-            cube_id = "%s%d" % (cube_color_fun(cube_type_key), cube_type_occurrence)
+            cube_id = "%s%d" % (cube_color_function(cube_type_key), cube_type_occurrence)
             cube_id_list.append(cube_id)
 
             CUBE_COLOR[cube_index] = cube_color_index
@@ -178,7 +174,7 @@ print(f"{CUBE_COLOR=!s}")
 print(f"{CUBE_TYPE=!s}")
 
 
-# Define cube elevation domain
+# Define hexagon level domain
 
 HEX_LEVEL_DOMAIN = np.array(["BOTTOM", "TOP"])
 HEX_LEVEL_COUNT = HEX_LEVEL_DOMAIN.size
@@ -227,13 +223,13 @@ print(f"{HEX_STATUS_CODOMAIN=!s}")
 
 assert np.unique(HEX_STATUS_DOMAIN).size == CUBE_STATUS_COUNT
 
-HEX_STATUS_HAS_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "HAS_CUBE")[0][0]
-HEX_STATUS_IS_EMPTY = np.argwhere(HEX_STATUS_DOMAIN == "IS_EMPTY")[0][0]
-HEX_STATUS_HAS_STACK = np.argwhere(HEX_STATUS_DOMAIN == "HAS_STACK")[0][0]
+HEX_STATUS_HAS_ONE_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "HAS_CUBE")[0][0]
+HEX_STATUS_HAS_NO_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "IS_EMPTY")[0][0]
+HEX_STATUS_HAS_TWO_CUBES = np.argwhere(HEX_STATUS_DOMAIN == "HAS_STACK")[0][0]
 
-print(f"{HEX_STATUS_HAS_CUBE=!s}")
-print(f"{HEX_STATUS_IS_EMPTY=!s}")
-print(f"{HEX_STATUS_HAS_STACK=!s}")
+print(f"{HEX_STATUS_HAS_ONE_CUBE=!s}")
+print(f"{HEX_STATUS_HAS_NO_CUBE=!s}")
+print(f"{HEX_STATUS_HAS_TWO_CUBES=!s}")
 
 
 # Define hex identifiers
@@ -246,108 +242,108 @@ hex_u_list = list()
 hex_v_list = list()
 
 
-def hex_add(key, u, v):
+def create_hexagon_at_uv(hex_id, u, v):
 
-    assert len(key) == 2
-    assert key not in hex_id_dict
+    assert len(hex_id) == 2
+    assert hex_id not in hex_id_dict
     assert (u,v) not in hex_uv_dict
 
     hex_index = len(hex_id_list)
 
-    hex_id_dict[key] = hex_index
+    hex_id_dict[hex_id] = hex_index
     hex_uv_dict[(u,v)] = hex_index
 
-    hex_id_list.append(key)
+    hex_id_list.append(hex_id)
     hex_u_list.append(u)
     hex_v_list.append(v)
 
 
 # Row "a"
-hex_add(key='a1', u=-1, v=-4)
-hex_add(key='a2', u=-0, v=-4)
-hex_add(key='a3', u=1, v=-4)
-hex_add(key='a4', u=2, v=-4)
-hex_add(key='a5', u=3, v=-4)
-hex_add(key='a6', u=4, v=-4)
-hex_add(key='a7', u=5, v=-4)
+create_hexagon_at_uv('a1', -1, -4)
+create_hexagon_at_uv('a2', -0, -4)
+create_hexagon_at_uv('a3', 1, -4)
+create_hexagon_at_uv('a4', 2, -4)
+create_hexagon_at_uv('a5', 3, -4)
+create_hexagon_at_uv('a6', 4, -4)
+create_hexagon_at_uv('a7', 5, -4)
 
 # Row "b"
-hex_add(key='b1', u=-2, v=-3)
-hex_add(key='b2', u=-1, v=-3)
-hex_add(key='b3', u=0, v=-3)
-hex_add(key='b4', u=1, v=-3)
-hex_add(key='b5', u=2, v=-3)
-hex_add(key='b6', u=3, v=-3)
-hex_add(key='b7', u=4, v=-3)
-hex_add(key='b8', u=5, v=-3)
+create_hexagon_at_uv('b1', -2, -3)
+create_hexagon_at_uv('b2', -1, -3)
+create_hexagon_at_uv('b3', 0, -3)
+create_hexagon_at_uv('b4', 1, -3)
+create_hexagon_at_uv('b5', 2, -3)
+create_hexagon_at_uv('b6', 3, -3)
+create_hexagon_at_uv('b7', 4, -3)
+create_hexagon_at_uv('b8', 5, -3)
 
 # Row "c"
-hex_add(key='c1', u=-2, v=-2)
-hex_add(key='c2', u=-1, v=-2)
-hex_add(key='c3', u=0, v=-2)
-hex_add(key='c4', u=1, v=-2)
-hex_add(key='c5', u=2, v=-2)
-hex_add(key='c6', u=3, v=-2)
-hex_add(key='c7', u=4, v=-2)
+create_hexagon_at_uv('c1', -2, -2)
+create_hexagon_at_uv('c2', -1, -2)
+create_hexagon_at_uv('c3', 0, -2)
+create_hexagon_at_uv('c4', 1, -2)
+create_hexagon_at_uv('c5', 2, -2)
+create_hexagon_at_uv('c6', 3, -2)
+create_hexagon_at_uv('c7', 4, -2)
 
 # Row "d"
-hex_add(key='d1', u=-3, v=-1)
-hex_add(key='d2', u=-2, v=-1)
-hex_add(key='d3', u=-1, v=-1)
-hex_add(key='d4', u=0, v=-1)
-hex_add(key='d5', u=1, v=-1)
-hex_add(key='d6', u=2, v=-1)
-hex_add(key='d7', u=3, v=-1)
-hex_add(key='d8', u=4, v=-1)
+create_hexagon_at_uv('d1', -3, -1)
+create_hexagon_at_uv('d2', -2, -1)
+create_hexagon_at_uv('d3', -1, -1)
+create_hexagon_at_uv('d4', 0, -1)
+create_hexagon_at_uv('d5', 1, -1)
+create_hexagon_at_uv('d6', 2, -1)
+create_hexagon_at_uv('d7', 3, -1)
+create_hexagon_at_uv('d8', 4, -1)
 
 # Row "e"
-hex_add(key='e1', u=-4, v=0)
-hex_add(key='e2', u=-3, v=0)
-hex_add(key='e3', u=-2, v=0)
-hex_add(key='e4', u=-1, v=0)
-hex_add(key='e5', u=0, v=0)
-hex_add(key='e6', u=1, v=0)
-hex_add(key='e7', u=2, v=0)
-hex_add(key='e8', u=3, v=0)
-hex_add(key='e9', u=4, v=0)
+create_hexagon_at_uv('e1', -4, 0)
+create_hexagon_at_uv('e2', -3, 0)
+create_hexagon_at_uv('e3', -2, 0)
+create_hexagon_at_uv('e4', -1, 0)
+create_hexagon_at_uv('e5', 0, 0)
+create_hexagon_at_uv('e6', 1, 0)
+create_hexagon_at_uv('e7', 2, 0)
+create_hexagon_at_uv('e8', 3, 0)
+create_hexagon_at_uv('e9', 4, 0)
 
 # Row "f"
-hex_add(key='f1', u=-4, v=1)
-hex_add(key='f2', u=-3, v=1)
-hex_add(key='f3', u=-2, v=1)
-hex_add(key='f4', u=-1, v=1)
-hex_add(key='f5', u=0, v=1)
-hex_add(key='f6', u=1, v=1)
-hex_add(key='f7', u=2, v=1)
-hex_add(key='f8', u=3, v=1)
+create_hexagon_at_uv('f1', -4, 1)
+create_hexagon_at_uv('f2', -3, 1)
+create_hexagon_at_uv('f3', -2, 1)
+create_hexagon_at_uv('f4', -1, 1)
+create_hexagon_at_uv('f5', 0, 1)
+create_hexagon_at_uv('f6', 1, 1)
+create_hexagon_at_uv('f7', 2, 1)
+create_hexagon_at_uv('f8', 3, 1)
 
 # Row "g"
-hex_add(key='g1', u=-4, v=2)
-hex_add(key='g2', u=-3, v=2)
-hex_add(key='g3', u=-2, v=2)
-hex_add(key='g4', u=-1, v=2)
-hex_add(key='g5', u=0, v=2)
-hex_add(key='g6', u=1, v=2)
-hex_add(key='g7', u=2, v=2)
+create_hexagon_at_uv('g1', -4, 2)
+create_hexagon_at_uv('g2', -3, 2)
+create_hexagon_at_uv('g3', -2, 2)
+create_hexagon_at_uv('g4', -1, 2)
+create_hexagon_at_uv('g5', 0, 2)
+create_hexagon_at_uv('g6', 1, 2)
+create_hexagon_at_uv('g7', 2, 2)
 
 # Row "h"
-hex_add(key='h1', u=-5, v=3)
-hex_add(key='h2', u=-4, v=3)
-hex_add(key='h3', u=-3, v=3)
-hex_add(key='h4', u=-2, v=3)
-hex_add(key='h5', u=-1, v=3)
-hex_add(key='h6', u=0, v=3)
-hex_add(key='h7', u=1, v=3)
-hex_add(key='h8', u=2, v=3)
+create_hexagon_at_uv('h1', -5, 3)
+create_hexagon_at_uv('h2', -4, 3)
+create_hexagon_at_uv('h3', -3, 3)
+create_hexagon_at_uv('h4', -2, 3)
+create_hexagon_at_uv('h5', -1, 3)
+create_hexagon_at_uv('h6', 0, 3)
+create_hexagon_at_uv('h7', 1, 3)
+create_hexagon_at_uv('h8', 2, 3)
 
 # Row "i"
-hex_add(key='i1', u=-5, v=4)
-hex_add(key='i2', u=-4, v=4)
-hex_add(key='i3', u=-3, v=4)
-hex_add(key='i4', u=-2, v=4)
-hex_add(key='i5', u=-1, v=4)
-hex_add(key='i6', u=0, v=4)
-hex_add(key='i7', u=1, v=4)
+create_hexagon_at_uv('i1', -5, 4)
+create_hexagon_at_uv('i2', -4, 4)
+create_hexagon_at_uv('i3', -3, 4)
+create_hexagon_at_uv('i4', -2, 4)
+create_hexagon_at_uv('i5', -1, 4)
+create_hexagon_at_uv('i6', 0, 4)
+create_hexagon_at_uv('i7', 1, 4)
 
 
 HEX_ID_DOMAIN = np.array(hex_id_list)
@@ -365,8 +361,8 @@ print(f"{HEX_COORD_V=!s}")
 
 # Define hexs by one or two steps toward a given direction
 
-HEX_NEXT_FST = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), NOT_DEFINED, dtype=np.int8)
-HEX_NEXT_SND = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), NOT_DEFINED, dtype=np.int8)
+HEX_NEXT_FST = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), UNDEFINED, dtype=np.int8)
+HEX_NEXT_SND = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), UNDEFINED, dtype=np.int8)
 
 for hex_index in HEX_ID_CODOMAIN:
     hex_u = HEX_COORD_U[hex_index]
@@ -397,9 +393,9 @@ print(f"{HEX_NEXT_SND=!s}")
 
 # Define cube variables properties
 
-cube_status = np.full(CUBE_ID_COUNT, NOT_DEFINED, dtype=np.int8)
-cube_hex = np.full(CUBE_ID_COUNT, NOT_DEFINED, dtype=np.int8)
-cube_hex_level = np.full(CUBE_ID_COUNT, NOT_DEFINED, dtype=np.int8)
+cube_status = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
+cube_hex = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
+cube_hex_level = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
 print()
 print(f"{cube_status=!s}")
 print(f"{cube_hex=!s}")
@@ -408,9 +404,9 @@ print(f"{cube_hex_level=!s}")
 
 # Define hex variables properties
 
-hex_status = np.full(HEX_ID_COUNT, NOT_DEFINED, dtype=np.int8)
-hex_bottom = np.full(HEX_ID_COUNT, NOT_DEFINED, dtype=np.int8)
-hex_top = np.full(HEX_ID_COUNT, NOT_DEFINED, dtype=np.int8)
+hex_status = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
+hex_bottom = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
+hex_top = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
 print()
 print(f"{hex_status=!s}")
 print(f"{hex_bottom=!s}")
@@ -421,122 +417,122 @@ print(f"{hex_top=!s}")
 
 def set_cube_in_reserve(cube_color_index, cube_type_index):
 
-    cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
+    free_cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
                                (CUBE_TYPE == cube_type_index) &
-                               (cube_status == NOT_DEFINED)]
+                               (cube_status == UNDEFINED)]
 
-    assert cube_indexes.size != 0
-    cube_index = cube_indexes[0]
+    assert free_cube_indexes.size != 0
+    cube_index = free_cube_indexes[0]
     cube_status[cube_index] = CUBE_STATUS_RESERVED
 
 
-def set_cube_at_position(hex_index, cube_color_index, cube_type_index):
+def set_cube_at_hexagon(cube_color_index, cube_type_index, hex_index):
 
-    cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
+    free_cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
                                (CUBE_TYPE == cube_type_index) &
-                               (cube_status == NOT_DEFINED)]
+                               (cube_status == UNDEFINED)]
 
-    assert cube_indexes.size != 0
-    cube_index = cube_indexes[0]
+    assert free_cube_indexes.size != 0
+    cube_index = free_cube_indexes[0]
     cube_status[cube_index] = CUBE_STATUS_ACTIVE
 
-    if hex_status[hex_index] == HEX_STATUS_IS_EMPTY:
+    if hex_status[hex_index] == HEX_STATUS_HAS_NO_CUBE:
 
         hex_bottom[hex_index] = cube_index
-        hex_status[hex_index] = HEX_STATUS_HAS_CUBE
+        hex_status[hex_index] = HEX_STATUS_HAS_ONE_CUBE
 
         cube_hex[cube_index] = hex_index
         cube_hex_level[cube_index] = HEX_LEVEL_BOTTOM
 
-    elif hex_status[hex_index] == HEX_STATUS_HAS_CUBE:
+    elif hex_status[hex_index] == HEX_STATUS_HAS_ONE_CUBE:
 
         hex_top[hex_index] = cube_index
-        hex_status[hex_index] = HEX_STATUS_HAS_STACK
+        hex_status[hex_index] = HEX_STATUS_HAS_TWO_CUBES
 
         cube_hex[cube_index] = hex_index
         cube_hex_level[cube_index] = HEX_LEVEL_TOP
 
     else:
-        assert hex_status[hex_index] != HEX_STATUS_HAS_STACK
+        assert hex_status[hex_index] != HEX_STATUS_HAS_TWO_CUBES
 
 
-def set_cube_in_reserve_by_key(cube_key):
+def set_cube_in_reserve_by_id(cube_ctype_id):
 
-    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_key)[0][0]
+    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_ctype_id)[0][0]
     cube_color_index = CUBE_CTYPE_COLOR[cube_ctype_index]
     cube_type_index = CUBE_CTYPE_TYPE[cube_ctype_index]
 
     set_cube_in_reserve(cube_color_index, cube_type_index)
 
 
-def set_cube_at_position_by_keys(hex_key, cube_key):
+def set_cube_at_hexagon_by_id(cube_ctype_id, hex_id):
 
-    hex_index = np.argwhere(HEX_ID_DOMAIN == hex_key)[0][0]
+    hex_index = np.argwhere(HEX_ID_DOMAIN == hex_id)[0][0]
 
-    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_key)[0][0]
+    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_ctype_id)[0][0]
     cube_color_index = CUBE_CTYPE_COLOR[cube_ctype_index]
     cube_type_index = CUBE_CTYPE_TYPE[cube_ctype_index]
 
-    set_cube_at_position(hex_index, cube_color_index, cube_type_index)
+    set_cube_at_hexagon(cube_color_index, cube_type_index, hex_index)
 
 
 # whites
-set_cube_at_position_by_keys('b1', 'F')
-set_cube_at_position_by_keys('b8', 'F')
-set_cube_at_position_by_keys('a4', 'K')
+set_cube_at_hexagon_by_id('F', 'b1')
+set_cube_at_hexagon_by_id('F', 'b8')
+set_cube_at_hexagon_by_id('K', 'a4')
 
-set_cube_at_position_by_keys('b2', 'R')
-set_cube_at_position_by_keys('b3', 'P')
-set_cube_at_position_by_keys('b4', 'S')
-set_cube_at_position_by_keys('b5', 'R')
-set_cube_at_position_by_keys('b6', 'P')
-set_cube_at_position_by_keys('b7', 'S')
+set_cube_at_hexagon_by_id('R', 'b2')
+set_cube_at_hexagon_by_id('P', 'b3')
+set_cube_at_hexagon_by_id('S', 'b4')
+set_cube_at_hexagon_by_id('R', 'b5')
+set_cube_at_hexagon_by_id('P', 'b6')
+set_cube_at_hexagon_by_id('S', 'b7')
 
-set_cube_at_position_by_keys('a3', 'R')
-set_cube_at_position_by_keys('a2', 'S')
-set_cube_at_position_by_keys('a1', 'P')
-set_cube_at_position_by_keys('a5', 'S')
-set_cube_at_position_by_keys('a6', 'R')
-set_cube_at_position_by_keys('a7', 'P')
+set_cube_at_hexagon_by_id('R', 'a3')
+set_cube_at_hexagon_by_id('S', 'a2')
+set_cube_at_hexagon_by_id('P', 'a1')
+set_cube_at_hexagon_by_id('S', 'a5')
+set_cube_at_hexagon_by_id('R', 'a6')
+set_cube_at_hexagon_by_id('P', 'a7')
 
 # blacks
-set_cube_at_position_by_keys('h1', 'f')
-set_cube_at_position_by_keys('h8', 'f')
-set_cube_at_position_by_keys('i4', 'k')
+set_cube_at_hexagon_by_id('f', 'h1')
+set_cube_at_hexagon_by_id('f', 'h8')
+set_cube_at_hexagon_by_id('k', 'i4')
 
-set_cube_at_position_by_keys('h7', 'r')
-set_cube_at_position_by_keys('h6', 'p')
-set_cube_at_position_by_keys('h5', 's')
-set_cube_at_position_by_keys('h4', 'r')
-set_cube_at_position_by_keys('h3', 'p')
-set_cube_at_position_by_keys('h2', 's')
+set_cube_at_hexagon_by_id('r', 'h7')
+set_cube_at_hexagon_by_id('p', 'h6')
+set_cube_at_hexagon_by_id('s', 'h5')
+set_cube_at_hexagon_by_id('r', 'h4')
+set_cube_at_hexagon_by_id('p', 'h3')
+set_cube_at_hexagon_by_id('s', 'h2')
 
-set_cube_at_position_by_keys('i5', 'r')
-set_cube_at_position_by_keys('i6', 's')
-set_cube_at_position_by_keys('i7', 'p')
-set_cube_at_position_by_keys('i3', 's')
-set_cube_at_position_by_keys('i2', 'r')
-set_cube_at_position_by_keys('i1', 'p')
+set_cube_at_hexagon_by_id('r', 'i5')
+set_cube_at_hexagon_by_id('s', 'i6')
+set_cube_at_hexagon_by_id('p', 'i7')
+set_cube_at_hexagon_by_id('s', 'i3')
+set_cube_at_hexagon_by_id('r', 'i2')
+set_cube_at_hexagon_by_id('p', 'i1')
 
 # white reserve
-set_cube_in_reserve_by_key('W')
-set_cube_in_reserve_by_key('W')
+set_cube_in_reserve_by_id('W')
+set_cube_in_reserve_by_id('W')
 
-set_cube_in_reserve_by_key('M')
-set_cube_in_reserve_by_key('M')
+set_cube_in_reserve_by_id('M')
+set_cube_in_reserve_by_id('M')
 
-set_cube_in_reserve_by_key('M')
-set_cube_in_reserve_by_key('M')
+set_cube_in_reserve_by_id('M')
+set_cube_in_reserve_by_id('M')
 
 # black reserve
-set_cube_in_reserve_by_key('m')
-set_cube_in_reserve_by_key('m')
+set_cube_in_reserve_by_id('m')
+set_cube_in_reserve_by_id('m')
 
-set_cube_in_reserve_by_key('m')
-set_cube_in_reserve_by_key('m')
+set_cube_in_reserve_by_id('m')
+set_cube_in_reserve_by_id('m')
 
-set_cube_in_reserve_by_key('w')
-set_cube_in_reserve_by_key('w')
+set_cube_in_reserve_by_id('w')
+set_cube_in_reserve_by_id('w')
 
 
 # Try treatments over defined data structures
