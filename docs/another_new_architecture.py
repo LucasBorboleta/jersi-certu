@@ -3,6 +3,7 @@
 Data structure for "jersi" game : fast when performance is required.
 """
 
+import types
 import numpy as np
 
 
@@ -10,168 +11,215 @@ print()
 print("Hello!")
 
 UNDEFINED = -1
+DO_DEBUG = True
 
-# Define cube color domain
+# Define cube color type
 
-CUBE_COLOR_DOMAIN = np.array(["BLACK", "WHITE"])
-CUBE_COLOR_COUNT = CUBE_COLOR_DOMAIN.size
-CUBE_COLOR_CODOMAIN = np.arange(CUBE_COLOR_COUNT, dtype=np.int8)
-CUBE_COLOR_FUNCTION = np.array([str.upper, str.lower])
+def _make_TypeCubeColor():
 
-print()
-print(f"{CUBE_COLOR_COUNT=!s}")
-print(f"{CUBE_COLOR_DOMAIN=!s}")
-print(f"{CUBE_COLOR_CODOMAIN=!s}")
+    TypeCubeColor = types.SimpleNamespace()
 
-assert CUBE_COLOR_FUNCTION.size == CUBE_COLOR_COUNT
-assert np.unique(CUBE_COLOR_DOMAIN).size == CUBE_COLOR_COUNT
+    TypeCubeColor.domain = np.array(["black", "white"])
+    TypeCubeColor.count = TypeCubeColor.domain.size
+    TypeCubeColor.function = np.array([str.upper, str.lower])
+    TypeCubeColor.codomain = np.arange(TypeCubeColor.count, dtype=np.int8)
 
-CUBE_COLOR_BLACK = np.argwhere(CUBE_COLOR_DOMAIN == "BLACK")[0][0]
-CUBE_COLOR_WHITE = np.argwhere(CUBE_COLOR_DOMAIN == "WHITE")[0][0]
-print(f"{CUBE_COLOR_BLACK=!s}")
-print(f"{CUBE_COLOR_WHITE=!s}")
+    TypeCubeColor.black = np.argwhere(TypeCubeColor.domain == "black")[0][0]
+    TypeCubeColor.white = np.argwhere(TypeCubeColor.domain == "white")[0][0]
 
+    if DO_DEBUG:
+        print()
+        print(f"{TypeCubeColor.count=!s}")
+        print(f"{TypeCubeColor.domain=!s}")
+        print(f"{TypeCubeColor.codomain=!s}")
+        print(f"{TypeCubeColor.function=!s}")
 
-# Define cube type domain
+        print(f"{TypeCubeColor.black=!s}")
+        print(f"{TypeCubeColor.white=!s}")
 
-CUBE_TYPE_DOMAIN = np.array(["FOUL", "KING", "MOUNTAIN", "PAPER", "ROCK", "SCISSORS", "WISE"])
-CUBE_TYPE_COUNT = CUBE_TYPE_DOMAIN.size
-CUBE_TYPE_CODOMAIN = np.arange(CUBE_TYPE_COUNT, dtype=np.int8)
-CUBE_TYPE_KEY = np.vectorize(lambda x:x[0].upper())(CUBE_TYPE_DOMAIN)
+    assert TypeCubeColor.function.size == TypeCubeColor.count
+    assert np.unique(TypeCubeColor.domain).size == TypeCubeColor.count
 
-print()
-print(f"{CUBE_TYPE_DOMAIN=!s}")
-print(f"{CUBE_TYPE_KEY=!s}")
-print(f"{CUBE_TYPE_CODOMAIN=!s}")
-print(f"{CUBE_TYPE_COUNT=!s}")
+    return TypeCubeColor
 
-assert CUBE_TYPE_KEY.size == CUBE_TYPE_COUNT
-assert np.unique(CUBE_TYPE_DOMAIN).size == CUBE_TYPE_COUNT
-assert np.unique(CUBE_TYPE_KEY).size == CUBE_TYPE_COUNT
-
-CUBE_TYPE_FOUL = np.argwhere(CUBE_TYPE_DOMAIN == "FOUL")[0][0]
-CUBE_TYPE_KING = np.argwhere(CUBE_TYPE_DOMAIN == "KING")[0][0]
-CUBE_TYPE_MOUNTAIN = np.argwhere(CUBE_TYPE_DOMAIN == "MOUNTAIN")[0][0]
-CUBE_TYPE_PAPER = np.argwhere(CUBE_TYPE_DOMAIN == "PAPER")[0][0]
-CUBE_TYPE_ROCK = np.argwhere(CUBE_TYPE_DOMAIN == "ROCK")[0][0]
-CUBE_TYPE_SCISSORS = np.argwhere(CUBE_TYPE_DOMAIN == "SCISSORS")[0][0]
-CUBE_TYPE_WISE = np.argwhere(CUBE_TYPE_DOMAIN == "WISE")[0][0]
-
-print(f"{CUBE_TYPE_FOUL=!s}")
-print(f"{CUBE_TYPE_KING=!s}")
-print(f"{CUBE_TYPE_MOUNTAIN=!s}")
-print(f"{CUBE_TYPE_PAPER=!s}")
-print(f"{CUBE_TYPE_ROCK=!s}")
-print(f"{CUBE_TYPE_SCISSORS=!s}")
-print(f"{CUBE_TYPE_WISE=!s}")
+TypeCubeColor = _make_TypeCubeColor()
 
 
-# Define cube colored type
+# Define cube sort type
 
-CUBE_CTYPE_COUNT = CUBE_COLOR_COUNT*CUBE_TYPE_COUNT
-CUBE_CTYPE_CODOMAIN = np.arange(CUBE_CTYPE_COUNT, dtype=np.int8)
-CUBE_CTYPE_COLOR = np.full(CUBE_CTYPE_COUNT, UNDEFINED, dtype=np.int8)
-CUBE_CTYPE_TYPE = np.full(CUBE_CTYPE_COUNT, UNDEFINED, dtype=np.int8)
+def _make_TypeCubeSort():
 
-cube_ctype_id_list = list()
+    TypeCubeSort = types.SimpleNamespace()
 
-for cube_color_index in CUBE_COLOR_CODOMAIN:
-    cube_color_function = CUBE_COLOR_FUNCTION[cube_color_index]
+    TypeCubeSort.domain = np.array(["foul", "king", "mountain", "paper", "rock", "scissors", "wise"])
+    TypeCubeSort.count = TypeCubeSort.domain.size
+    TypeCubeSort.codomain = np.arange(TypeCubeSort.count, dtype=np.int8)
+    TypeCubeSort.key = np.vectorize(lambda x:x[0].upper())(TypeCubeSort.domain)
 
-    for (cube_type_index, cube_type_key) in enumerate(CUBE_TYPE_KEY):
+    TypeCubeSort.foul = np.argwhere(TypeCubeSort.domain == "foul")[0][0]
+    TypeCubeSort.king = np.argwhere(TypeCubeSort.domain == "king")[0][0]
+    TypeCubeSort.mountain = np.argwhere(TypeCubeSort.domain == "mountain")[0][0]
+    TypeCubeSort.paper = np.argwhere(TypeCubeSort.domain == "paper")[0][0]
+    TypeCubeSort.rock = np.argwhere(TypeCubeSort.domain == "rock")[0][0]
+    TypeCubeSort.scissors = np.argwhere(TypeCubeSort.domain == "scissors")[0][0]
+    TypeCubeSort.wise = np.argwhere(TypeCubeSort.domain == "wise")[0][0]
 
-            cube_ctype_index = len(cube_ctype_id_list)
+    TypeCubeSort.multiplicity  = np.zeros(TypeCubeSort.count, dtype=np.int8)
+    TypeCubeSort.multiplicity[TypeCubeSort.foul] = 2
+    TypeCubeSort.multiplicity[TypeCubeSort.king] = 1
+    TypeCubeSort.multiplicity[TypeCubeSort.mountain] = 4
+    TypeCubeSort.multiplicity[TypeCubeSort.paper] = 4
+    TypeCubeSort.multiplicity[TypeCubeSort.rock] = 4
+    TypeCubeSort.multiplicity[TypeCubeSort.scissors] = 4
+    TypeCubeSort.multiplicity[TypeCubeSort.wise] = 2
+    TypeCubeSort.multiplicity_sum = TypeCubeSort.multiplicity.sum()
 
-            cube_ctype_id = cube_color_function(cube_type_key)
-            cube_ctype_id_list.append(cube_ctype_id)
+    if DO_DEBUG:
+        print()
+        print(f"{TypeCubeSort.count=!s}")
+        print(f"{TypeCubeSort.domain=!s}")
+        print(f"{TypeCubeSort.codomain=!s}")
+        print(f"{TypeCubeSort.key=!s}")
 
-            CUBE_CTYPE_COLOR[cube_ctype_index] = cube_color_index
-            CUBE_CTYPE_TYPE[cube_ctype_index] = cube_type_index
+        print(f"{TypeCubeSort.foul=!s}")
+        print(f"{TypeCubeSort.king=!s}")
+        print(f"{TypeCubeSort.mountain=!s}")
+        print(f"{TypeCubeSort.paper=!s}")
+        print(f"{TypeCubeSort.rock=!s}")
+        print(f"{TypeCubeSort.scissors=!s}")
+        print(f"{TypeCubeSort.wise=!s}")
 
-CUBE_CTYPE_DOMAIN = np.array(cube_ctype_id_list)
+        print()
+        print(f"{TypeCubeSort.multiplicity=!s}")
+        print(f"{TypeCubeSort.multiplicity_sum=!s}")
 
-print()
-print(f"{CUBE_CTYPE_DOMAIN=!s}")
-print(f"{CUBE_CTYPE_COLOR=!s}")
-print(f"{CUBE_CTYPE_TYPE=!s}")
-print(f"{CUBE_CTYPE_CODOMAIN=!s}")
-print(f"{CUBE_CTYPE_COUNT=!s}")
+    assert np.unique(TypeCubeSort.domain).size == TypeCubeSort.count
+    assert np.unique(TypeCubeSort.key).size == TypeCubeSort.count
 
-assert CUBE_CTYPE_DOMAIN.size == CUBE_CTYPE_COUNT
-assert np.unique(CUBE_CTYPE_DOMAIN).size == CUBE_CTYPE_COUNT
+    return TypeCubeSort
 
-
-# Define multiplicity of each cube type per color
-
-CUBE_TYPE_MULTIPLICITY  = np.zeros(CUBE_TYPE_COUNT, dtype=np.int8)
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_FOUL] = 2
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_KING] = 1
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_MOUNTAIN] = 4
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_PAPER] = 4
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_ROCK] = 4
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_SCISSORS] = 4
-CUBE_TYPE_MULTIPLICITY[CUBE_TYPE_WISE] = 2
-CUBE_TYPE_MULTIPLICITY_SUM = CUBE_TYPE_MULTIPLICITY.sum()
-
-print()
-print(f"{CUBE_TYPE_MULTIPLICITY=!s}")
-print(f"{CUBE_TYPE_MULTIPLICITY_SUM=!s}")
-
-# Define cube status domain
-
-CUBE_STATUS_DOMAIN = np.array(["ACTIVE", "CAPTURED", "RESERVED"])
-CUBE_STATUS_COUNT = CUBE_STATUS_DOMAIN.size
-CUBE_STATUS_CODOMAIN = np.arange(CUBE_STATUS_COUNT, dtype=np.int8)
-
-assert np.unique(CUBE_STATUS_DOMAIN).size == CUBE_STATUS_COUNT
-
-print()
-print(f"{CUBE_STATUS_DOMAIN=!s}")
-print(f"{CUBE_STATUS_CODOMAIN=!s}")
-
-CUBE_STATUS_ACTIVE = np.argwhere(CUBE_STATUS_DOMAIN == "ACTIVE")[0][0]
-CUBE_STATUS_CAPTURED = np.argwhere(CUBE_STATUS_DOMAIN == "CAPTURED")[0][0]
-CUBE_STATUS_RESERVED = np.argwhere(CUBE_STATUS_DOMAIN == "RESERVED")[0][0]
-
-print(f"{CUBE_STATUS_ACTIVE=!s}")
-print(f"{CUBE_STATUS_CAPTURED=!s}")
-print(f"{CUBE_STATUS_RESERVED=!s}")
+TypeCubeSort = _make_TypeCubeSort()
 
 
-# Define cube identifiers and assign colors and types
+# Define cube colored sort type
 
-CUBE_ID_COUNT = CUBE_COLOR_COUNT*CUBE_TYPE_MULTIPLICITY_SUM
-CUBE_ID_CODOMAIN = np.arange(CUBE_ID_COUNT, dtype=np.int8)
+def _make_TypeCubeColoredSort():
 
-CUBE_COLOR = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
-CUBE_TYPE = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
+    TypeCubeColoredSort = types.SimpleNamespace()
 
-cube_id_list = list()
+    TypeCubeColoredSort.count = TypeCubeColor.count*TypeCubeSort.count
+    TypeCubeColoredSort.codomain = np.arange(TypeCubeColoredSort.count, dtype=np.int8)
+    TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, UNDEFINED, dtype=np.int8)
+    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, UNDEFINED, dtype=np.int8)
 
-for cube_color_index in CUBE_COLOR_CODOMAIN:
-    cube_color_function = CUBE_COLOR_FUNCTION[cube_color_index]
+    cube_csort_id_list = list()
 
-    for (cube_type_index, cube_type_key) in enumerate(CUBE_TYPE_KEY):
+    for cube_color_index in TypeCubeColor.codomain:
+        cube_color_function = TypeCubeColor.function[cube_color_index]
 
-        for cube_type_occurrence in range(CUBE_TYPE_MULTIPLICITY[cube_type_index]):
-            cube_index = len(cube_id_list)
+        for (cube_sort_index, cube_sort_key) in enumerate(TypeCubeSort.key):
 
-            cube_id = "%s%d" % (cube_color_function(cube_type_key), cube_type_occurrence)
-            cube_id_list.append(cube_id)
+                cube_csort_index = len(cube_csort_id_list)
 
-            CUBE_COLOR[cube_index] = cube_color_index
-            CUBE_TYPE[cube_index] = cube_type_index
+                cube_csort_id = cube_color_function(cube_sort_key)
+                cube_csort_id_list.append(cube_csort_id)
 
-CUBE_ID_DOMAIN = np.array(cube_id_list)
-assert CUBE_ID_DOMAIN.size == CUBE_ID_COUNT
-assert np.unique(CUBE_ID_DOMAIN).size == CUBE_ID_COUNT
+                TypeCubeColoredSort.color[cube_csort_index] = cube_color_index
+                TypeCubeColoredSort.type[cube_csort_index] = cube_sort_index
 
-print()
-print(f"{CUBE_ID_COUNT=!s}")
-print(f"{CUBE_ID_DOMAIN=!s}")
-print(f"{CUBE_ID_CODOMAIN=!s}")
-print(f"{CUBE_COLOR=!s}")
-print(f"{CUBE_TYPE=!s}")
+    TypeCubeColoredSort.domain = np.array(cube_csort_id_list)
+
+
+    if DO_DEBUG:
+        print()
+        print(f"{TypeCubeColoredSort.count=!s}")
+        print(f"{TypeCubeColoredSort.domain=!s}")
+        print(f"{TypeCubeColoredSort.codomain=!s}")
+        print(f"{TypeCubeColoredSort.color=!s}")
+        print(f"{TypeCubeColoredSort.type=!s}")
+
+    assert TypeCubeColoredSort.domain.size == TypeCubeColoredSort.count
+    assert np.unique(TypeCubeColoredSort.domain).size == TypeCubeColoredSort.count
+
+    return TypeCubeColoredSort
+
+TypeCubeColoredSort = _make_TypeCubeColoredSort()
+
+
+# Define cube status type
+
+def _make_TypeCubeStatus():
+
+    TypeCubeStatus = types.SimpleNamespace()
+
+    TypeCubeStatus.domain = np.array(["active", "captured", "reserved"])
+    TypeCubeStatus.count = TypeCubeStatus.domain.size
+    TypeCubeStatus.codomain = np.arange(TypeCubeStatus.count, dtype=np.int8)
+
+    TypeCubeStatus.active = np.argwhere(TypeCubeStatus.domain == "active")[0][0]
+    TypeCubeStatus.captured = np.argwhere(TypeCubeStatus.domain == "captured")[0][0]
+    TypeCubeStatus.reserved = np.argwhere(TypeCubeStatus.domain == "reserved")[0][0]
+
+    if DO_DEBUG:
+        print()
+        print(f"{TypeCubeStatus.count=!s}")
+        print(f"{TypeCubeStatus.domain=!s}")
+        print(f"{TypeCubeStatus.codomain=!s}")
+
+        print(f"{TypeCubeStatus.active=!s}")
+        print(f"{TypeCubeStatus.captured=!s}")
+        print(f"{TypeCubeStatus.reserved=!s}")
+
+    assert np.unique(TypeCubeStatus.domain).size == TypeCubeStatus.count
+
+    return TypeCubeStatus
+
+TypeCubeStatus = _make_TypeCubeStatus()
+
+
+# Define cube constant properties
+
+def _make_ConstCube():
+
+    ConstCube = types.SimpleNamespace()
+
+    ConstCube.count = TypeCubeColor.count*TypeCubeSort.multiplicity_sum
+    ConstCube.codomain = np.arange(ConstCube.count, dtype=np.int8)
+    ConstCube.color = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+    ConstCube.sort = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+
+    cube_id_list = list()
+
+    for cube_color_index in TypeCubeColor.codomain:
+        cube_color_function = TypeCubeColor.function[cube_color_index]
+
+        for (cube_sort_index, cube_sort_key) in enumerate(TypeCubeSort.key):
+
+            for ConstCube.sort_occurrence in range(TypeCubeSort.multiplicity[cube_sort_index]):
+                cube_index = len(cube_id_list)
+
+                cube_id = "%s%d" % (cube_color_function(cube_sort_key), ConstCube.sort_occurrence)
+                cube_id_list.append(cube_id)
+
+                ConstCube.color[cube_index] = cube_color_index
+                ConstCube.sort[cube_index] = cube_sort_index
+
+    ConstCube.domain = np.array(cube_id_list)
+
+    assert ConstCube.domain.size == ConstCube.count
+    assert np.unique(ConstCube.domain).size == ConstCube.count
+
+    if DO_DEBUG:
+        print()
+        print(f"{ConstCube.count=!s}")
+        print(f"{ConstCube.domain=!s}")
+        print(f"{ConstCube.codomain=!s}")
+        print(f"{ConstCube.color=!s}")
+        print(f"{ConstCube.sort=!s}")
+
+    return ConstCube
+
+ConstCube = _make_ConstCube()
 
 
 # Define hexagon level domain
@@ -214,14 +262,14 @@ print(f"{HEX_DIRECTION_V=!s}")
 # Define hex status domain
 
 HEX_STATUS_DOMAIN = np.array(["HAS_CUBE", "IS_EMPTY", "HAS_STACK"])
-CUBE_STATUS_COUNT = HEX_STATUS_DOMAIN.size
-HEX_STATUS_CODOMAIN = np.arange(CUBE_STATUS_COUNT, dtype=np.int8)
+TypeCubeStatus.count = HEX_STATUS_DOMAIN.size
+HEX_STATUS_CODOMAIN = np.arange(TypeCubeStatus.count, dtype=np.int8)
 
 print()
 print(f"{HEX_STATUS_DOMAIN=!s}")
 print(f"{HEX_STATUS_CODOMAIN=!s}")
 
-assert np.unique(HEX_STATUS_DOMAIN).size == CUBE_STATUS_COUNT
+assert np.unique(HEX_STATUS_DOMAIN).size == TypeCubeStatus.count
 
 HEX_STATUS_HAS_ONE_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "HAS_CUBE")[0][0]
 HEX_STATUS_HAS_NO_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "IS_EMPTY")[0][0]
@@ -393,9 +441,9 @@ print(f"{HEX_NEXT_SND=!s}")
 
 # Define cube variables properties
 
-cube_status = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
-cube_hex = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
-cube_hex_level = np.full(CUBE_ID_COUNT, UNDEFINED, dtype=np.int8)
+cube_status = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+cube_hex = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+cube_hex_level = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
 print()
 print(f"{cube_status=!s}")
 print(f"{cube_hex=!s}")
@@ -404,7 +452,7 @@ print(f"{cube_hex_level=!s}")
 
 # Define hex variables properties
 
-hex_status = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
+hex_status = np.full(HEX_ID_COUNT, HEX_STATUS_HAS_NO_CUBE, dtype=np.int8)
 hex_bottom = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
 hex_top = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
 print()
@@ -415,26 +463,26 @@ print(f"{hex_top=!s}")
 
 # Initial state for cubes and hexagons
 
-def set_cube_in_reserve(cube_color_index, cube_type_index):
+def set_cube_in_reserve(cube_color_index, cube_sort_index):
 
-    free_cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
-                               (CUBE_TYPE == cube_type_index) &
+    free_cube_indexes = ConstCube.codomain[(ConstCube.color == cube_color_index) &
+                               (ConstCube.sort == cube_sort_index) &
                                (cube_status == UNDEFINED)]
 
     assert free_cube_indexes.size != 0
     cube_index = free_cube_indexes[0]
-    cube_status[cube_index] = CUBE_STATUS_RESERVED
+    cube_status[cube_index] = TypeCubeStatus.reserved
 
 
-def set_cube_at_hexagon(cube_color_index, cube_type_index, hex_index):
+def set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index):
 
-    free_cube_indexes = CUBE_ID_CODOMAIN[(CUBE_COLOR == cube_color_index) &
-                               (CUBE_TYPE == cube_type_index) &
+    free_cube_indexes = ConstCube.codomain[(ConstCube.color == cube_color_index) &
+                               (ConstCube.sort == cube_sort_index) &
                                (cube_status == UNDEFINED)]
 
     assert free_cube_indexes.size != 0
     cube_index = free_cube_indexes[0]
-    cube_status[cube_index] = CUBE_STATUS_ACTIVE
+    cube_status[cube_index] = TypeCubeStatus.active
 
     if hex_status[hex_index] == HEX_STATUS_HAS_NO_CUBE:
 
@@ -456,24 +504,24 @@ def set_cube_at_hexagon(cube_color_index, cube_type_index, hex_index):
         assert hex_status[hex_index] != HEX_STATUS_HAS_TWO_CUBES
 
 
-def set_cube_in_reserve_by_id(cube_ctype_id):
+def set_cube_in_reserve_by_id(cube_csort_id):
 
-    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_ctype_id)[0][0]
-    cube_color_index = CUBE_CTYPE_COLOR[cube_ctype_index]
-    cube_type_index = CUBE_CTYPE_TYPE[cube_ctype_index]
+    cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
+    cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
+    cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
 
-    set_cube_in_reserve(cube_color_index, cube_type_index)
+    set_cube_in_reserve(cube_color_index, cube_sort_index)
 
 
-def set_cube_at_hexagon_by_id(cube_ctype_id, hex_id):
+def set_cube_at_hexagon_by_id(cube_csort_id, hex_id):
 
     hex_index = np.argwhere(HEX_ID_DOMAIN == hex_id)[0][0]
 
-    cube_ctype_index = np.argwhere(CUBE_CTYPE_DOMAIN == cube_ctype_id)[0][0]
-    cube_color_index = CUBE_CTYPE_COLOR[cube_ctype_index]
-    cube_type_index = CUBE_CTYPE_TYPE[cube_ctype_index]
+    cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
+    cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
+    cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
 
-    set_cube_at_hexagon(cube_color_index, cube_type_index, hex_index)
+    set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index)
 
 
 # whites
@@ -537,27 +585,37 @@ set_cube_in_reserve_by_id('w')
 
 # Try treatments over defined data structures
 
-capture_counter = np.zeros((CUBE_COLOR_COUNT, CUBE_TYPE_COUNT), dtype=np.int8)
-reserve_counter = np.zeros((CUBE_COLOR_COUNT, CUBE_TYPE_COUNT), dtype=np.int8)
-active_counter = np.zeros((CUBE_COLOR_COUNT, CUBE_TYPE_COUNT), dtype=np.int8)
+capture_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
+reserve_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
+active_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
 
-for cube_color_index in CUBE_COLOR_CODOMAIN:
-    for cube_type_index in CUBE_TYPE_CODOMAIN:
+for cube_color_index in TypeCubeColor.codomain:
+    for cube_sort_index in TypeCubeSort.codomain:
 
-        capture_counter[cube_color_index, cube_type_index] = np.count_nonzero(
-            (CUBE_COLOR == cube_color_index) &
-            (CUBE_TYPE == cube_type_index) &
-            (cube_status == CUBE_STATUS_CAPTURED) )
+        capture_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+            (ConstCube.color == cube_color_index) &
+            (ConstCube.sort == cube_sort_index) &
+            (cube_status == TypeCubeStatus.captured) )
 
-        reserve_counter[cube_color_index, cube_type_index] = np.count_nonzero(
-            (CUBE_COLOR == cube_color_index) &
-            (CUBE_TYPE == cube_type_index) &
-            (cube_status == CUBE_STATUS_RESERVED) )
+        reserve_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+            (ConstCube.color == cube_color_index) &
+            (ConstCube.sort == cube_sort_index) &
+            (cube_status == TypeCubeStatus.reserved) )
 
-        active_counter[cube_color_index, cube_type_index] = np.count_nonzero(
-            (CUBE_COLOR == cube_color_index) &
-            (CUBE_TYPE == cube_type_index) &
-            (cube_status == CUBE_STATUS_ACTIVE) )
+        active_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+            (ConstCube.color == cube_color_index) &
+            (ConstCube.sort == cube_sort_index) &
+            (cube_status == TypeCubeStatus.active) )
+
+print()
+print(f"{cube_status=!s}")
+print(f"{cube_hex=!s}")
+print(f"{cube_hex_level=!s}")
+
+print()
+print(f"{hex_status=!s}")
+print(f"{hex_bottom=!s}")
+print(f"{hex_top=!s}")
 
 print()
 print(f"{capture_counter=!s}")
