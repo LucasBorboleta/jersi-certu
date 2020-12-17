@@ -222,23 +222,65 @@ def _make_ConstCube():
 ConstCube = _make_ConstCube()
 
 
-# Define hexagon level domain
+# Define hexagon level type
 
-HEX_LEVEL_DOMAIN = np.array(["BOTTOM", "TOP"])
-HEX_LEVEL_COUNT = HEX_LEVEL_DOMAIN.size
-HEX_LEVEL_CODOMAIN = np.arange(HEX_LEVEL_COUNT, dtype=np.int8)
+def _make_TypeHexLevel():
 
-assert np.unique(HEX_LEVEL_DOMAIN).size == HEX_LEVEL_COUNT
+    TypeHexLevel = types.SimpleNamespace()
 
-print()
-print(f"{HEX_LEVEL_DOMAIN=!s}")
-print(f"{HEX_LEVEL_CODOMAIN=!s}")
+    TypeHexLevel.domain = np.array(["bottom", "top"])
+    TypeHexLevel.count = TypeHexLevel.domain.size
+    TypeHexLevel.codomain = np.arange(TypeHexLevel.count, dtype=np.int8)
 
-HEX_LEVEL_BOTTOM = np.argwhere(HEX_LEVEL_DOMAIN == "BOTTOM")[0][0]
-HEX_LEVEL_TOP = np.argwhere(HEX_LEVEL_DOMAIN == "TOP")[0][0]
+    TypeHexLevel.bottom = np.argwhere(TypeHexLevel.domain == "bottom")[0][0]
+    TypeHexLevel.top = np.argwhere(TypeHexLevel.domain == "top")[0][0]
 
-print(f"{HEX_LEVEL_BOTTOM=!s}")
-print(f"{HEX_LEVEL_TOP=!s}")
+    if DO_DEBUG:
+        print()
+        print(f"{TypeHexLevel.count=!s}")
+        print(f"{TypeHexLevel.domain=!s}")
+        print(f"{TypeHexLevel.codomain=!s}")
+
+        print(f"{TypeHexLevel.bottom=!s}")
+        print(f"{TypeHexLevel.top=!s}")
+
+    assert np.unique(TypeHexLevel.domain).size == TypeHexLevel.count
+
+    return TypeHexLevel
+
+TypeHexLevel = _make_TypeHexLevel()
+
+
+# Define hexagon status type
+
+def _make_TypeHexStatus():
+
+    TypeHexStatus = types.SimpleNamespace()
+
+    TypeHexStatus.domain = np.array(["has_no_cube", "has_one_cube", "has_two_cubes"])
+    TypeHexStatus.count = TypeHexStatus.domain.size
+    TypeHexStatus.codomain = np.arange(TypeHexStatus.count, dtype=np.int8)
+
+    TypeHexStatus.has_no_cube = np.argwhere(TypeHexStatus.domain == "has_no_cube")[0][0]
+    TypeHexStatus.has_one_cube = np.argwhere(TypeHexStatus.domain == "has_one_cube")[0][0]
+    TypeHexStatus.has_two_cubes = np.argwhere(TypeHexStatus.domain == "has_two_cubes")[0][0]
+
+    if DO_DEBUG:
+        print()
+        print(f"{TypeHexStatus.count=!s}")
+        print(f"{TypeHexStatus.domain=!s}")
+        print(f"{TypeHexStatus.codomain=!s}")
+
+        print(f"{TypeHexStatus.has_no_cube=!s}")
+        print(f"{TypeHexStatus.has_one_cube=!s}")
+        print(f"{TypeHexStatus.has_two_cubes=!s}")
+
+    assert np.unique(TypeHexStatus.domain).size == TypeHexStatus.count
+
+    return TypeHexStatus
+
+TypeHexStatus = _make_TypeHexStatus()
+
 
 # Define hex direction domain
 
@@ -258,27 +300,6 @@ print(f"{HEX_DIRECTION_CODOMAIN=!s}")
 print(f"{HEX_DIRECTION_COUNT=!s}")
 print(f"{HEX_DIRECTION_U=!s}")
 print(f"{HEX_DIRECTION_V=!s}")
-
-# Define hex status domain
-
-HEX_STATUS_DOMAIN = np.array(["HAS_CUBE", "IS_EMPTY", "HAS_STACK"])
-TypeCubeStatus.count = HEX_STATUS_DOMAIN.size
-HEX_STATUS_CODOMAIN = np.arange(TypeCubeStatus.count, dtype=np.int8)
-
-print()
-print(f"{HEX_STATUS_DOMAIN=!s}")
-print(f"{HEX_STATUS_CODOMAIN=!s}")
-
-assert np.unique(HEX_STATUS_DOMAIN).size == TypeCubeStatus.count
-
-HEX_STATUS_HAS_ONE_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "HAS_CUBE")[0][0]
-HEX_STATUS_HAS_NO_CUBE = np.argwhere(HEX_STATUS_DOMAIN == "IS_EMPTY")[0][0]
-HEX_STATUS_HAS_TWO_CUBES = np.argwhere(HEX_STATUS_DOMAIN == "HAS_STACK")[0][0]
-
-print(f"{HEX_STATUS_HAS_ONE_CUBE=!s}")
-print(f"{HEX_STATUS_HAS_NO_CUBE=!s}")
-print(f"{HEX_STATUS_HAS_TWO_CUBES=!s}")
-
 
 # Define hex identifiers
 
@@ -452,7 +473,7 @@ print(f"{cube_hex_level=!s}")
 
 # Define hex variables properties
 
-hex_status = np.full(HEX_ID_COUNT, HEX_STATUS_HAS_NO_CUBE, dtype=np.int8)
+hex_status = np.full(HEX_ID_COUNT, TypeHexStatus.has_no_cube, dtype=np.int8)
 hex_bottom = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
 hex_top = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
 print()
@@ -484,24 +505,24 @@ def set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index):
     cube_index = free_cube_indexes[0]
     cube_status[cube_index] = TypeCubeStatus.active
 
-    if hex_status[hex_index] == HEX_STATUS_HAS_NO_CUBE:
+    if hex_status[hex_index] == TypeHexStatus.has_no_cube:
 
         hex_bottom[hex_index] = cube_index
-        hex_status[hex_index] = HEX_STATUS_HAS_ONE_CUBE
+        hex_status[hex_index] = TypeHexStatus.has_one_cube
 
         cube_hex[cube_index] = hex_index
-        cube_hex_level[cube_index] = HEX_LEVEL_BOTTOM
+        cube_hex_level[cube_index] = TypeHexLevel.bottom
 
-    elif hex_status[hex_index] == HEX_STATUS_HAS_ONE_CUBE:
+    elif hex_status[hex_index] == TypeHexStatus.has_one_cube:
 
         hex_top[hex_index] = cube_index
-        hex_status[hex_index] = HEX_STATUS_HAS_TWO_CUBES
+        hex_status[hex_index] = TypeHexStatus.has_two_cubes
 
         cube_hex[cube_index] = hex_index
-        cube_hex_level[cube_index] = HEX_LEVEL_TOP
+        cube_hex_level[cube_index] = TypeHexLevel.top
 
     else:
-        assert hex_status[hex_index] != HEX_STATUS_HAS_TWO_CUBES
+        assert hex_status[hex_index] in [TypeHexStatus.has_no_cube, TypeHexStatus.has_one_cube]
 
 
 def set_cube_in_reserve_by_id(cube_csort_id):
