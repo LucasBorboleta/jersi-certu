@@ -10,8 +10,25 @@ import numpy as np
 print()
 print("Hello!")
 
-UNDEFINED = -1
-DO_DEBUG = True
+
+# Define jersi constants
+
+def _make_ConstJersi():
+
+    ConstJersi = types.SimpleNamespace()
+
+    ConstJersi.do_debug = True
+    ConstJersi.undefined = -1
+
+    if ConstJersi.do_debug:
+        print()
+        print(f"{ConstJersi.do_debug=!s}")
+        print(f"{ConstJersi.undefined=!s}")
+
+    return ConstJersi
+
+ConstJersi = _make_ConstJersi()
+
 
 # Define cube color type
 
@@ -27,7 +44,7 @@ def _make_TypeCubeColor():
     TypeCubeColor.black = np.argwhere(TypeCubeColor.domain == "black")[0][0]
     TypeCubeColor.white = np.argwhere(TypeCubeColor.domain == "white")[0][0]
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeCubeColor.count=!s}")
         print(f"{TypeCubeColor.domain=!s}")
@@ -74,7 +91,7 @@ def _make_TypeCubeSort():
     TypeCubeSort.multiplicity[TypeCubeSort.wise] = 2
     TypeCubeSort.multiplicity_sum = TypeCubeSort.multiplicity.sum()
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeCubeSort.count=!s}")
         print(f"{TypeCubeSort.domain=!s}")
@@ -109,8 +126,8 @@ def _make_TypeCubeColoredSort():
 
     TypeCubeColoredSort.count = TypeCubeColor.count*TypeCubeSort.count
     TypeCubeColoredSort.codomain = np.arange(TypeCubeColoredSort.count, dtype=np.int8)
-    TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, UNDEFINED, dtype=np.int8)
-    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, UNDEFINED, dtype=np.int8)
+    TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, ConstJersi.undefined, dtype=np.int8)
+    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, ConstJersi.undefined, dtype=np.int8)
 
     cube_csort_id_list = list()
 
@@ -130,7 +147,7 @@ def _make_TypeCubeColoredSort():
     TypeCubeColoredSort.domain = np.array(cube_csort_id_list)
 
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeCubeColoredSort.count=!s}")
         print(f"{TypeCubeColoredSort.domain=!s}")
@@ -160,7 +177,7 @@ def _make_TypeCubeStatus():
     TypeCubeStatus.captured = np.argwhere(TypeCubeStatus.domain == "captured")[0][0]
     TypeCubeStatus.reserved = np.argwhere(TypeCubeStatus.domain == "reserved")[0][0]
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeCubeStatus.count=!s}")
         print(f"{TypeCubeStatus.domain=!s}")
@@ -185,8 +202,8 @@ def _make_ConstCube():
 
     ConstCube.count = TypeCubeColor.count*TypeCubeSort.multiplicity_sum
     ConstCube.codomain = np.arange(ConstCube.count, dtype=np.int8)
-    ConstCube.color = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
-    ConstCube.sort = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+    ConstCube.color = np.full(ConstCube.count, ConstJersi.undefined, dtype=np.int8)
+    ConstCube.sort = np.full(ConstCube.count, ConstJersi.undefined, dtype=np.int8)
 
     cube_id_list = list()
 
@@ -209,7 +226,7 @@ def _make_ConstCube():
     assert ConstCube.domain.size == ConstCube.count
     assert np.unique(ConstCube.domain).size == ConstCube.count
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{ConstCube.count=!s}")
         print(f"{ConstCube.domain=!s}")
@@ -235,7 +252,7 @@ def _make_TypeHexLevel():
     TypeHexLevel.bottom = np.argwhere(TypeHexLevel.domain == "bottom")[0][0]
     TypeHexLevel.top = np.argwhere(TypeHexLevel.domain == "top")[0][0]
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeHexLevel.count=!s}")
         print(f"{TypeHexLevel.domain=!s}")
@@ -265,7 +282,7 @@ def _make_TypeHexStatus():
     TypeHexStatus.has_one_cube = np.argwhere(TypeHexStatus.domain == "has_one_cube")[0][0]
     TypeHexStatus.has_two_cubes = np.argwhere(TypeHexStatus.domain == "has_two_cubes")[0][0]
 
-    if DO_DEBUG:
+    if ConstJersi.do_debug:
         print()
         print(f"{TypeHexStatus.count=!s}")
         print(f"{TypeHexStatus.domain=!s}")
@@ -282,200 +299,223 @@ def _make_TypeHexStatus():
 TypeHexStatus = _make_TypeHexStatus()
 
 
-# Define hex direction domain
+# Define hexagon direction type
 
-HEX_DIRECTION_DOMAIN = np.array(["090", "150", "210", "270", "330", "030"])
-HEX_DIRECTION_COUNT = HEX_DIRECTION_DOMAIN.size
-HEX_DIRECTION_CODOMAIN = np.arange(HEX_DIRECTION_COUNT, dtype=np.int8)
-HEX_DIRECTION_U = np.array([+1, +1, +0, -1, -1, +0])
-HEX_DIRECTION_V = np.array([+0, -1, -1, +0, +1, +1])
+def _make_TypeHexDirection():
 
-assert np.unique(HEX_DIRECTION_DOMAIN).size == HEX_DIRECTION_COUNT
-assert HEX_DIRECTION_U.size == HEX_DIRECTION_COUNT
-assert HEX_DIRECTION_V.size == HEX_DIRECTION_COUNT
+    TypeHexDirection = types.SimpleNamespace()
 
-print()
-print(f"{HEX_DIRECTION_DOMAIN=!s}")
-print(f"{HEX_DIRECTION_CODOMAIN=!s}")
-print(f"{HEX_DIRECTION_COUNT=!s}")
-print(f"{HEX_DIRECTION_U=!s}")
-print(f"{HEX_DIRECTION_V=!s}")
+    TypeHexDirection.domain = np.array(["090", "150", "210", "270", "330", "030"])
+    TypeHexDirection.count = TypeHexDirection.domain.size
+    TypeHexDirection.codomain = np.arange(TypeHexDirection.count, dtype=np.int8)
+    TypeHexDirection.delta_u = np.array([+1, +1, +0, -1, -1, +0], dtype=np.int8)
+    TypeHexDirection.delta_v = np.array([+0, -1, -1, +0, +1, +1], dtype=np.int8)
 
-# Define hex identifiers
+    if ConstJersi.do_debug:
+        print()
+        print(f"{TypeHexDirection.count=!s}")
+        print(f"{TypeHexDirection.domain=!s}")
+        print(f"{TypeHexDirection.codomain=!s}")
+        print(f"{TypeHexDirection.delta_u=!s}")
+        print(f"{TypeHexDirection.delta_v=!s}")
 
-hex_id_dict = dict()
-hex_uv_dict = dict()
+    assert np.unique(TypeHexDirection.domain).size == TypeHexDirection.count
+    assert TypeHexDirection.delta_u.size == TypeHexDirection.count
+    assert TypeHexDirection.delta_v.size == TypeHexDirection.count
 
-hex_id_list = list()
-hex_u_list = list()
-hex_v_list = list()
+    return TypeHexDirection
 
-
-def create_hexagon_at_uv(hex_id, u, v):
-
-    assert len(hex_id) == 2
-    assert hex_id not in hex_id_dict
-    assert (u,v) not in hex_uv_dict
-
-    hex_index = len(hex_id_list)
-
-    hex_id_dict[hex_id] = hex_index
-    hex_uv_dict[(u,v)] = hex_index
-
-    hex_id_list.append(hex_id)
-    hex_u_list.append(u)
-    hex_v_list.append(v)
+TypeHexDirection = _make_TypeHexDirection()
 
 
-# Row "a"
-create_hexagon_at_uv('a1', -1, -4)
-create_hexagon_at_uv('a2', -0, -4)
-create_hexagon_at_uv('a3', 1, -4)
-create_hexagon_at_uv('a4', 2, -4)
-create_hexagon_at_uv('a5', 3, -4)
-create_hexagon_at_uv('a6', 4, -4)
-create_hexagon_at_uv('a7', 5, -4)
+# Define hexagon constant properties
 
-# Row "b"
-create_hexagon_at_uv('b1', -2, -3)
-create_hexagon_at_uv('b2', -1, -3)
-create_hexagon_at_uv('b3', 0, -3)
-create_hexagon_at_uv('b4', 1, -3)
-create_hexagon_at_uv('b5', 2, -3)
-create_hexagon_at_uv('b6', 3, -3)
-create_hexagon_at_uv('b7', 4, -3)
-create_hexagon_at_uv('b8', 5, -3)
+def _make_ConstHex():
 
-# Row "c"
-create_hexagon_at_uv('c1', -2, -2)
-create_hexagon_at_uv('c2', -1, -2)
-create_hexagon_at_uv('c3', 0, -2)
-create_hexagon_at_uv('c4', 1, -2)
-create_hexagon_at_uv('c5', 2, -2)
-create_hexagon_at_uv('c6', 3, -2)
-create_hexagon_at_uv('c7', 4, -2)
+    def _create_hexagon_at_uv(hex_id, u, v):
 
-# Row "d"
-create_hexagon_at_uv('d1', -3, -1)
-create_hexagon_at_uv('d2', -2, -1)
-create_hexagon_at_uv('d3', -1, -1)
-create_hexagon_at_uv('d4', 0, -1)
-create_hexagon_at_uv('d5', 1, -1)
-create_hexagon_at_uv('d6', 2, -1)
-create_hexagon_at_uv('d7', 3, -1)
-create_hexagon_at_uv('d8', 4, -1)
+        assert len(hex_id) == 2
+        assert hex_id not in ConstHex._id_dict
+        assert (u,v) not in ConstHex._uv_dict
 
-# Row "e"
-create_hexagon_at_uv('e1', -4, 0)
-create_hexagon_at_uv('e2', -3, 0)
-create_hexagon_at_uv('e3', -2, 0)
-create_hexagon_at_uv('e4', -1, 0)
-create_hexagon_at_uv('e5', 0, 0)
-create_hexagon_at_uv('e6', 1, 0)
-create_hexagon_at_uv('e7', 2, 0)
-create_hexagon_at_uv('e8', 3, 0)
-create_hexagon_at_uv('e9', 4, 0)
+        hex_index = len(ConstHex._id_list)
 
-# Row "f"
-create_hexagon_at_uv('f1', -4, 1)
-create_hexagon_at_uv('f2', -3, 1)
-create_hexagon_at_uv('f3', -2, 1)
-create_hexagon_at_uv('f4', -1, 1)
-create_hexagon_at_uv('f5', 0, 1)
-create_hexagon_at_uv('f6', 1, 1)
-create_hexagon_at_uv('f7', 2, 1)
-create_hexagon_at_uv('f8', 3, 1)
+        ConstHex._id_dict[hex_id] = hex_index
+        ConstHex._uv_dict[(u,v)] = hex_index
 
-# Row "g"
-create_hexagon_at_uv('g1', -4, 2)
-create_hexagon_at_uv('g2', -3, 2)
-create_hexagon_at_uv('g3', -2, 2)
-create_hexagon_at_uv('g4', -1, 2)
-create_hexagon_at_uv('g5', 0, 2)
-create_hexagon_at_uv('g6', 1, 2)
-create_hexagon_at_uv('g7', 2, 2)
-
-# Row "h"
-create_hexagon_at_uv('h1', -5, 3)
-create_hexagon_at_uv('h2', -4, 3)
-create_hexagon_at_uv('h3', -3, 3)
-create_hexagon_at_uv('h4', -2, 3)
-create_hexagon_at_uv('h5', -1, 3)
-create_hexagon_at_uv('h6', 0, 3)
-create_hexagon_at_uv('h7', 1, 3)
-create_hexagon_at_uv('h8', 2, 3)
-
-# Row "i"
-create_hexagon_at_uv('i1', -5, 4)
-create_hexagon_at_uv('i2', -4, 4)
-create_hexagon_at_uv('i3', -3, 4)
-create_hexagon_at_uv('i4', -2, 4)
-create_hexagon_at_uv('i5', -1, 4)
-create_hexagon_at_uv('i6', 0, 4)
-create_hexagon_at_uv('i7', 1, 4)
+        ConstHex._id_list.append(hex_id)
+        ConstHex._u_list.append(u)
+        ConstHex._v_list.append(v)
 
 
-HEX_ID_DOMAIN = np.array(hex_id_list)
-HEX_ID_COUNT = HEX_ID_DOMAIN.size
-HEX_ID_CODOMAIN = np.arange(HEX_ID_COUNT, dtype=np.int8)
-HEX_COORD_U = np.array(hex_u_list)
-HEX_COORD_V = np.array(hex_v_list)
+    def _create_all_hexagons():
 
-print()
-print(f"{HEX_ID_DOMAIN=!s}")
-print(f"{HEX_ID_COUNT=!s}")
-print(f"{HEX_ID_CODOMAIN=!s}")
-print(f"{HEX_COORD_U=!s}")
-print(f"{HEX_COORD_V=!s}")
+        ConstHex._id_dict = dict()
+        ConstHex._uv_dict = dict()
 
-# Define hexs by one or two steps toward a given direction
+        ConstHex._id_list = list()
+        ConstHex._u_list = list()
+        ConstHex._v_list = list()
 
-HEX_NEXT_FST = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), UNDEFINED, dtype=np.int8)
-HEX_NEXT_SND = np.full((HEX_ID_COUNT, HEX_DIRECTION_COUNT), UNDEFINED, dtype=np.int8)
+        # Row "a"
+        _create_hexagon_at_uv('a1', -1, -4)
+        _create_hexagon_at_uv('a2', -0, -4)
+        _create_hexagon_at_uv('a3', 1, -4)
+        _create_hexagon_at_uv('a4', 2, -4)
+        _create_hexagon_at_uv('a5', 3, -4)
+        _create_hexagon_at_uv('a6', 4, -4)
+        _create_hexagon_at_uv('a7', 5, -4)
 
-for hex_index in HEX_ID_CODOMAIN:
-    hex_u = HEX_COORD_U[hex_index]
-    hex_v = HEX_COORD_V[hex_index]
+        # Row "b"
+        _create_hexagon_at_uv('b1', -2, -3)
+        _create_hexagon_at_uv('b2', -1, -3)
+        _create_hexagon_at_uv('b3', 0, -3)
+        _create_hexagon_at_uv('b4', 1, -3)
+        _create_hexagon_at_uv('b5', 2, -3)
+        _create_hexagon_at_uv('b6', 3, -3)
+        _create_hexagon_at_uv('b7', 4, -3)
+        _create_hexagon_at_uv('b8', 5, -3)
 
-    for hex_dir_index in HEX_DIRECTION_CODOMAIN:
-        hex_delta_u = HEX_DIRECTION_U[hex_dir_index]
-        hex_delta_v = HEX_DIRECTION_V[hex_dir_index]
+        # Row "c"
+        _create_hexagon_at_uv('c1', -2, -2)
+        _create_hexagon_at_uv('c2', -1, -2)
+        _create_hexagon_at_uv('c3', 0, -2)
+        _create_hexagon_at_uv('c4', 1, -2)
+        _create_hexagon_at_uv('c5', 2, -2)
+        _create_hexagon_at_uv('c6', 3, -2)
+        _create_hexagon_at_uv('c7', 4, -2)
 
-        hex_fst_u = hex_u + 1*hex_delta_u
-        hex_fst_v = hex_v + 1*hex_delta_v
+        # Row "d"
+        _create_hexagon_at_uv('d1', -3, -1)
+        _create_hexagon_at_uv('d2', -2, -1)
+        _create_hexagon_at_uv('d3', -1, -1)
+        _create_hexagon_at_uv('d4', 0, -1)
+        _create_hexagon_at_uv('d5', 1, -1)
+        _create_hexagon_at_uv('d6', 2, -1)
+        _create_hexagon_at_uv('d7', 3, -1)
+        _create_hexagon_at_uv('d8', 4, -1)
 
-        hex_snd_u = hex_u + 2*hex_delta_u
-        hex_snd_v = hex_v + 2*hex_delta_v
+        # Row "e"
+        _create_hexagon_at_uv('e1', -4, 0)
+        _create_hexagon_at_uv('e2', -3, 0)
+        _create_hexagon_at_uv('e3', -2, 0)
+        _create_hexagon_at_uv('e4', -1, 0)
+        _create_hexagon_at_uv('e5', 0, 0)
+        _create_hexagon_at_uv('e6', 1, 0)
+        _create_hexagon_at_uv('e7', 2, 0)
+        _create_hexagon_at_uv('e8', 3, 0)
+        _create_hexagon_at_uv('e9', 4, 0)
 
-        if (hex_fst_u, hex_fst_v) in hex_uv_dict:
-            hex_fst_index = hex_uv_dict[(hex_fst_u, hex_fst_v)]
-            HEX_NEXT_FST[hex_index, hex_dir_index] = hex_fst_index
+        # Row "f"
+        _create_hexagon_at_uv('f1', -4, 1)
+        _create_hexagon_at_uv('f2', -3, 1)
+        _create_hexagon_at_uv('f3', -2, 1)
+        _create_hexagon_at_uv('f4', -1, 1)
+        _create_hexagon_at_uv('f5', 0, 1)
+        _create_hexagon_at_uv('f6', 1, 1)
+        _create_hexagon_at_uv('f7', 2, 1)
+        _create_hexagon_at_uv('f8', 3, 1)
 
-            if (hex_snd_u, hex_snd_v) in hex_uv_dict:
-                hex_snd_index = hex_uv_dict[(hex_snd_u, hex_snd_v)]
-                HEX_NEXT_SND[hex_index, hex_dir_index] = hex_snd_index
+        # Row "g"
+        _create_hexagon_at_uv('g1', -4, 2)
+        _create_hexagon_at_uv('g2', -3, 2)
+        _create_hexagon_at_uv('g3', -2, 2)
+        _create_hexagon_at_uv('g4', -1, 2)
+        _create_hexagon_at_uv('g5', 0, 2)
+        _create_hexagon_at_uv('g6', 1, 2)
+        _create_hexagon_at_uv('g7', 2, 2)
 
-print()
-print(f"{HEX_NEXT_FST=!s}")
-print(f"{HEX_NEXT_SND=!s}")
+        # Row "h"
+        _create_hexagon_at_uv('h1', -5, 3)
+        _create_hexagon_at_uv('h2', -4, 3)
+        _create_hexagon_at_uv('h3', -3, 3)
+        _create_hexagon_at_uv('h4', -2, 3)
+        _create_hexagon_at_uv('h5', -1, 3)
+        _create_hexagon_at_uv('h6', 0, 3)
+        _create_hexagon_at_uv('h7', 1, 3)
+        _create_hexagon_at_uv('h8', 2, 3)
+
+        # Row "i"
+        _create_hexagon_at_uv('i1', -5, 4)
+        _create_hexagon_at_uv('i2', -4, 4)
+        _create_hexagon_at_uv('i3', -3, 4)
+        _create_hexagon_at_uv('i4', -2, 4)
+        _create_hexagon_at_uv('i5', -1, 4)
+        _create_hexagon_at_uv('i6', 0, 4)
+        _create_hexagon_at_uv('i7', 1, 4)
+
+        ConstHex.domain = np.array(ConstHex._id_list)
+        ConstHex.count = ConstHex.domain.size
+        ConstHex.codomain = np.arange(ConstHex.count, dtype=np.int8)
+        ConstHex.coord_u = np.array(ConstHex._u_list)
+        ConstHex.coord_v = np.array(ConstHex._v_list)
+
+
+    def _create_next_hexagons():
+
+        ConstHex.next_fst = np.full((ConstHex.count, TypeHexDirection.count), ConstJersi.undefined, dtype=np.int8)
+        ConstHex.next_snd = np.full((ConstHex.count, TypeHexDirection.count), ConstJersi.undefined, dtype=np.int8)
+
+        for hex_index in ConstHex.codomain:
+            hex_u = ConstHex.coord_u[hex_index]
+            hex_v = ConstHex.coord_v[hex_index]
+
+            for hex_dir_index in TypeHexDirection.codomain:
+                hex_delta_u = TypeHexDirection.delta_u[hex_dir_index]
+                hex_delta_v = TypeHexDirection.delta_v[hex_dir_index]
+
+                hex_fst_u = hex_u + 1*hex_delta_u
+                hex_fst_v = hex_v + 1*hex_delta_v
+
+                hex_snd_u = hex_u + 2*hex_delta_u
+                hex_snd_v = hex_v + 2*hex_delta_v
+
+                if (hex_fst_u, hex_fst_v) in ConstHex._uv_dict:
+                    hex_fst_index = ConstHex._uv_dict[(hex_fst_u, hex_fst_v)]
+                    ConstHex.next_fst[hex_index, hex_dir_index] = hex_fst_index
+
+                    if (hex_snd_u, hex_snd_v) in ConstHex._uv_dict:
+                        hex_snd_index = ConstHex._uv_dict[(hex_snd_u, hex_snd_v)]
+                        ConstHex.next_snd[hex_index, hex_dir_index] = hex_snd_index
+
+
+    ConstHex = types.SimpleNamespace()
+
+    _create_all_hexagons()
+    _create_next_hexagons()
+
+    if ConstJersi.do_debug:
+        print()
+        print(f"{ConstHex.count=!s}")
+        print(f"{ConstHex.domain=!s}")
+        print(f"{ConstHex.codomain=!s}")
+        print(f"{ConstHex.coord_u=!s}")
+        print(f"{ConstHex.coord_v=!s}")
+        print()
+        print(f"{ConstHex.next_fst=!s}")
+        print(f"{ConstHex.next_snd=!s}")
+
+    return ConstHex
+
+ConstHex = _make_ConstHex()
 
 
 # Define cube variables properties
 
-cube_status = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
-cube_hex = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
-cube_hex_level = np.full(ConstCube.count, UNDEFINED, dtype=np.int8)
+cube_status = np.full(ConstCube.count, ConstJersi.undefined, dtype=np.int8)
+cube_hex = np.full(ConstCube.count, ConstJersi.undefined, dtype=np.int8)
+cube_hex_level = np.full(ConstCube.count, ConstJersi.undefined, dtype=np.int8)
 print()
 print(f"{cube_status=!s}")
 print(f"{cube_hex=!s}")
 print(f"{cube_hex_level=!s}")
 
 
-# Define hex variables properties
+# Define hexagon variables properties
 
-hex_status = np.full(HEX_ID_COUNT, TypeHexStatus.has_no_cube, dtype=np.int8)
-hex_bottom = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
-hex_top = np.full(HEX_ID_COUNT, UNDEFINED, dtype=np.int8)
+hex_status = np.full(ConstHex.count, TypeHexStatus.has_no_cube, dtype=np.int8)
+hex_bottom = np.full(ConstHex.count, ConstJersi.undefined, dtype=np.int8)
+hex_top = np.full(ConstHex.count, ConstJersi.undefined, dtype=np.int8)
 print()
 print(f"{hex_status=!s}")
 print(f"{hex_bottom=!s}")
@@ -488,7 +528,7 @@ def set_cube_in_reserve(cube_color_index, cube_sort_index):
 
     free_cube_indexes = ConstCube.codomain[(ConstCube.color == cube_color_index) &
                                (ConstCube.sort == cube_sort_index) &
-                               (cube_status == UNDEFINED)]
+                               (cube_status == ConstJersi.undefined)]
 
     assert free_cube_indexes.size != 0
     cube_index = free_cube_indexes[0]
@@ -499,7 +539,7 @@ def set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index):
 
     free_cube_indexes = ConstCube.codomain[(ConstCube.color == cube_color_index) &
                                (ConstCube.sort == cube_sort_index) &
-                               (cube_status == UNDEFINED)]
+                               (cube_status == ConstJersi.undefined)]
 
     assert free_cube_indexes.size != 0
     cube_index = free_cube_indexes[0]
@@ -536,7 +576,7 @@ def set_cube_in_reserve_by_id(cube_csort_id):
 
 def set_cube_at_hexagon_by_id(cube_csort_id, hex_id):
 
-    hex_index = np.argwhere(HEX_ID_DOMAIN == hex_id)[0][0]
+    hex_index = np.argwhere(ConstHex.domain == hex_id)[0][0]
 
     cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
     cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
