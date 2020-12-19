@@ -3,6 +3,7 @@
 Data structure for "jersi" game : fast when performance is required.
 """
 
+import math
 import types
 import numpy as np
 
@@ -719,13 +720,37 @@ def make_summary():
 make_summary()
 
 
-def encode_varCube_hash():
-    cube_hash = None
-    return cube_hash
+def encode_varCube_state():
+
+    if ConstJersi.do_debug:
+        # >> Take into accounth the coding of ConstJersi.undefined
+        hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
+
+        status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
+        level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
+
+        assert status_bit_size == 2
+        assert level_bit_size == 1
+        assert hex_bit_size == 6
+
+    # Combine varCube.status and varCube.level
+    status_level_union = varCube.status*2
+    active_indices = (varCube.status == TypeCubeStatus.active)
+    status_level_union[active_indices] = varCube.level[active_indices]
+
+    # Combine varCube.hex, varCube.status, varCube.level
+    # >> "+1" ensures positive integers
+    hex_status_level_union = 4*(varCube.hex + 1) + status_level_union
+
+    cube_state_code = bytes(hex_status_level_union)
+
+    return cube_state_code
 
 
+cube_state_code = encode_varCube_state()
 print()
-print("cube_hash:", encode_varCube_hash())
+print("len(cube_state_code):", len(cube_state_code))
+print("cube_state_code:", cube_state_code.hex('-', 1))
 
 print()
 print("Bye!")
