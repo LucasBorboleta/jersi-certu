@@ -8,29 +8,32 @@ import types
 import numpy as np
 
 
-print()
-print("Hello!")
-
-
 # Define jersi constants
 
-def make_ConstJersi():
+def make_constJersi():
 
-    ConstJersi = types.SimpleNamespace()
+    constJersi = types.SimpleNamespace()
 
-    ConstJersi.do_debug = True
-    ConstJersi.undefined = -1
-    ConstJersi.max_credit = 40 # Max number of turns without any capture
+    constJersi.do_debug = True
+    constJersi.undefined = -1
+    constJersi.byte_bit_size = 8
 
-    if ConstJersi.do_debug:
+    constJersi.max_credit = 40 # Max number of turns without any capture
+    constJersi.credit_bit_size = int(math.ceil(math.log2(constJersi.max_credit)))
+
+    if constJersi.do_debug:
         print()
-        print(f"{ConstJersi.do_debug=!s}")
-        print(f"{ConstJersi.undefined=!s}")
-        print(f"{ConstJersi.max_credit=!s}")
+        print(f"{constJersi.do_debug=!s}")
+        print(f"{constJersi.undefined=!s}")
 
-    return ConstJersi
+        print(f"{constJersi.byte_bit_size=!s}")
 
-ConstJersi = make_ConstJersi()
+        print(f"{constJersi.max_credit=!s}")
+        print(f"{constJersi.credit_bit_size=!s}")
+
+    return constJersi
+
+constJersi = make_constJersi()
 
 
 # Define cube color type
@@ -41,15 +44,18 @@ def make_TypeCubeColor():
 
     TypeCubeColor.domain = np.array(["black", "white"])
     TypeCubeColor.count = TypeCubeColor.domain.size
-    TypeCubeColor.function = np.array([str.upper, str.lower])
+    TypeCubeColor.function = np.array([str.lower, str.upper])
     TypeCubeColor.codomain = np.arange(TypeCubeColor.count, dtype=np.int8)
 
     TypeCubeColor.black = np.argwhere(TypeCubeColor.domain == "black")[0][0]
     TypeCubeColor.white = np.argwhere(TypeCubeColor.domain == "white")[0][0]
 
-    if ConstJersi.do_debug:
+    TypeCubeColor.bit_size = int(math.ceil(math.log2(TypeCubeColor.count)))
+
+    if constJersi.do_debug:
         print()
         print(f"{TypeCubeColor.count=!s}")
+        print(f"{TypeCubeColor.bit_size=!s}")
         print(f"{TypeCubeColor.domain=!s}")
         print(f"{TypeCubeColor.codomain=!s}")
         print(f"{TypeCubeColor.function=!s}")
@@ -94,7 +100,7 @@ def make_TypeCubeSort():
     TypeCubeSort.multiplicity[TypeCubeSort.wise] = 2
     TypeCubeSort.multiplicity_sum = TypeCubeSort.multiplicity.sum()
 
-    if ConstJersi.do_debug:
+    if constJersi.do_debug:
         print()
         print(f"{TypeCubeSort.count=!s}")
         print(f"{TypeCubeSort.domain=!s}")
@@ -128,8 +134,8 @@ def make_TypeCubeColoredSort():
 
     TypeCubeColoredSort.count = TypeCubeColor.count*TypeCubeSort.count
     TypeCubeColoredSort.codomain = np.arange(TypeCubeColoredSort.count, dtype=np.int8)
-    TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, ConstJersi.undefined, dtype=np.int8)
-    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, ConstJersi.undefined, dtype=np.int8)
+    TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, constJersi.undefined, dtype=np.int8)
+    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, constJersi.undefined, dtype=np.int8)
 
     cube_csort_id_list = list()
 
@@ -149,7 +155,7 @@ def make_TypeCubeColoredSort():
     TypeCubeColoredSort.domain = np.array(cube_csort_id_list)
 
 
-    if ConstJersi.do_debug:
+    if constJersi.do_debug:
         print()
         print(f"{TypeCubeColoredSort.count=!s}")
         print(f"{TypeCubeColoredSort.domain=!s}")
@@ -179,9 +185,13 @@ def make_TypeCubeStatus():
     TypeCubeStatus.captured = np.argwhere(TypeCubeStatus.domain == "captured")[0][0]
     TypeCubeStatus.reserved = np.argwhere(TypeCubeStatus.domain == "reserved")[0][0]
 
-    if ConstJersi.do_debug:
+    # >> Take into account the coding of constJersi.undefined
+    TypeCubeStatus.bit_size = int(math.ceil(math.log2(TypeCubeStatus.count + 1)))
+
+    if constJersi.do_debug:
         print()
         print(f"{TypeCubeStatus.count=!s}")
+        print(f"{TypeCubeStatus.bit_size=!s}")
         print(f"{TypeCubeStatus.domain=!s}")
         print(f"{TypeCubeStatus.codomain=!s}")
 
@@ -204,8 +214,8 @@ def make_constCube():
 
     constCube.count = TypeCubeColor.count*TypeCubeSort.multiplicity_sum
     constCube.codomain = np.arange(constCube.count, dtype=np.int8)
-    constCube.color = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-    constCube.sort = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
+    constCube.color = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
+    constCube.sort = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
 
     cube_id_list = list()
 
@@ -228,13 +238,26 @@ def make_constCube():
     assert constCube.domain.size == constCube.count
     assert np.unique(constCube.domain).size == constCube.count
 
-    if ConstJersi.do_debug:
+    constCube.white_king = constCube.codomain[(constCube.color == TypeCubeColor.white) &
+                                              (constCube.sort == TypeCubeSort.king)][0]
+
+    constCube.black_king = constCube.codomain[(constCube.color == TypeCubeColor.black) &
+                                              (constCube.sort == TypeCubeSort.king)][0]
+
+    constCube.king = np.full(TypeCubeColor.count, constJersi.undefined, dtype=np.int8)
+    constCube.king[TypeCubeColor.white] = constCube.white_king
+    constCube.king[TypeCubeColor.black] = constCube.black_king
+
+    if constJersi.do_debug:
         print()
         print(f"{constCube.count=!s}")
         print(f"{constCube.domain=!s}")
         print(f"{constCube.codomain=!s}")
         print(f"{constCube.color=!s}")
         print(f"{constCube.sort=!s}")
+        print(f"{constCube.white_king=!s}")
+        print(f"{constCube.black_king=!s}")
+        print(f"{constCube.king=!s}")
 
     return constCube
 
@@ -254,9 +277,13 @@ def make_TypeHexLevel():
     TypeHexLevel.bottom = np.argwhere(TypeHexLevel.domain == "bottom")[0][0]
     TypeHexLevel.top = np.argwhere(TypeHexLevel.domain == "top")[0][0]
 
-    if ConstJersi.do_debug:
+    # >> Take into account the coding of constJersi.undefined
+    TypeHexLevel.bit_size = int(math.ceil(math.log2(TypeHexLevel.count + 1)))
+
+    if constJersi.do_debug:
         print()
         print(f"{TypeHexLevel.count=!s}")
+        print(f"{TypeHexLevel.bit_size=!s}")
         print(f"{TypeHexLevel.domain=!s}")
         print(f"{TypeHexLevel.codomain=!s}")
 
@@ -284,7 +311,7 @@ def make_TypeHexStatus():
     TypeHexStatus.has_one_cube = np.argwhere(TypeHexStatus.domain == "has_one_cube")[0][0]
     TypeHexStatus.has_two_cubes = np.argwhere(TypeHexStatus.domain == "has_two_cubes")[0][0]
 
-    if ConstJersi.do_debug:
+    if constJersi.do_debug:
         print()
         print(f"{TypeHexStatus.count=!s}")
         print(f"{TypeHexStatus.domain=!s}")
@@ -313,7 +340,7 @@ def make_TypeHexDirection():
     TypeHexDirection.delta_u = np.array([+1, +1, +0, -1, -1, +0], dtype=np.int8)
     TypeHexDirection.delta_v = np.array([+0, -1, -1, +0, +1, +1], dtype=np.int8)
 
-    if ConstJersi.do_debug:
+    if constJersi.do_debug:
         print()
         print(f"{TypeHexDirection.count=!s}")
         print(f"{TypeHexDirection.domain=!s}")
@@ -452,11 +479,14 @@ def make_constHex():
         constHex.coord_u = np.array(constHex._u_list)
         constHex.coord_v = np.array(constHex._v_list)
 
+        # >> Take into account the coding of constJersi.undefined
+        constHex.bit_size = int(math.ceil(math.log2(constHex.count + 1)))
+
 
     def create_next_hexagons():
 
-        constHex.next_fst = np.full((constHex.count, TypeHexDirection.count), ConstJersi.undefined, dtype=np.int8)
-        constHex.next_snd = np.full((constHex.count, TypeHexDirection.count), ConstJersi.undefined, dtype=np.int8)
+        constHex.next_fst = np.full((constHex.count, TypeHexDirection.count), constJersi.undefined, dtype=np.int8)
+        constHex.next_snd = np.full((constHex.count, TypeHexDirection.count), constJersi.undefined, dtype=np.int8)
 
         for hex_index in constHex.codomain:
             hex_u = constHex.coord_u[hex_index]
@@ -481,14 +511,31 @@ def make_constHex():
                         constHex.next_snd[hex_index, hex_dir_index] = hex_snd_index
 
 
+    def create_goal_hexagons():
+        white_goal_ids = ["i1", "i2", "i3", "i4", "i5", "i6", "i7"]
+        black_goal_ids = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"]
+
+        white_goal_indexes = list(map(lambda x: constHex._id_dict[x], white_goal_ids))
+        black_goal_indexes = list(map(lambda x: constHex._id_dict[x], black_goal_ids))
+
+        assert len(black_goal_ids) == len(black_goal_ids)
+        goal_count = len(white_goal_ids)
+
+        constHex.goals = np.full((TypeCubeColor.count, goal_count), constJersi.undefined, dtype=np.int8)
+        constHex.goals[TypeCubeColor.white, :] = white_goal_indexes
+        constHex.goals[TypeCubeColor.black, :] = black_goal_indexes
+
+
     constHex = types.SimpleNamespace()
 
     create_all_hexagons()
     create_next_hexagons()
+    create_goal_hexagons()
 
-    if ConstJersi.do_debug:
+    if constJersi.do_debug:
         print()
         print(f"{constHex.count=!s}")
+        print(f"{constHex.bit_size=!s}")
         print(f"{constHex.domain=!s}")
         print(f"{constHex.codomain=!s}")
         print(f"{constHex.coord_u=!s}")
@@ -496,6 +543,8 @@ def make_constHex():
         print()
         print(f"{constHex.next_fst=!s}")
         print(f"{constHex.next_snd=!s}")
+        print()
+        print(f"{constHex.goals=!s}")
 
     return constHex
 
@@ -508,18 +557,94 @@ class JersiState:
 
 
     def __init__(self):
-        self.cube_status = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-        self.cube_hex = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-        self.cube_level = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-
-        self.hex_status = np.full(constHex.count, TypeHexStatus.has_no_cube, dtype=np.int8)
-        self.hex_bottom = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
-        self.hex_top = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
 
         self.player = TypeCubeColor.white
-        self.credit = ConstJersi.max_credit
+        self.credit = constJersi.max_credit
 
-        self.set_all_cubes_at_startup()
+        self.cube_status = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
+        self.cube_hex = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
+        self.cube_level = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
+
+        self.hex_status = np.full(constHex.count, TypeHexStatus.has_no_cube, dtype=np.int8)
+        self.hex_bottom = np.full(constHex.count, constJersi.undefined, dtype=np.int8)
+        self.hex_top = np.full(constHex.count, constJersi.undefined, dtype=np.int8)
+
+        self.set_all_cubes()
+
+
+    def __eq__(self, other):
+        return (self.__class__ == other.__class__ and
+                self.player == other.player and
+                self.credit == other.credit and
+                np.all(self.cube_status == other.cube_status) and
+                np.all(self.cube_hex == other.cube_hex) and
+                np.all(self.cube_level == other.cube_level))
+
+
+    def __hash__(self):
+        return hash(self.encode_state())
+
+
+    def getCurrentPlayer(self):
+        # >> mcts-interface <<
+
+        if self.player == TypeCubeColor.white:
+            return 1
+        else:
+            return -1
+
+
+    def getPossibleActions(self):
+        # >> mcts-interface <<
+
+        possible_actions = []
+        #TODO
+        return possible_actions
+
+
+    def takeAction(self, action):
+        # >> mcts-interface <<
+
+        new_state = deepcopy(self)
+
+        #TODO
+        new_state.board[action.x][action.y] = action.player
+        new_state.currentPlayer = self.currentPlayer * -1
+
+        return new_state
+
+
+    def isTerminal(self):
+        # >> mcts-interface <<
+
+        terminal = False
+
+        if self.cube_hex[constCube.white_king] in constHex.goals[TypeCubeColor.white]:
+            # white arrived at goal
+            terminal = True
+
+        elif self.cube_hex[constCube.black_king] in constHex.goals[TypeCubeColor.black]:
+            # black arrived at goal
+            terminal = True
+
+        elif self.credit == 0:
+            # credit is exhausted
+            terminal = True
+
+        else:
+            #TODO: next player has no available actions
+            pass
+
+        return terminal
+
+
+    def getReward(self):
+        # >> mcts-interface <<
+        #TODO
+
+        reward = 0
+
+        return reward
 
 
     def show(self):
@@ -533,55 +658,36 @@ class JersiState:
         print(f"{self.hex_top=!s}")
 
 
-    def next_player(self):
+    def change_player(self):
         self.player = (self.player + 1) % TypeCubeColor.count
 
 
     def encode_state(self):
 
-        # >> Take into accounth the coding of ConstJersi.undefined
-        hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
+        # Encode together cube_status and cube_level
+        assert TypeHexLevel.bit_size + TypeCubeStatus.bit_size <= constJersi.byte_bit_size
+        status_level_code = bytes((2**TypeHexLevel.bit_size)*(self.cube_status - constJersi.undefined) +
+                                  (self.cube_level - constJersi.undefined))
 
-        status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
-        level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
-        player_bit_size = int(math.ceil(math.log2(TypeCubeColor.count)))
-        credit_bit_size = int(math.ceil(math.log2(ConstJersi.max_credit)))
+        # Encode cube_hex
+        assert constHex.bit_size <= constJersi.byte_bit_size
+        hex_code = bytes(self.cube_hex - constJersi.undefined)
 
-        assert status_bit_size == 2
-        assert level_bit_size == 1
-        assert hex_bit_size == 6
-        assert player_bit_size == 1
-        assert credit_bit_size == 6
+        # Encode together player and credit
+        assert TypeCubeColor.bit_size + constJersi.credit_bit_size <= constJersi.byte_bit_size
+        player_credit_code = bytes([(2**TypeCubeColor.bit_size)*self.player + self.credit])
 
-        #TODO: compute the above constants only once !
-
-        # Combine cube_status and cube_level
-        status_level_combination = (2**level_bit_size)*self.cube_status
-        active_indices = (self.cube_status == TypeCubeStatus.active)
-        status_level_combination[active_indices] =self.cube_level[active_indices]
-
-        # Combine cube_hex, cube_status and cube_level
-        # >> "+1" ensures positive integers
-        hex_status_level_combination = (2**level_bit_size)*(self.cube_hex + 1) + status_level_combination
-
-        # Combine player and credit
-        player_credit_combination = (2**player_bit_size)*self.player + self.credit
-
-        # Concatenate all information
-        state_code = bytes(hex_status_level_combination) + bytes([player_credit_combination])
+        # Concatenate all codes
+        state_code = status_level_code + hex_code + player_credit_code
 
         return state_code
-
-
-    def hash_state(self):
-        return hash(self.encode_state())
 
 
     def set_cube_in_reserve(self, cube_color_index, cube_sort_index):
 
         free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
                                    (constCube.sort == cube_sort_index) &
-                                   (self.cube_status == ConstJersi.undefined)]
+                                   (self.cube_status == constJersi.undefined)]
 
         assert free_cube_indexes.size != 0
         cube_index = free_cube_indexes[0]
@@ -592,7 +698,7 @@ class JersiState:
 
         free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
                                    (constCube.sort == cube_sort_index) &
-                                   (self.cube_status == ConstJersi.undefined)]
+                                   (self.cube_status == constJersi.undefined)]
 
         assert free_cube_indexes.size != 0
         cube_index = free_cube_indexes[0]
@@ -640,16 +746,16 @@ class JersiState:
 
     def clear_all_cubes(self):
 
-        self.cube_status[:] = ConstJersi.undefined
-        self.cube_hex[:] = ConstJersi.undefined
-        self.cube_level[:] = ConstJersi.undefined
+        self.cube_status[:] = constJersi.undefined
+        self.cube_hex[:] = constJersi.undefined
+        self.cube_level[:] = constJersi.undefined
 
         self.hex_status[:] = TypeHexStatus.has_no_cube
-        self.hex_bottom[:] = ConstJersi.undefined
-        self.hex_top[:] = ConstJersi.undefined
+        self.hex_bottom[:] = constJersi.undefined
+        self.hex_top[:] = constJersi.undefined
 
 
-    def set_all_cubes_at_startup(self):
+    def set_all_cubes(self):
 
         self.clear_all_cubes()
 
@@ -712,59 +818,68 @@ class JersiState:
         self.set_cube_in_reserve_by_id('w')
 
 
-    def make_summary(self):
+    def count_per_color_and_sort(self):
+        active_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
         capture_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
         reserve_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
-        active_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
 
         for cube_color_index in TypeCubeColor.codomain:
+            cube_color_selection = (constCube.color == cube_color_index)
+
             for cube_sort_index in TypeCubeSort.codomain:
+                cube_sort_selection = (constCube.sort == cube_sort_index)
+
+                active_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+                    cube_color_selection &
+                    cube_sort_selection &
+                    (self.cube_status == TypeCubeStatus.active) )
 
                 capture_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                    (constCube.color == cube_color_index) &
-                    (constCube.sort == cube_sort_index) &
+                    cube_color_selection &
+                    cube_sort_selection &
                     (self.cube_status == TypeCubeStatus.captured) )
 
                 reserve_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                    (constCube.color == cube_color_index) &
-                    (constCube.sort == cube_sort_index) &
+                    cube_color_selection &
+                    cube_sort_selection &
                     (self.cube_status == TypeCubeStatus.reserved) )
 
-                active_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                    (constCube.color == cube_color_index) &
-                    (constCube.sort == cube_sort_index) &
-                    (self.cube_status == TypeCubeStatus.active) )
 
-        if ConstJersi.do_debug:
-            print()
-            print(f"{self.cube_status=!s}")
-            print(f"{self.cube_hex=!s}")
-            print(f"{self.cube_level=!s}")
-
-            print()
-            print(f"{self.hex_status=!s}")
-            print(f"{self.hex_bottom=!s}")
-            print(f"{self.hex_top=!s}")
-
-            print()
-            print(f"{capture_counter=!s}")
-            print(f"{reserve_counter=!s}")
-            print(f"{active_counter=!s}")
+        return (active_counter, capture_counter, reserve_counter)
 
 
+def main():
 
-js = JersiState()
-js.show()
+    print()
+    print("Hello!")
 
-js.make_summary()
+    js = JersiState()
+    js.show()
 
-js_code = js.encode_state()
-js_hash = js.hash_state()
-print()
-print("len(js_code):", len(js_code))
-print("js_code:", js_code.hex('-', 1))
-print("js_hash:", hex(js_hash))
+    (active_counter, capture_counter, reserve_counter) = js.count_per_color_and_sort()
+    print()
+    print(f"{active_counter=!s}")
+    print(f"{capture_counter=!s}")
+    print(f"{reserve_counter=!s}")
+
+    js_code = js.encode_state()
+    js_hash = hash(js)
+    print()
+    print("len(js_code):", len(js_code))
+    print("js_code:", js_code.hex('-', 1))
+    print("js_hash:", hex(js_hash))
+
+    js_bis = JersiState()
+    print("js_bis == js:", js == js_bis)
 
 
-print()
-print("Bye!")
+    js_is_terminal = js.isTerminal()
+    print(f"{js_is_terminal=!s}")
+
+    print()
+    print("Bye!")
+
+
+if __name__ == "__main__":
+    main()
+
