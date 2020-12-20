@@ -3,6 +3,7 @@
 Data structure for "jersi" game : fast when performance is required.
 """
 
+import copy
 import math
 import types
 import numpy as np
@@ -570,8 +571,8 @@ class JersiState:
         self.hex_top = np.full(constHex.count, constJersi.undefined, dtype=np.int8)
 
         self.terminal = None
+        self.rewards = None
         self.actions = None
-        self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
 
         self.set_all_cubes()
 
@@ -607,11 +608,11 @@ class JersiState:
 
 
     def takeAction(self, action):
-        self.take_action(action)
+        return self.take_action(action)
 
 
     def getReward(self):
-        #>> reward for the previou player
+        # >> reward for the previous player
         rewards = self.get_reward()
 
         if self.player == TypeCubeColor.white:
@@ -623,6 +624,24 @@ class JersiState:
     ### mcts-interface-end
 
 
+    def fork(self):
+        next_state = copy.copy(self)
+
+        next_state.cube_status = np.copy(next_state.cube_status)
+        next_state.cube_hex = np.copy(next_state.cube_hex)
+        next_state.cube_level = np.copy(next_state.cube_level)
+
+        next_state.hex_status = np.copy(next_state.hex_status)
+        next_state.hex_bottom = np.copy(next_state.hex_bottom)
+        next_state.hex_top = np.copy(next_state.hex_top)
+
+        next_state.terminal = None
+        next_state.rewards = None
+        next_state.actions = None
+
+        return next_state
+
+
     def get_player(self):
         return self.player
 
@@ -631,21 +650,27 @@ class JersiState:
 
         if self.actions is None:
 
-            #TODO
             self.actions = []
+
+            next_player = self.next_player()
+            next_credit = self.credit - 1
+
+            fst_steps = []
+            fst_next_state = self.fork()
+            self.actions.append(JersiAction(fst_steps, fst_next_state, next_player, next_credit))
+
+            snd_steps = copy.copy(fst_steps)
+            snd_next_state = fst_next_state.fork()
+            self.actions.append(JersiAction(snd_steps, snd_next_state, next_player, next_credit))
+
 
         return self.actions
 
 
     def take_action(self, action):
-
-        new_state = deepcopy(self)
-
-        #TODO
-        new_state.board[action.x][action.y] = action.player
-        new_state.currentPlayer = self.currentPlayer * -1
-
-        return new_state
+        action.next_state.player = action.next_player
+        action.next_state.credit = action.next_credit
+        return action.next_state
 
 
     def is_terminal(self):
@@ -657,24 +682,29 @@ class JersiState:
             if self.cube_hex[constCube.white_king] in constHex.goals[TypeCubeColor.white]:
                 # white arrived at goal ==> white wins
                 self.terminal = True
+                self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.white] = 1
                 self.rewards[TypeCubeColor.black] = -1
 
             elif self.cube_hex[constCube.black_king] in constHex.goals[TypeCubeColor.black]:
                 # black arrived at goal ==> black wins
                 self.terminal = True
+                self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.black] = 1
                 self.rewards[TypeCubeColor.white] = -1
 
             elif self.credit == 0:
                 # credit is exhausted ==> nobody wins
                 self.terminal = True
+                self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.white] = 0
                 self.rewards[TypeCubeColor.black] = 0
 
             elif len(self.get_actions()) == 0:
-                self.terminal = True
                 # the current player looses and the other player wins
+                self.terminal = True
+                self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
+
                 if self.player == constCube.white_king:
                     self.rewards[TypeCubeColor.black] = -1
                     self.rewards[TypeCubeColor.white] = 1
@@ -701,8 +731,8 @@ class JersiState:
         print(f"{self.hex_top=!s}")
 
 
-    def change_player(self):
-        self.player = (self.player + 1) % TypeCubeColor.count
+    def next_player(self):
+        return (self.player + 1) % TypeCubeColor.count
 
 
     def encode_state(self):
@@ -889,6 +919,32 @@ class JersiState:
 
 
         return (active_counter, capture_counter, reserve_counter)
+
+
+class JersiAction:
+
+
+    def __init__(self, steps, next_state, next_player, next_credit):
+        self.steps = steps
+        self.next_state = next_state
+        self.next_player = next_player
+        self.next_credit = next_credit
+
+
+    def __str__(self):
+        return str(self.steps)
+
+
+    def __repr__(self):
+        return str(self)
+
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.steps == other.steps
+
+
+    def __hash__(self):
+        return hash(self.steps)
 
 
 def main():
