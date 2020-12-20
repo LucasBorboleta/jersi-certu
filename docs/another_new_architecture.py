@@ -569,6 +569,10 @@ class JersiState:
         self.hex_bottom = np.full(constHex.count, constJersi.undefined, dtype=np.int8)
         self.hex_top = np.full(constHex.count, constJersi.undefined, dtype=np.int8)
 
+        self.terminal = None
+        self.actions = None
+        self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
+
         self.set_all_cubes()
 
 
@@ -585,25 +589,55 @@ class JersiState:
         return hash(self.encode_state())
 
 
-    def getCurrentPlayer(self):
-        # >> mcts-interface <<
+    ### mcts-interface-begin
 
-        if self.player == TypeCubeColor.white:
+    def getCurrentPlayer(self):
+        if self.get_player() == TypeCubeColor.white:
             return 1
         else:
             return -1
 
 
     def getPossibleActions(self):
-        # >> mcts-interface <<
+        return self.get_actions()
 
-        possible_actions = []
-        #TODO
-        return possible_actions
+
+    def isTerminal(self):
+        return self.is_terminal()
 
 
     def takeAction(self, action):
-        # >> mcts-interface <<
+        self.take_action(action)
+
+
+    def getReward(self):
+        #>> reward for the previou player
+        rewards = self.get_reward()
+
+        if self.player == TypeCubeColor.white:
+            return rewards[TypeCubeColor.black]
+        else:
+            return rewards[TypeCubeColor.white]
+
+
+    ### mcts-interface-end
+
+
+    def get_player(self):
+        return self.player
+
+
+    def get_actions(self):
+
+        if self.actions is None:
+
+            #TODO
+            self.actions = []
+
+        return self.actions
+
+
+    def take_action(self, action):
 
         new_state = deepcopy(self)
 
@@ -614,37 +648,46 @@ class JersiState:
         return new_state
 
 
-    def isTerminal(self):
-        # >> mcts-interface <<
+    def is_terminal(self):
 
-        terminal = False
+        if self.terminal is None:
 
-        if self.cube_hex[constCube.white_king] in constHex.goals[TypeCubeColor.white]:
-            # white arrived at goal
-            terminal = True
+            self.terminal = False
 
-        elif self.cube_hex[constCube.black_king] in constHex.goals[TypeCubeColor.black]:
-            # black arrived at goal
-            terminal = True
+            if self.cube_hex[constCube.white_king] in constHex.goals[TypeCubeColor.white]:
+                # white arrived at goal ==> white wins
+                self.terminal = True
+                self.rewards[TypeCubeColor.white] = 1
+                self.rewards[TypeCubeColor.black] = -1
 
-        elif self.credit == 0:
-            # credit is exhausted
-            terminal = True
+            elif self.cube_hex[constCube.black_king] in constHex.goals[TypeCubeColor.black]:
+                # black arrived at goal ==> black wins
+                self.terminal = True
+                self.rewards[TypeCubeColor.black] = 1
+                self.rewards[TypeCubeColor.white] = -1
 
-        else:
-            #TODO: next player has no available actions
-            pass
+            elif self.credit == 0:
+                # credit is exhausted ==> nobody wins
+                self.terminal = True
+                self.rewards[TypeCubeColor.white] = 0
+                self.rewards[TypeCubeColor.black] = 0
 
-        return terminal
+            elif len(self.get_actions()) == 0:
+                self.terminal = True
+                # the current player looses and the other player wins
+                if self.player == constCube.white_king:
+                    self.rewards[TypeCubeColor.black] = -1
+                    self.rewards[TypeCubeColor.white] = 1
+                else:
+                    self.rewards[TypeCubeColor.white] = -1
+                    self.rewards[TypeCubeColor.black] = 1
+
+        return self.terminal
 
 
-    def getReward(self):
-        # >> mcts-interface <<
-        #TODO
-
-        reward = 0
-
-        return reward
+    def get_reward(self):
+        assert self.terminal
+        return self.rewards
 
 
     def show(self):
