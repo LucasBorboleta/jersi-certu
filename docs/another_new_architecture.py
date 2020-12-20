@@ -20,11 +20,13 @@ def make_ConstJersi():
 
     ConstJersi.do_debug = True
     ConstJersi.undefined = -1
+    ConstJersi.max_credit = 40 # Max number of turns without any capture
 
     if ConstJersi.do_debug:
         print()
         print(f"{ConstJersi.do_debug=!s}")
         print(f"{ConstJersi.undefined=!s}")
+        print(f"{ConstJersi.max_credit=!s}")
 
     return ConstJersi
 
@@ -514,6 +516,9 @@ class JersiState:
         self.hex_bottom = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
         self.hex_top = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
 
+        self.player = TypeCubeColor.white
+        self.credit = ConstJersi.max_credit
+
         self.set_all_cubes_at_startup()
 
 
@@ -528,31 +533,44 @@ class JersiState:
         print(f"{self.hex_top=!s}")
 
 
+    def next_player(self):
+        self.player = (self.player + 1) % TypeCubeColor.count
+
+
     def encode_state(self):
 
-        if ConstJersi.do_debug:
-            # >> Take into accounth the coding of ConstJersi.undefined
-            hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
+        # >> Take into accounth the coding of ConstJersi.undefined
+        hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
 
-            status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
-            level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
+        status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
+        level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
+        player_bit_size = int(math.ceil(math.log2(TypeCubeColor.count)))
+        credit_bit_size = int(math.ceil(math.log2(ConstJersi.max_credit)))
 
-            assert status_bit_size == 2
-            assert level_bit_size == 1
-            assert hex_bit_size == 6
+        assert status_bit_size == 2
+        assert level_bit_size == 1
+        assert hex_bit_size == 6
+        assert player_bit_size == 1
+        assert credit_bit_size == 6
+
+        #TODO: compute the above constants only once !
 
         # Combine cube_status and cube_level
-        status_level_union =self.cube_status*2
+        status_level_combination = (2**level_bit_size)*self.cube_status
         active_indices = (self.cube_status == TypeCubeStatus.active)
-        status_level_union[active_indices] =self.cube_level[active_indices]
+        status_level_combination[active_indices] =self.cube_level[active_indices]
 
         # Combine cube_hex, cube_status and cube_level
         # >> "+1" ensures positive integers
-        hex_status_level_union = 4*(self.cube_hex + 1) + status_level_union
+        hex_status_level_combination = (2**level_bit_size)*(self.cube_hex + 1) + status_level_combination
 
-        cube_state_code = bytes(hex_status_level_union)
+        # Combine player and credit
+        player_credit_combination = (2**player_bit_size)*self.player + self.credit
 
-        return cube_state_code
+        # Concatenate all information
+        state_code = bytes(hex_status_level_combination) + bytes([player_credit_combination])
+
+        return state_code
 
 
     def hash_state(self):
@@ -744,7 +762,6 @@ js_code = js.encode_state()
 js_hash = js.hash_state()
 print()
 print("len(js_code):", len(js_code))
-print("hash(cube_state_code):", hash(js_code))
 print("js_code:", js_code.hex('-', 1))
 print("js_hash:", hex(js_hash))
 
