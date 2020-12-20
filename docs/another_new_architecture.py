@@ -500,257 +500,254 @@ def make_constHex():
 constHex = make_constHex()
 
 
-# Define hexagon variables properties
+# Define jersi state
 
-def make_varHex():
-    varHex = types.SimpleNamespace()
+class JersiState:
 
-    varHex.status = np.full(constHex.count, TypeHexStatus.has_no_cube, dtype=np.int8)
-    varHex.bottom = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
-    varHex.top = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
 
-    if ConstJersi.do_debug:
+    def __init__(self):
+        self.cube_status = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
+        self.cube_hex = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
+        self.cube_level = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
+
+        self.hex_status = np.full(constHex.count, TypeHexStatus.has_no_cube, dtype=np.int8)
+        self.hex_bottom = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
+        self.hex_top = np.full(constHex.count, ConstJersi.undefined, dtype=np.int8)
+
+        self.set_all_cubes_at_startup()
+
+
+    def show(self):
         print()
-        print(f"{varHex.status=!s}")
-        print(f"{varHex.bottom=!s}")
-        print(f"{varHex.top=!s}")
+        print(f"{self.cube_status=!s}")
+        print(f"{self.cube_hex=!s}")
+        print(f"{self.cube_level=!s}")
 
-    return varHex
+        print(f"{self.hex_status=!s}")
+        print(f"{self.hex_bottom=!s}")
+        print(f"{self.hex_top=!s}")
 
-varHex = make_varHex()
 
+    def encode_state(self):
 
-# Define cube variables properties
+        if ConstJersi.do_debug:
+            # >> Take into accounth the coding of ConstJersi.undefined
+            hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
 
-def make_varCube():
-    varCube = types.SimpleNamespace()
+            status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
+            level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
 
-    varCube.status = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-    varCube.hex = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
-    varCube.level = np.full(constCube.count, ConstJersi.undefined, dtype=np.int8)
+            assert status_bit_size == 2
+            assert level_bit_size == 1
+            assert hex_bit_size == 6
 
-    if ConstJersi.do_debug:
-        print()
-        print(f"{varCube.status=!s}")
-        print(f"{varCube.hex=!s}")
-        print(f"{varCube.level=!s}")
+        # Combine cube_status and cube_level
+        status_level_union =self.cube_status*2
+        active_indices = (self.cube_status == TypeCubeStatus.active)
+        status_level_union[active_indices] =self.cube_level[active_indices]
 
-    return varCube
+        # Combine cube_hex, cube_status and cube_level
+        # >> "+1" ensures positive integers
+        hex_status_level_union = 4*(self.cube_hex + 1) + status_level_union
 
-varCube = make_varCube()
+        cube_state_code = bytes(hex_status_level_union)
 
+        return cube_state_code
 
-def set_cube_in_reserve(cube_color_index, cube_sort_index):
 
-    free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
-                               (constCube.sort == cube_sort_index) &
-                               (varCube.status == ConstJersi.undefined)]
+    def hash_state(self):
+        return hash(self.encode_state())
 
-    assert free_cube_indexes.size != 0
-    cube_index = free_cube_indexes[0]
-    varCube.status[cube_index] = TypeCubeStatus.reserved
 
+    def set_cube_in_reserve(self, cube_color_index, cube_sort_index):
 
-def set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index):
+        free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
+                                   (constCube.sort == cube_sort_index) &
+                                   (self.cube_status == ConstJersi.undefined)]
 
-    free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
-                               (constCube.sort == cube_sort_index) &
-                               (varCube.status == ConstJersi.undefined)]
+        assert free_cube_indexes.size != 0
+        cube_index = free_cube_indexes[0]
+        self.cube_status[cube_index] = TypeCubeStatus.reserved
 
-    assert free_cube_indexes.size != 0
-    cube_index = free_cube_indexes[0]
-    varCube.status[cube_index] = TypeCubeStatus.active
 
-    if varHex.status[hex_index] == TypeHexStatus.has_no_cube:
+    def set_cube_at_hexagon(self, cube_color_index, cube_sort_index, hex_index):
 
-        varHex.bottom[hex_index] = cube_index
-        varHex.status[hex_index] = TypeHexStatus.has_one_cube
+        free_cube_indexes = constCube.codomain[(constCube.color == cube_color_index) &
+                                   (constCube.sort == cube_sort_index) &
+                                   (self.cube_status == ConstJersi.undefined)]
 
-        varCube.hex[cube_index] = hex_index
-        varCube.level[cube_index] = TypeHexLevel.bottom
+        assert free_cube_indexes.size != 0
+        cube_index = free_cube_indexes[0]
+        self.cube_status[cube_index] = TypeCubeStatus.active
 
-    elif varHex.status[hex_index] == TypeHexStatus.has_one_cube:
+        if self.hex_status[hex_index] == TypeHexStatus.has_no_cube:
 
-        varHex.top[hex_index] = cube_index
-        varHex.status[hex_index] = TypeHexStatus.has_two_cubes
+            self.hex_bottom[hex_index] = cube_index
+            self.hex_status[hex_index] = TypeHexStatus.has_one_cube
 
-        varCube.hex[cube_index] = hex_index
-        varCube.level[cube_index] = TypeHexLevel.top
+            self.cube_hex[cube_index] = hex_index
+            self.cube_level[cube_index] = TypeHexLevel.bottom
 
-    else:
-        assert varHex.status[hex_index] in [TypeHexStatus.has_no_cube, TypeHexStatus.has_one_cube]
+        elif self.hex_status[hex_index] == TypeHexStatus.has_one_cube:
 
+            self.hex_top[hex_index] = cube_index
+            self.hex_status[hex_index] = TypeHexStatus.has_two_cubes
 
-def set_cube_in_reserve_by_id(cube_csort_id):
+            self.cube_hex[cube_index] = hex_index
+            self.cube_level[cube_index] = TypeHexLevel.top
 
-    cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
-    cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
-    cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
+        else:
+            assert self.hex_status[hex_index] in [TypeHexStatus.has_no_cube, TypeHexStatus.has_one_cube]
 
-    set_cube_in_reserve(cube_color_index, cube_sort_index)
 
+    def set_cube_in_reserve_by_id(self, cube_csort_id):
 
-def set_cube_at_hexagon_by_id(cube_csort_id, hex_id):
+        cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
+        cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
+        cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
 
-    hex_index = np.argwhere(constHex.domain == hex_id)[0][0]
+        self.set_cube_in_reserve(cube_color_index, cube_sort_index)
 
-    cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
-    cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
-    cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
 
-    set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index)
+    def set_cube_at_hexagon_by_id(self, cube_csort_id, hex_id):
 
+        hex_index = np.argwhere(constHex.domain == hex_id)[0][0]
 
-def clear_all_cubes():
+        cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
+        cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
+        cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
 
-    varCube.status[:] = ConstJersi.undefined
-    varCube.hex[:] = ConstJersi.undefined
-    varCube.level[:] = ConstJersi.undefined
+        self.set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index)
 
-    varHex.status[:] = TypeHexStatus.has_no_cube
-    varHex.bottom[:] = ConstJersi.undefined
-    varHex.top[:] = ConstJersi.undefined
 
+    def clear_all_cubes(self):
+
+        self.cube_status[:] = ConstJersi.undefined
+        self.cube_hex[:] = ConstJersi.undefined
+        self.cube_level[:] = ConstJersi.undefined
+
+        self.hex_status[:] = TypeHexStatus.has_no_cube
+        self.hex_bottom[:] = ConstJersi.undefined
+        self.hex_top[:] = ConstJersi.undefined
+
+
+    def set_all_cubes_at_startup(self):
+
+        self.clear_all_cubes()
 
-def set_all_cubes_at_startup():
-
-    clear_all_cubes()
-
-    # whites
-    set_cube_at_hexagon_by_id('F', 'b1')
-    set_cube_at_hexagon_by_id('F', 'b8')
-    set_cube_at_hexagon_by_id('K', 'a4')
+        # whites
+        self.set_cube_at_hexagon_by_id('F', 'b1')
+        self.set_cube_at_hexagon_by_id('F', 'b8')
+        self.set_cube_at_hexagon_by_id('K', 'a4')
 
-    set_cube_at_hexagon_by_id('R', 'b2')
-    set_cube_at_hexagon_by_id('P', 'b3')
-    set_cube_at_hexagon_by_id('S', 'b4')
-    set_cube_at_hexagon_by_id('R', 'b5')
-    set_cube_at_hexagon_by_id('P', 'b6')
-    set_cube_at_hexagon_by_id('S', 'b7')
+        self.set_cube_at_hexagon_by_id('R', 'b2')
+        self.set_cube_at_hexagon_by_id('P', 'b3')
+        self.set_cube_at_hexagon_by_id('S', 'b4')
+        self.set_cube_at_hexagon_by_id('R', 'b5')
+        self.set_cube_at_hexagon_by_id('P', 'b6')
+        self.set_cube_at_hexagon_by_id('S', 'b7')
 
-    set_cube_at_hexagon_by_id('R', 'a3')
-    set_cube_at_hexagon_by_id('S', 'a2')
-    set_cube_at_hexagon_by_id('P', 'a1')
-    set_cube_at_hexagon_by_id('S', 'a5')
-    set_cube_at_hexagon_by_id('R', 'a6')
-    set_cube_at_hexagon_by_id('P', 'a7')
+        self.set_cube_at_hexagon_by_id('R', 'a3')
+        self.set_cube_at_hexagon_by_id('S', 'a2')
+        self.set_cube_at_hexagon_by_id('P', 'a1')
+        self.set_cube_at_hexagon_by_id('S', 'a5')
+        self.set_cube_at_hexagon_by_id('R', 'a6')
+        self.set_cube_at_hexagon_by_id('P', 'a7')
 
-    # blacks
-    set_cube_at_hexagon_by_id('f', 'h1')
-    set_cube_at_hexagon_by_id('f', 'h8')
-    set_cube_at_hexagon_by_id('k', 'i4')
+        # blacks
+        self.set_cube_at_hexagon_by_id('f', 'h1')
+        self.set_cube_at_hexagon_by_id('f', 'h8')
+        self.set_cube_at_hexagon_by_id('k', 'i4')
 
-    set_cube_at_hexagon_by_id('r', 'h7')
-    set_cube_at_hexagon_by_id('p', 'h6')
-    set_cube_at_hexagon_by_id('s', 'h5')
-    set_cube_at_hexagon_by_id('r', 'h4')
-    set_cube_at_hexagon_by_id('p', 'h3')
-    set_cube_at_hexagon_by_id('s', 'h2')
+        self.set_cube_at_hexagon_by_id('r', 'h7')
+        self.set_cube_at_hexagon_by_id('p', 'h6')
+        self.set_cube_at_hexagon_by_id('s', 'h5')
+        self.set_cube_at_hexagon_by_id('r', 'h4')
+        self.set_cube_at_hexagon_by_id('p', 'h3')
+        self.set_cube_at_hexagon_by_id('s', 'h2')
 
-    set_cube_at_hexagon_by_id('r', 'i5')
-    set_cube_at_hexagon_by_id('s', 'i6')
-    set_cube_at_hexagon_by_id('p', 'i7')
-    set_cube_at_hexagon_by_id('s', 'i3')
-    set_cube_at_hexagon_by_id('r', 'i2')
-    set_cube_at_hexagon_by_id('p', 'i1')
+        self.set_cube_at_hexagon_by_id('r', 'i5')
+        self.set_cube_at_hexagon_by_id('s', 'i6')
+        self.set_cube_at_hexagon_by_id('p', 'i7')
+        self.set_cube_at_hexagon_by_id('s', 'i3')
+        self.set_cube_at_hexagon_by_id('r', 'i2')
+        self.set_cube_at_hexagon_by_id('p', 'i1')
 
-    # white reserve
-    set_cube_in_reserve_by_id('W')
-    set_cube_in_reserve_by_id('W')
+        # white reserve
+        self.set_cube_in_reserve_by_id('W')
+        self.set_cube_in_reserve_by_id('W')
 
-    set_cube_in_reserve_by_id('M')
-    set_cube_in_reserve_by_id('M')
+        self.set_cube_in_reserve_by_id('M')
+        self.set_cube_in_reserve_by_id('M')
 
-    set_cube_in_reserve_by_id('M')
-    set_cube_in_reserve_by_id('M')
+        self.set_cube_in_reserve_by_id('M')
+        self.set_cube_in_reserve_by_id('M')
 
-    # black reserve
-    set_cube_in_reserve_by_id('m')
-    set_cube_in_reserve_by_id('m')
+        # black reserve
+        self.set_cube_in_reserve_by_id('m')
+        self.set_cube_in_reserve_by_id('m')
 
-    set_cube_in_reserve_by_id('m')
-    set_cube_in_reserve_by_id('m')
+        self.set_cube_in_reserve_by_id('m')
+        self.set_cube_in_reserve_by_id('m')
 
-    set_cube_in_reserve_by_id('w')
-    set_cube_in_reserve_by_id('w')
+        self.set_cube_in_reserve_by_id('w')
+        self.set_cube_in_reserve_by_id('w')
 
-set_all_cubes_at_startup()
 
+    def make_summary(self):
+        capture_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
+        reserve_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
+        active_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
 
-# Try treatments in order to exercise the above data structures
+        for cube_color_index in TypeCubeColor.codomain:
+            for cube_sort_index in TypeCubeSort.codomain:
 
-def make_summary():
-    capture_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
-    reserve_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
-    active_counter = np.zeros((TypeCubeColor.count, TypeCubeSort.count), dtype=np.int8)
+                capture_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+                    (constCube.color == cube_color_index) &
+                    (constCube.sort == cube_sort_index) &
+                    (self.cube_status == TypeCubeStatus.captured) )
 
-    for cube_color_index in TypeCubeColor.codomain:
-        for cube_sort_index in TypeCubeSort.codomain:
+                reserve_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+                    (constCube.color == cube_color_index) &
+                    (constCube.sort == cube_sort_index) &
+                    (self.cube_status == TypeCubeStatus.reserved) )
 
-            capture_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                (constCube.color == cube_color_index) &
-                (constCube.sort == cube_sort_index) &
-                (varCube.status == TypeCubeStatus.captured) )
+                active_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
+                    (constCube.color == cube_color_index) &
+                    (constCube.sort == cube_sort_index) &
+                    (self.cube_status == TypeCubeStatus.active) )
 
-            reserve_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                (constCube.color == cube_color_index) &
-                (constCube.sort == cube_sort_index) &
-                (varCube.status == TypeCubeStatus.reserved) )
+        if ConstJersi.do_debug:
+            print()
+            print(f"{self.cube_status=!s}")
+            print(f"{self.cube_hex=!s}")
+            print(f"{self.cube_level=!s}")
 
-            active_counter[cube_color_index, cube_sort_index] = np.count_nonzero(
-                (constCube.color == cube_color_index) &
-                (constCube.sort == cube_sort_index) &
-                (varCube.status == TypeCubeStatus.active) )
+            print()
+            print(f"{self.hex_status=!s}")
+            print(f"{self.hex_bottom=!s}")
+            print(f"{self.hex_top=!s}")
 
-    print()
-    print(f"{varCube.status=!s}")
-    print(f"{varCube.hex=!s}")
-    print(f"{varCube.level=!s}")
+            print()
+            print(f"{capture_counter=!s}")
+            print(f"{reserve_counter=!s}")
+            print(f"{active_counter=!s}")
 
-    print()
-    print(f"{varHex.status=!s}")
-    print(f"{varHex.bottom=!s}")
-    print(f"{varHex.top=!s}")
 
-    print()
-    print(f"{capture_counter=!s}")
-    print(f"{reserve_counter=!s}")
-    print(f"{active_counter=!s}")
 
-make_summary()
+js = JersiState()
+js.show()
 
+js.make_summary()
 
-def encode_varCube_state():
-
-    if ConstJersi.do_debug:
-        # >> Take into accounth the coding of ConstJersi.undefined
-        hex_bit_size = int(math.ceil(math.log2(constCube.count + 1)))
-
-        status_bit_size = int(math.ceil(math.log2(TypeCubeStatus.count)))
-        level_bit_size = int(math.ceil(math.log2(TypeHexLevel.count)))
-
-        assert status_bit_size == 2
-        assert level_bit_size == 1
-        assert hex_bit_size == 6
-
-    # Combine varCube.status and varCube.level
-    status_level_union = varCube.status*2
-    active_indices = (varCube.status == TypeCubeStatus.active)
-    status_level_union[active_indices] = varCube.level[active_indices]
-
-    # Combine varCube.hex, varCube.status, varCube.level
-    # >> "+1" ensures positive integers
-    hex_status_level_union = 4*(varCube.hex + 1) + status_level_union
-
-    cube_state_code = bytes(hex_status_level_union)
-
-    return cube_state_code
-
-
-cube_state_code = encode_varCube_state()
+js_code = js.encode_state()
+js_hash = js.hash_state()
 print()
-print("len(cube_state_code):", len(cube_state_code))
-print("cube_state_code:", cube_state_code.hex('-', 1))
+print("len(js_code):", len(js_code))
+print("hash(cube_state_code):", hash(js_code))
+print("js_code:", js_code.hex('-', 1))
+print("js_hash:", hex(js_hash))
+
 
 print()
 print("Bye!")
