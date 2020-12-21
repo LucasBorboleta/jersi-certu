@@ -561,6 +561,7 @@ class JersiState:
 
         self.player = TypeCubeColor.white
         self.credit = constJersi.max_credit
+        self.turn = 1
 
         self.cube_status = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
         self.cube_hex = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
@@ -624,8 +625,16 @@ class JersiState:
     ### mcts-interface-end
 
 
-    def fork(self):
+    def fork(self, origin=None):
+
+        if origin is None:
+            origin = self
+
         next_state = copy.copy(self)
+
+        next_state.player = origin.next_player()
+        next_state.credit = max(0, origin.credit - 1)
+        next_state.turn = origin.turn - 1
 
         next_state.cube_status = np.copy(next_state.cube_status)
         next_state.cube_hex = np.copy(next_state.cube_hex)
@@ -652,24 +661,19 @@ class JersiState:
 
             self.actions = []
 
-            next_player = self.next_player()
-            next_credit = self.credit - 1
-
             fst_steps = []
-            fst_next_state = self.fork()
-            self.actions.append(JersiAction(fst_steps, fst_next_state, next_player, next_credit))
+            fst_next_state = self.fork(origin=self)
+            self.actions.append(JersiAction(fst_steps, fst_next_state))
 
             snd_steps = copy.copy(fst_steps)
-            snd_next_state = fst_next_state.fork()
-            self.actions.append(JersiAction(snd_steps, snd_next_state, next_player, next_credit))
+            snd_next_state = fst_next_state.fork(origin=self)
+            self.actions.append(JersiAction(snd_steps, snd_next_state))
 
 
         return self.actions
 
 
     def take_action(self, action):
-        action.next_state.player = action.next_player
-        action.next_state.credit = action.next_credit
         return action.next_state
 
 
@@ -924,11 +928,9 @@ class JersiState:
 class JersiAction:
 
 
-    def __init__(self, steps, next_state, next_player, next_credit):
+    def __init__(self, steps, next_state):
         self.steps = steps
         self.next_state = next_state
-        self.next_player = next_player
-        self.next_credit = next_credit
 
 
     def __str__(self):
