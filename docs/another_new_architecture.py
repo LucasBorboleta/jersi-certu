@@ -661,16 +661,62 @@ class JersiState:
 
             self.actions = []
 
-            fst_steps = []
-            fst_next_state = self.fork(origin=self)
-            self.actions.append(JersiAction(fst_steps, fst_next_state))
+            # Search active cubes
+            cube_color_selection = constCube.color == self.player
+            cube_status_selection = self.cube_status == TypeCubeStatus.active
+            cube_hex_selection = self.cube_hex[cube_color_selection & cube_status_selection]
 
-            snd_steps = copy.copy(fst_steps)
-            snd_next_state = fst_next_state.fork(origin=self)
-            self.actions.append(JersiAction(snd_steps, snd_next_state))
+            for src_hex_index in cube_hex_selection:
+                for hex_dir_index in TypeHexDirection.codomain:
 
+                    fst_dst_hex_index = constHex.next_fst[src_hex_index, hex_dir_index]
+                    if fst_dst_hex_index != constJersi.undefined:
+
+                        if self.hex_status[fst_dst_hex_index] == TypeHexStatus.has_no_cube:
+
+                            fst_action_notation = constHex.domain[src_hex_index]
+                            fst_action_notation += "-" + constHex.domain[fst_dst_hex_index]
+
+                            fst_next_state = self.fork(origin=self)
+                            fst_next_state.move_cube(src_hex_index, fst_dst_hex_index)
+                            self.actions.append(JersiAction(fst_action_notation, fst_next_state))
+
+
+        print("actions=", self.actions)
 
         return self.actions
+
+
+    def move_cube(self, src_hex_index, dst_hex_index):
+
+        if self.hex_status[src_hex_index] == TypeHexStatus.has_two_cubes:
+            cube_index = self.hex_top[src_hex_index]
+
+            assert self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube
+            self.hex_bottom[dst_hex_index] = cube_index
+            self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+
+            self.hex_top[src_hex_index] = constJersi.undefined
+            self.hex_status[src_hex_index] = TypeHexStatus.has_one_cube
+
+            self.cube_hex[cube_index] = dst_hex_index
+            self.cube_hex_level[cube_index] = TypeHexLevel.bottom
+
+        elif self.hex_status[src_hex_index] == TypeHexStatus.has_one_cube:
+            cube_index = self.hex_bottom[src_hex_index]
+
+            assert self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube
+            self.hex_bottom[dst_hex_index] = cube_index
+            self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+
+            self.hex_bottom[src_hex_index] = constJersi.undefined
+            self.hex_status[src_hex_index] = TypeHexStatus.has_no_cube
+
+            self.cube_hex[cube_index] = dst_hex_index
+            self.cube_level[cube_index] = TypeHexLevel.bottom
+
+        else:
+            assert self.hex_status[src_hex_index] != TypeHexStatus.has_no_cube
 
 
     def take_action(self, action):
@@ -928,13 +974,13 @@ class JersiState:
 class JersiAction:
 
 
-    def __init__(self, steps, next_state):
-        self.steps = steps
+    def __init__(self, action_notation, next_state):
+        self.action_notation = action_notation
         self.next_state = next_state
 
 
     def __str__(self):
-        return str(self.steps)
+        return str(self.action_notation)
 
 
     def __repr__(self):
@@ -942,11 +988,11 @@ class JersiAction:
 
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.steps == other.steps
+        return self.__class__ == other.__class__ and self.action_notation == other.action_notation
 
 
     def __hash__(self):
-        return hash(self.steps)
+        return hash(self.action_notation)
 
 
 def main():
