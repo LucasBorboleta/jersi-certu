@@ -690,33 +690,99 @@ class JersiState:
     def move_cube(self, src_hex_index, dst_hex_index):
 
         if self.hex_status[src_hex_index] == TypeHexStatus.has_two_cubes:
-            cube_index = self.hex_top[src_hex_index]
 
-            assert self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube
-            self.hex_bottom[dst_hex_index] = cube_index
-            self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+            cube_index = self.hex_top[src_hex_index]
+            assert cube_index != constJersi.undefined
+
+            if self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube:
+
+                self.hex_bottom[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+                self.cube_hex_level[cube_index] = TypeHexLevel.bottom
+
+            elif self.hex_status[dst_hex_index] == TypeHexStatus.has_one_cube:
+
+                self.hex_top[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes_cube
+                self.cube_hex_level[cube_index] = TypeHexLevel.top
+
+            else:
+                assert self.hex_status[dst_hex_index] in [TypeHexStatus.has_no_cube,
+                                                          TypeHexStatus.has_one_cube]
 
             self.hex_top[src_hex_index] = constJersi.undefined
             self.hex_status[src_hex_index] = TypeHexStatus.has_one_cube
 
-            self.cube_hex[cube_index] = dst_hex_index
-            self.cube_hex_level[cube_index] = TypeHexLevel.bottom
-
         elif self.hex_status[src_hex_index] == TypeHexStatus.has_one_cube:
-            cube_index = self.hex_bottom[src_hex_index]
 
-            assert self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube
-            self.hex_bottom[dst_hex_index] = cube_index
-            self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+            cube_index = self.hex_bottom[src_hex_index]
+            assert cube_index != constJersi.undefined
+
+            if self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube:
+
+                self.hex_bottom[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+                self.cube_level[cube_index] = TypeHexLevel.bottom
+
+            elif self.hex_status[dst_hex_index] == TypeHexStatus.has_one_cube:
+
+                self.hex_top[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes_cube
+                self.cube_hex_level[cube_index] = TypeHexLevel.top
+
+            else:
+                assert self.hex_status[dst_hex_index] in [TypeHexStatus.has_no_cube,
+                                                          TypeHexStatus.has_one_cube]
 
             self.hex_bottom[src_hex_index] = constJersi.undefined
             self.hex_status[src_hex_index] = TypeHexStatus.has_no_cube
 
-            self.cube_hex[cube_index] = dst_hex_index
-            self.cube_level[cube_index] = TypeHexLevel.bottom
-
         else:
-            assert self.hex_status[src_hex_index] != TypeHexStatus.has_no_cube
+            assert self.hex_status[src_hex_index] in [TypeHexStatus.has_one_cube,
+                                                      TypeHexStatus.has_two_cubes]
+        self.cube_hex[cube_index] = dst_hex_index
+
+
+    def move_stack(self, src_hex_index, dst_hex_index):
+
+        assert self.hex_status[src_hex_index] == TypeHexStatus.has_two_cubes
+        assert self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube
+
+        top_cube_index = self.hex_top[src_hex_index]
+        bottom_cube_index = self.hex_bottom[src_hex_index]
+
+        self.hex_top[dst_hex_index] = top_cube_index
+        self.hex_bottom[dst_hex_index] = bottom_cube_index
+        self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes
+
+        self.hex_top[src_hex_index] = constJersi.undefined
+        self.hex_bottom[src_hex_index] = bottom_cube_index
+        self.hex_status[src_hex_index] = TypeHexStatus.has_no_cube
+
+        self.cube_hex[top_cube_index] = dst_hex_index
+        self.cube_hex_level[top_cube_index] = TypeHexLevel.top
+
+        self.cube_hex[bottom_cube_index] = dst_hex_index
+        self.cube_hex_level[bottom_cube_index] = TypeHexLevel.bottom
+
+
+    def capture_stack(self, hex_index):
+
+        assert self.hex_status[hex_index] == TypeHexStatus.has_two_cubes
+        top_cube_index = self.hex_top[hex_index]
+        bottom_cube_index = self.hex_bottom[hex_index]
+
+        self.cube_status[top_cube_index] = TypeCubeStatus.captured
+        self.cube_status[bottom_cube_index] = TypeCubeStatus.captured
+
+        self.cube_hex[top_cube_index] = constJersi.undefined
+        self.cube_hex[bottom_cube_index] = constJersi.undefined
+
+        self.cube_hex_level[top_cube_index] = constJersi.undefined
+        self.cube_hex_level[bottom_cube_index] = constJersi.undefined
+
+        self.hex_top[hex_index] = constJersi.undefined
+        self.hex_status[hex_index] = TypeHexStatus.has_no_cube
 
 
     def take_action(self, action):
