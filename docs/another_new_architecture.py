@@ -5,6 +5,7 @@ Data structure for "jersi" game : fast when performance is required.
 
 import copy
 import math
+import random
 import types
 import numpy as np
 
@@ -20,6 +21,7 @@ def make_constJersi():
     constJersi.byte_bit_size = 8
 
     constJersi.max_credit = 40 # Max number of turns without any capture
+    constJersi.max_credit = 40_000 # Max number of turns without any capture
     constJersi.credit_bit_size = int(math.ceil(math.log2(constJersi.max_credit)))
 
     if constJersi.do_debug:
@@ -136,7 +138,7 @@ def make_TypeCubeColoredSort():
     TypeCubeColoredSort.count = TypeCubeColor.count*TypeCubeSort.count
     TypeCubeColoredSort.codomain = np.arange(TypeCubeColoredSort.count, dtype=np.int8)
     TypeCubeColoredSort.color = np.full(TypeCubeColoredSort.count, constJersi.undefined, dtype=np.int8)
-    TypeCubeColoredSort.type = np.full(TypeCubeColoredSort.count, constJersi.undefined, dtype=np.int8)
+    TypeCubeColoredSort.sort = np.full(TypeCubeColoredSort.count, constJersi.undefined, dtype=np.int8)
 
     cube_csort_id_list = list()
 
@@ -151,7 +153,7 @@ def make_TypeCubeColoredSort():
                 cube_csort_id_list.append(cube_csort_id)
 
                 TypeCubeColoredSort.color[cube_csort_index] = cube_color_index
-                TypeCubeColoredSort.type[cube_csort_index] = cube_sort_index
+                TypeCubeColoredSort.sort[cube_csort_index] = cube_sort_index
 
     TypeCubeColoredSort.domain = np.array(cube_csort_id_list)
 
@@ -162,7 +164,7 @@ def make_TypeCubeColoredSort():
         print(f"{TypeCubeColoredSort.domain=!s}")
         print(f"{TypeCubeColoredSort.codomain=!s}")
         print(f"{TypeCubeColoredSort.color=!s}")
-        print(f"{TypeCubeColoredSort.type=!s}")
+        print(f"{TypeCubeColoredSort.sort=!s}")
 
     assert TypeCubeColoredSort.domain.size == TypeCubeColoredSort.count
     assert np.unique(TypeCubeColoredSort.domain).size == TypeCubeColoredSort.count
@@ -217,6 +219,7 @@ def make_constCube():
     constCube.codomain = np.arange(constCube.count, dtype=np.int8)
     constCube.color = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
     constCube.sort = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
+    constCube.csort = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
 
     cube_id_list = list()
 
@@ -231,8 +234,13 @@ def make_constCube():
                 cube_id = "%s%d" % (cube_color_function(cube_sort_key), cube_sort_occurrence)
                 cube_id_list.append(cube_id)
 
+
+                cube_csort_index = np.argwhere((TypeCubeColoredSort.color == cube_color_index) &
+                                               (TypeCubeColoredSort.sort == cube_sort_index) )[0][0]
+
                 constCube.color[cube_index] = cube_color_index
                 constCube.sort[cube_index] = cube_sort_index
+                constCube.csort[cube_index] = cube_csort_index
 
     constCube.domain = np.array(cube_id_list)
 
@@ -256,6 +264,7 @@ def make_constCube():
         print(f"{constCube.codomain=!s}")
         print(f"{constCube.color=!s}")
         print(f"{constCube.sort=!s}")
+        print(f"{constCube.csort=!s}")
         print(f"{constCube.white_king=!s}")
         print(f"{constCube.black_king=!s}")
         print(f"{constCube.king=!s}")
@@ -512,26 +521,31 @@ def make_constHex():
                         constHex.next_snd[hex_index, hex_dir_index] = hex_snd_index
 
 
-    def create_goal_hexagons():
-        white_goal_ids = ["i1", "i2", "i3", "i4", "i5", "i6", "i7"]
-        black_goal_ids = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"]
+    def create_kings_hexagons():
+        white_first_hexagons = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"]
+        black_first_hexagons = ["i1", "i2", "i3", "i4", "i5", "i6", "i7"]
 
-        white_goal_indexes = list(map(lambda x: constHex._id_dict[x], white_goal_ids))
-        black_goal_indexes = list(map(lambda x: constHex._id_dict[x], black_goal_ids))
+        white_first_indices = list(map(lambda x: constHex._id_dict[x], white_first_hexagons))
+        black_first_indices = list(map(lambda x: constHex._id_dict[x], black_first_hexagons))
 
-        assert len(black_goal_ids) == len(black_goal_ids)
-        goal_count = len(white_goal_ids)
+        assert len(white_first_hexagons) == len(black_first_indices)
+        hex_count = len(white_first_hexagons)
 
-        constHex.goals = np.full((TypeCubeColor.count, goal_count), constJersi.undefined, dtype=np.int8)
-        constHex.goals[TypeCubeColor.white, :] = white_goal_indexes
-        constHex.goals[TypeCubeColor.black, :] = black_goal_indexes
+        constHex.kind_begins = np.full((TypeCubeColor.count, hex_count), constJersi.undefined, dtype=np.int8)
+        constHex.kind_ends = np.full((TypeCubeColor.count, hex_count), constJersi.undefined, dtype=np.int8)
+
+        constHex.kind_begins[TypeCubeColor.white, :] = white_first_indices
+        constHex.kind_begins[TypeCubeColor.black, :] = black_first_indices
+
+        constHex.kind_ends[TypeCubeColor.white, :] = black_first_indices
+        constHex.kind_ends[TypeCubeColor.black, :] = white_first_indices
 
 
     constHex = types.SimpleNamespace()
 
     create_all_hexagons()
     create_next_hexagons()
-    create_goal_hexagons()
+    create_kings_hexagons()
 
     if constJersi.do_debug:
         print()
@@ -545,7 +559,8 @@ def make_constHex():
         print(f"{constHex.next_fst=!s}")
         print(f"{constHex.next_snd=!s}")
         print()
-        print(f"{constHex.goals=!s}")
+        print(f"{constHex.kind_begins=!s}")
+        print(f"{constHex.kind_ends=!s}")
 
     return constHex
 
@@ -681,66 +696,97 @@ class JersiState:
                             fst_next_state.move_cube(src_hex_index, fst_dst_hex_index)
                             self.actions.append(JersiAction(fst_action_notation, fst_next_state))
 
-
-        print("actions=", self.actions)
-
         return self.actions
+
+
+    def drop_cube(self, cube_index, hex_index):
+
+        assert self.cube_status[cube_index] in [TypeCubeStatus.reserved,
+                                                TypeCubeStatus.captured]
+
+        if self.hex_status[hex_index] == TypeHexStatus.has_no_cube:
+
+            self.hex_bottom[hex_index] = cube_index
+            self.hex_status[hex_index] = TypeHexStatus.has_one_cube
+
+            self.cube_hex[cube_index] = hex_index
+            self.cube_hex_level[cube_index] = TypeHexLevel.bottom
+
+        elif self.hex_status[hex_index] == TypeHexStatus.has_one_cube:
+
+            self.hex_top[hex_index] = cube_index
+            self.hex_status[hex_index] = TypeHexStatus.has_two_cubes
+
+            self.cube_hex[cube_index] = hex_index
+            self.cube_hex_level[cube_index] = TypeHexLevel.top
+
+        else:
+            assert self.hex_status[hex_index] in [TypeHexStatus.has_no_cube,
+                                                  TypeHexStatus.has_one_cube]
 
 
     def move_cube(self, src_hex_index, dst_hex_index):
 
-        if self.hex_status[src_hex_index] == TypeHexStatus.has_two_cubes:
-
-            cube_index = self.hex_top[src_hex_index]
-            assert cube_index != constJersi.undefined
-
-            if self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube:
-
-                self.hex_bottom[dst_hex_index] = cube_index
-                self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
-                self.cube_hex_level[cube_index] = TypeHexLevel.bottom
-
-            elif self.hex_status[dst_hex_index] == TypeHexStatus.has_one_cube:
-
-                self.hex_top[dst_hex_index] = cube_index
-                self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes_cube
-                self.cube_hex_level[cube_index] = TypeHexLevel.top
-
-            else:
-                assert self.hex_status[dst_hex_index] in [TypeHexStatus.has_no_cube,
-                                                          TypeHexStatus.has_one_cube]
-
-            self.hex_top[src_hex_index] = constJersi.undefined
-            self.hex_status[src_hex_index] = TypeHexStatus.has_one_cube
-
-        elif self.hex_status[src_hex_index] == TypeHexStatus.has_one_cube:
+        if self.hex_status[src_hex_index] == TypeHexStatus.has_one_cube:
 
             cube_index = self.hex_bottom[src_hex_index]
             assert cube_index != constJersi.undefined
 
+            self.hex_bottom[src_hex_index] = constJersi.undefined
+            self.hex_status[src_hex_index] = TypeHexStatus.has_no_cube
+
             if self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube:
 
                 self.hex_bottom[dst_hex_index] = cube_index
                 self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+
+                self.cube_hex[cube_index] = dst_hex_index
                 self.cube_level[cube_index] = TypeHexLevel.bottom
 
             elif self.hex_status[dst_hex_index] == TypeHexStatus.has_one_cube:
 
                 self.hex_top[dst_hex_index] = cube_index
                 self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes_cube
+
+                self.cube_hex[cube_index] = dst_hex_index
                 self.cube_hex_level[cube_index] = TypeHexLevel.top
 
             else:
                 assert self.hex_status[dst_hex_index] in [TypeHexStatus.has_no_cube,
                                                           TypeHexStatus.has_one_cube]
 
-            self.hex_bottom[src_hex_index] = constJersi.undefined
-            self.hex_status[src_hex_index] = TypeHexStatus.has_no_cube
+
+        elif self.hex_status[src_hex_index] == TypeHexStatus.has_two_cubes:
+
+            cube_index = self.hex_top[src_hex_index]
+            assert cube_index != constJersi.undefined
+
+            self.hex_top[src_hex_index] = constJersi.undefined
+            self.hex_status[src_hex_index] = TypeHexStatus.has_one_cube
+
+            if self.hex_status[dst_hex_index] == TypeHexStatus.has_no_cube:
+
+                self.hex_bottom[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_one_cube
+
+                self.cube_hex[cube_index] = dst_hex_index
+                self.cube_hex_level[cube_index] = TypeHexLevel.bottom
+
+            elif self.hex_status[dst_hex_index] == TypeHexStatus.has_one_cube:
+
+                self.hex_top[dst_hex_index] = cube_index
+                self.hex_status[dst_hex_index] = TypeHexStatus.has_two_cubes_cube
+
+                self.cube_hex[cube_index] = dst_hex_index
+                self.cube_hex_level[cube_index] = TypeHexLevel.top
+
+            else:
+                assert self.hex_status[dst_hex_index] in [TypeHexStatus.has_no_cube,
+                                                          TypeHexStatus.has_one_cube]
 
         else:
             assert self.hex_status[src_hex_index] in [TypeHexStatus.has_one_cube,
                                                       TypeHexStatus.has_two_cubes]
-        self.cube_hex[cube_index] = dst_hex_index
 
 
     def move_stack(self, src_hex_index, dst_hex_index):
@@ -766,9 +812,41 @@ class JersiState:
         self.cube_hex_level[bottom_cube_index] = TypeHexLevel.bottom
 
 
+    def capture_cube(self, hex_index):
+
+        if self.hex_status[hex_index] == TypeHexStatus.has_one_cube:
+
+            cube_index = self.hex_bottom[hex_index]
+            assert cube_index != constJersi.undefined
+
+            self.cube_status[cube_index] = TypeCubeStatus.captured
+            self.cube_hex[cube_index] = constJersi.undefined
+            self.cube_hex_level[cube_index] = constJersi.undefined
+
+            self.hex_bottom[hex_index] = constJersi.undefined
+            self.hex_status[hex_index] = TypeHexStatus.has_no_cube
+
+        elif self.hex_status[hex_index] == TypeHexStatus.has_two_cubes:
+
+            cube_index = self.hex_top[hex_index]
+            assert cube_index != constJersi.undefined
+
+            self.cube_status[cube_index] = TypeCubeStatus.captured
+            self.cube_hex[cube_index] = constJersi.undefined
+            self.cube_hex_level[cube_index] = constJersi.undefined
+
+            self.hex_top[hex_index] = constJersi.undefined
+            self.hex_status[hex_index] = TypeHexStatus.has_one_cube
+
+        else:
+            assert self.hex_status[hex_index] in [TypeHexStatus.has_one_cube,
+                                                  TypeHexStatus.has_two_cubes]
+
+
     def capture_stack(self, hex_index):
 
         assert self.hex_status[hex_index] == TypeHexStatus.has_two_cubes
+
         top_cube_index = self.hex_top[hex_index]
         bottom_cube_index = self.hex_bottom[hex_index]
 
@@ -782,6 +860,8 @@ class JersiState:
         self.cube_hex_level[bottom_cube_index] = constJersi.undefined
 
         self.hex_top[hex_index] = constJersi.undefined
+        self.hex_bottom[hex_index] = constJersi.undefined
+
         self.hex_status[hex_index] = TypeHexStatus.has_no_cube
 
 
@@ -795,14 +875,14 @@ class JersiState:
 
             self.terminal = False
 
-            if self.cube_hex[constCube.white_king] in constHex.goals[TypeCubeColor.white]:
+            if self.cube_hex[constCube.white_king] in constHex.kind_ends[TypeCubeColor.white]:
                 # white arrived at goal ==> white wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.white] = 1
                 self.rewards[TypeCubeColor.black] = -1
 
-            elif self.cube_hex[constCube.black_king] in constHex.goals[TypeCubeColor.black]:
+            elif self.cube_hex[constCube.black_king] in constHex.kind_ends[TypeCubeColor.black]:
                 # black arrived at goal ==> black wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
@@ -837,14 +917,73 @@ class JersiState:
 
 
     def show(self):
-        print()
-        print(f"{self.cube_status=!s}")
-        print(f"{self.cube_hex=!s}")
-        print(f"{self.cube_level=!s}")
 
-        print(f"{self.hex_status=!s}")
-        print(f"{self.hex_bottom=!s}")
-        print(f"{self.hex_top=!s}")
+        hex_row_layout = list()
+
+        hex_row_layout.append( (2, ["i1", "i2", "i3", "i4", "i5", "i6", "i7"]))
+        hex_row_layout.append( (1, ["h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8"]))
+        hex_row_layout.append( (2, ["g1", "g2", "g3", "g4", "g5", "g6", "g7"]))
+        hex_row_layout.append( (1, ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"]))
+        hex_row_layout.append( (0, ["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9"]))
+        hex_row_layout.append( (1, ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"]))
+        hex_row_layout.append( (2, ["c1", "c2", "c3", "c4", "c5", "c6", "c7"]))
+        hex_row_layout.append( (1, ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]))
+        hex_row_layout.append( (2, ["a1", "a2", "a3", "a4", "a5", "a6", "a7"]))
+
+        shift = " " * len("a1KR")
+
+        print()
+
+        for (shift_count, hex_id_row_list) in hex_row_layout:
+
+            row_text = shift*shift_count
+
+            for hex_id in hex_id_row_list:
+
+                hex_index = np.argwhere(constHex.domain == hex_id)[0][0]
+                row_text += "%s" % hex_id
+
+                if self.hex_status[hex_index] == TypeHexStatus.has_no_cube:
+                    row_text += ".."
+
+                elif self.hex_status[hex_index] == TypeHexStatus.has_one_cube:
+
+                    bottom_cube_index = self.hex_bottom[hex_index]
+                    bottom_cube_csort_index = constCube.csort[bottom_cube_index]
+                    bottom_cube_csort = TypeCubeColoredSort.domain[bottom_cube_csort_index]
+
+                    row_text += ".%s" % bottom_cube_csort
+
+                elif self.hex_status[hex_index] == TypeHexStatus.has_two_cubes:
+
+                    top_cube_index = self.hex_top[hex_index]
+                    bottom_cube_index = self.hex_bottom[hex_index]
+
+                    top_cube_csort_index = constCube.csort[top_cube_index]
+                    bottom_cube_csort_index = constCube.csort[bottom_cube_index]
+
+                    top_cube_csort = TypeCubeColoredSort.domain[top_cube_csort_index]
+                    bottom_cube_csort = TypeCubeColoredSort.domain[bottom_cube_csort_index]
+
+                    row_text += "%s%s" % (top_cube_csort, bottom_cube_csort)
+
+                else:
+                    assert self.hex_status[hex_index] in [TypeHexStatus.has_no_cube,
+                                                          TypeHexStatus.has_one_cube,
+                                                          TypeHexStatus.has_two_cubes]
+                row_text += shift
+            print(row_text)
+
+
+        cube_reserved_selection = (self.cube_status == TypeCubeStatus.reserved)
+        cube_csort_reserved_selection = constCube.csort[cube_reserved_selection]
+
+        cube_csort_id_reserved_list = list(map(lambda x: TypeCubeColoredSort.domain[x], cube_csort_reserved_selection))
+        cube_csort_id_reserved_list.sort()
+
+        reserve_text = " ".join(cube_csort_id_reserved_list)
+        print()
+        print("reserved: %s" % reserve_text)
 
 
     def next_player(self):
@@ -917,7 +1056,7 @@ class JersiState:
 
         cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
         cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
-        cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
+        cube_sort_index = TypeCubeColoredSort.sort[cube_csort_index]
 
         self.set_cube_in_reserve(cube_color_index, cube_sort_index)
 
@@ -928,7 +1067,7 @@ class JersiState:
 
         cube_csort_index = np.argwhere(TypeCubeColoredSort.domain == cube_csort_id)[0][0]
         cube_color_index = TypeCubeColoredSort.color[cube_csort_index]
-        cube_sort_index = TypeCubeColoredSort.type[cube_csort_index]
+        cube_sort_index = TypeCubeColoredSort.sort[cube_csort_index]
 
         self.set_cube_at_hexagon(cube_color_index, cube_sort_index, hex_index)
 
@@ -1069,25 +1208,41 @@ def main():
     js = JersiState()
     js.show()
 
-    (active_counter, capture_counter, reserve_counter) = js.count_per_color_and_sort()
-    print()
-    print(f"{active_counter=!s}")
-    print(f"{capture_counter=!s}")
-    print(f"{reserve_counter=!s}")
+    iter_count = 4000
+    iter_index = 0
+    while iter_index < iter_count and not js.is_terminal():
 
-    js_code = js.encode_state()
-    js_hash = hash(js)
-    print()
-    print("len(js_code):", len(js_code))
-    print("js_code:", js_code.hex('-', 1))
-    print("js_hash:", hex(js_hash))
+        actions = js.get_actions()
+        action = random.choice(actions)
+        print()
+        print("-"*20)
+        print(f"{iter_index=!s} {action=!s} {len(actions)=!s}")
 
-    js_bis = JersiState()
-    print("js_bis == js:", js == js_bis)
+        js = js.take_action(action)
+        js.show()
 
+        iter_index += 1
 
-    js_is_terminal = js.isTerminal()
-    print(f"{js_is_terminal=!s}")
+    if js.is_terminal():
+        reward = js.get_reward()
+        player = js.get_player()
+
+        print()
+        print(f"terminal state {reward=!s} {player=!s} <=> {TypeCubeColor.domain[player]=!s}")
+
+        if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
+            print("nobody wins ; the game is a drawn")
+
+        elif reward[TypeCubeColor.white] > reward[TypeCubeColor.black]:
+            print(f"{TypeCubeColor.domain[TypeCubeColor.white]} wins")
+
+        else:
+            print(f"{TypeCubeColor.domain[TypeCubeColor.black]} wins")
+
+    else:
+        print()
+        print("not a terminal state")
+
 
     print()
     print("Bye!")
