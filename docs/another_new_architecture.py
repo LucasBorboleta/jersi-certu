@@ -14,7 +14,6 @@ import types
 import numpy as np
 
 script_home = os.path.abspath(os.path.dirname(__file__))
-#mcts_home = os.path.join(script_home, "..", "packages", "MCTS-1.0.4")
 mcts_home = os.path.join(script_home, "..", "packages", "MCTS-master-2020-0330")
 sys.path.append(mcts_home)
 
@@ -650,6 +649,11 @@ class JersiState:
            return -1
 
 
+    def getPreviousPlayer(self):
+       """ Opposite of getCurrentPlayer. Not required in the mcts-interface, but it helps."""
+       return -self.getCurrentPlayer()
+
+
     def getPossibleActions(self):
         return self.get_actions()
 
@@ -663,13 +667,12 @@ class JersiState:
 
 
     def getReward(self):
-        # >> reward for the previous player
-        rewards = self.get_reward()
+        # >> reward for the previous player from the perspective of JersiState
+        # >> indeed: <mcts current player> == <JersiState previous player>
 
-        if self.player == TypeCubeColor.white:
-            return rewards[TypeCubeColor.black]*(-self.getCurrentPlayer())
-        else:
-            return rewards[TypeCubeColor.white]*(-self.getCurrentPlayer())
+        previous_player = self.previous_player()
+        previous_reward = self.get_reward()[previous_player]
+        return previous_reward*self.getPreviousPlayer()
 
 
     ### mcts-interface-end
@@ -702,6 +705,7 @@ class JersiState:
 
 
     def set_mcts_player(self, mcts_player):
+        assert mcts_player in TypeCubeColor.codomain
         self.mcts_player = mcts_player
 
 
@@ -1027,6 +1031,10 @@ class JersiState:
         return (self.player + 1) % TypeCubeColor.count
 
 
+    def previous_player(self):
+        return (self.player + 1) % TypeCubeColor.count
+
+
     def encode_state(self):
 
         # Encode together cube_status and cube_level
@@ -1251,7 +1259,7 @@ def main():
         if False:
             searcher = mcts.mcts(iterationLimit=100) # number of mcts rounds
         else:
-            searcher = mcts.mcts(timeLimit=60_000) # time in milli-seconds
+            searcher = mcts.mcts(timeLimit=1_000) # time in milli-seconds
         action = searcher.search(initialState=js)
 
         if constJersi.do_debug:
@@ -1262,7 +1270,7 @@ def main():
             if True:
                 for (child_key, child) in searcher.root.children.items():
                     print("--------------------------------")
-                    print(f"   child {child_key} ---")
+                    print(f"   child {child_key}")
                     print(f"   {child.numVisits=!s}")
                     print(f"   {child.totalReward=!s}")
 
@@ -1272,12 +1280,19 @@ def main():
     print()
     print("Hello!")
 
-    searchers = [None, None]
-    searchers[TypeCubeColor.white] = random_searcher
-    searchers[TypeCubeColor.black] = mcts_searcher
+    searcher_catalog = dict()
+    searcher_catalog["random"] = random_searcher
+    searcher_catalog["mcts"] = mcts_searcher
+
+    selected_searcher_name = [None, None]
+    selected_searcher_name[TypeCubeColor.white] = random.choice(list(searcher_catalog.keys()))
+    selected_searcher_name[TypeCubeColor.black] = random.choice(list(searcher_catalog.keys()))
+
+    selected_searcher = [None, None]
+    selected_searcher[TypeCubeColor.white] = searcher_catalog[selected_searcher_name[TypeCubeColor.white]]
+    selected_searcher[TypeCubeColor.black] = searcher_catalog[selected_searcher_name[TypeCubeColor.black]]
 
     js = JersiState()
-    js.set_mcts_player(TypeCubeColor.black)
     js.show()
 
     iter_count = 100
@@ -1286,12 +1301,16 @@ def main():
     while iter_index < iter_count and not js.is_terminal():
 
         player = js.get_player()
+
         print()
-        print(f"{TypeCubeColor.domain[player]} is thinking ...")
+        print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is thinking ...")
 
-        action = searchers[player](js)
+        if selected_searcher[player] == mcts_searcher:
+            js.set_mcts_player(player)
 
-        print(f"{TypeCubeColor.domain[player]} is done")
+        action = selected_searcher[player](js)
+
+        print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is done")
 
         print(f"iteration:{iter_index} {TypeCubeColor.domain[player]}-action:{action}")
         print("-"*40)
@@ -1309,13 +1328,20 @@ def main():
         print("-"*40)
 
         if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
-            print("nobody wins ; the game is a drawn")
+            print("nobody wins ; the game is a drawn between " +
+                  f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}" +
+                  " and " +
+                  f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" )
 
         elif reward[TypeCubeColor.white] > reward[TypeCubeColor.black]:
-            print(f"{TypeCubeColor.domain[TypeCubeColor.white]} wins")
+            print(f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}" +
+                  " wins against " +
+                  f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" )
 
         else:
-            print(f"{TypeCubeColor.domain[TypeCubeColor.black]} wins")
+            print(f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" +
+                  " wins against " +
+                  f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}")
 
     else:
         print()
