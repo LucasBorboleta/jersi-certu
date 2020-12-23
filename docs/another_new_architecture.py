@@ -5,9 +5,19 @@ Data structure for "jersi" game : fast when performance is required.
 
 import copy
 import math
+
+import os
 import random
+import sys
 import types
+
 import numpy as np
+
+script_home = os.path.abspath(os.path.dirname(__file__))
+mcts_home = os.path.join(script_home, "..", "packages", "MCTS-1.0.4")
+sys.path.append(mcts_home)
+
+import mcts
 
 
 # Define jersi constants
@@ -21,7 +31,6 @@ def make_constJersi():
     constJersi.byte_bit_size = 8
 
     constJersi.max_credit = 40 # Max number of turns without any capture
-    constJersi.max_credit = 40_000 # Max number of turns without any capture
     constJersi.credit_bit_size = int(math.ceil(math.log2(constJersi.max_credit)))
 
     if constJersi.do_debug:
@@ -895,14 +904,24 @@ class JersiState:
 
             self.terminal = False
 
-            if self.cube_hex[constCube.white_king] in constHex.kind_ends[TypeCubeColor.white]:
+            indices_of_cubes_at_white_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.white]]
+            indices_of_cubes_at_white_ends = indices_of_cubes_at_white_ends[indices_of_cubes_at_white_ends != constJersi.undefined]
+            white_arrived = np.any(constCube.color[indices_of_cubes_at_white_ends] == TypeCubeColor.white)
+
+            indices_of_cubes_at_black_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.black]]
+            indices_of_cubes_at_black_ends = indices_of_cubes_at_black_ends[indices_of_cubes_at_black_ends != constJersi.undefined]
+            black_arrived = np.any(constCube.color[indices_of_cubes_at_black_ends] == TypeCubeColor.black)
+
+            #if self.cube_hex[constCube.white_king] in constHex.kind_ends[TypeCubeColor.white]:
+            if white_arrived:
                 # white arrived at goal ==> white wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.white] = 1
                 self.rewards[TypeCubeColor.black] = -1
 
-            elif self.cube_hex[constCube.black_king] in constHex.kind_ends[TypeCubeColor.black]:
+            #elif self.cube_hex[constCube.black_king] in constHex.kind_ends[TypeCubeColor.black]:
+            elif black_arrived:
                 # black arrived at goal ==> black wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
@@ -1210,21 +1229,47 @@ class JersiAction:
 
 def main():
 
+
+    def random_searcher(js):
+        actions = js.get_actions()
+        action = random.choice(actions)
+        return action
+
+
+    def mcts_searcher(js):
+        if False:
+            searcher = mcts.mcts(iterationLimit=100) # number of mcts rounds
+        else:
+            searcher = mcts.mcts(timeLimit=30_000) # time in milli-seconds
+        action = searcher.search(initialState=js)
+        return action
+
+
     print()
     print("Hello!")
+
+    searchers = [None, None]
+    searchers[TypeCubeColor.white] = mcts_searcher
+    searchers[TypeCubeColor.black] = random_searcher
 
     js = JersiState()
     js.show()
 
-    iter_count = 4000
+    iter_count = 100
     iter_index = 0
+
     while iter_index < iter_count and not js.is_terminal():
 
-        actions = js.get_actions()
-        action = random.choice(actions)
+        player = js.get_player()
         print()
-        print("-"*20)
-        print(f"{iter_index=!s} {action=!s} {len(actions)=!s}")
+        print(f"{TypeCubeColor.domain[player]} is thinking ...")
+
+        action = searchers[player](js)
+
+        print(f"{TypeCubeColor.domain[player]} is done")
+
+        print(f"iteration:{iter_index} {TypeCubeColor.domain[player]}-action:{action}")
+        print("-"*40)
 
         js = js.take_action(action)
         js.show()
@@ -1236,7 +1281,7 @@ def main():
         player = js.get_player()
 
         print()
-        print(f"terminal state {reward=!s} {player=!s} <=> {TypeCubeColor.domain[player]=!s}")
+        print("-"*40)
 
         if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
             print("nobody wins ; the game is a drawn")
@@ -1249,6 +1294,7 @@ def main():
 
     else:
         print()
+        print("-"*40)
         print("not a terminal state")
 
 
