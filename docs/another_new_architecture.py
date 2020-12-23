@@ -14,7 +14,8 @@ import types
 import numpy as np
 
 script_home = os.path.abspath(os.path.dirname(__file__))
-mcts_home = os.path.join(script_home, "..", "packages", "MCTS-1.0.4")
+#mcts_home = os.path.join(script_home, "..", "packages", "MCTS-1.0.4")
+mcts_home = os.path.join(script_home, "..", "packages", "MCTS-master-2020-0330")
 sys.path.append(mcts_home)
 
 import mcts
@@ -607,6 +608,8 @@ class JersiState:
         self.credit = constJersi.max_credit
         self.turn = 1
 
+        self.mcts_player = None
+
         self.cube_status = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
         self.cube_hex = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
         self.cube_level = np.full(constCube.count, constJersi.undefined, dtype=np.int8)
@@ -638,10 +641,13 @@ class JersiState:
     ### mcts-interface-begin
 
     def getCurrentPlayer(self):
-        if self.get_player() == TypeCubeColor.white:
-            return 1
-        else:
-            return -1
+       """ Returns 1 if it is the maximizer player's turn to choose an action,
+       or -1 for the minimiser player"""
+
+       if self.player == self.mcts_player:
+           return 1
+       else:
+           return -1
 
 
     def getPossibleActions(self):
@@ -661,9 +667,9 @@ class JersiState:
         rewards = self.get_reward()
 
         if self.player == TypeCubeColor.white:
-            return rewards[TypeCubeColor.black]
+            return rewards[TypeCubeColor.black]*(-self.getCurrentPlayer())
         else:
-            return rewards[TypeCubeColor.white]
+            return rewards[TypeCubeColor.white]*(-self.getCurrentPlayer())
 
 
     ### mcts-interface-end
@@ -693,6 +699,10 @@ class JersiState:
         next_state.actions = None
 
         return next_state
+
+
+    def set_mcts_player(self, mcts_player):
+        self.mcts_player = mcts_player
 
 
     def get_player(self):
@@ -941,11 +951,11 @@ class JersiState:
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
 
                 if self.player == constCube.white_king:
-                    self.rewards[TypeCubeColor.black] = -1
-                    self.rewards[TypeCubeColor.white] = 1
-                else:
                     self.rewards[TypeCubeColor.white] = -1
                     self.rewards[TypeCubeColor.black] = 1
+                else:
+                    self.rewards[TypeCubeColor.black] = -1
+                    self.rewards[TypeCubeColor.white] = 1
 
         return self.terminal
 
@@ -1115,42 +1125,42 @@ class JersiState:
         self.clear_all_cubes()
 
         # whites
-        self.set_cube_at_hexagon_by_id('F', 'b1')
-        self.set_cube_at_hexagon_by_id('F', 'b8')
+        # self.set_cube_at_hexagon_by_id('F', 'b1')
+        # self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
-        self.set_cube_at_hexagon_by_id('R', 'b2')
-        self.set_cube_at_hexagon_by_id('P', 'b3')
-        self.set_cube_at_hexagon_by_id('S', 'b4')
-        self.set_cube_at_hexagon_by_id('R', 'b5')
-        self.set_cube_at_hexagon_by_id('P', 'b6')
-        self.set_cube_at_hexagon_by_id('S', 'b7')
+        # self.set_cube_at_hexagon_by_id('R', 'b2')
+        # self.set_cube_at_hexagon_by_id('P', 'b3')
+        # self.set_cube_at_hexagon_by_id('S', 'b4')
+        # self.set_cube_at_hexagon_by_id('R', 'b5')
+        # self.set_cube_at_hexagon_by_id('P', 'b6')
+        # self.set_cube_at_hexagon_by_id('S', 'b7')
 
-        self.set_cube_at_hexagon_by_id('R', 'a3')
-        self.set_cube_at_hexagon_by_id('S', 'a2')
-        self.set_cube_at_hexagon_by_id('P', 'a1')
-        self.set_cube_at_hexagon_by_id('S', 'a5')
-        self.set_cube_at_hexagon_by_id('R', 'a6')
-        self.set_cube_at_hexagon_by_id('P', 'a7')
+        # self.set_cube_at_hexagon_by_id('R', 'a3')
+        # self.set_cube_at_hexagon_by_id('S', 'a2')
+        # self.set_cube_at_hexagon_by_id('P', 'a1')
+        # self.set_cube_at_hexagon_by_id('S', 'a5')
+        # self.set_cube_at_hexagon_by_id('R', 'a6')
+        # self.set_cube_at_hexagon_by_id('P', 'a7')
 
         # blacks
-        self.set_cube_at_hexagon_by_id('f', 'h1')
-        self.set_cube_at_hexagon_by_id('f', 'h8')
+        # self.set_cube_at_hexagon_by_id('f', 'h1')
+        # self.set_cube_at_hexagon_by_id('f', 'h8')
         self.set_cube_at_hexagon_by_id('k', 'i4')
 
-        self.set_cube_at_hexagon_by_id('r', 'h7')
-        self.set_cube_at_hexagon_by_id('p', 'h6')
-        self.set_cube_at_hexagon_by_id('s', 'h5')
-        self.set_cube_at_hexagon_by_id('r', 'h4')
-        self.set_cube_at_hexagon_by_id('p', 'h3')
-        self.set_cube_at_hexagon_by_id('s', 'h2')
+        # self.set_cube_at_hexagon_by_id('r', 'h7')
+        # self.set_cube_at_hexagon_by_id('p', 'h6')
+        # self.set_cube_at_hexagon_by_id('s', 'h5')
+        # self.set_cube_at_hexagon_by_id('r', 'h4')
+        # self.set_cube_at_hexagon_by_id('p', 'h3')
+        # self.set_cube_at_hexagon_by_id('s', 'h2')
 
-        self.set_cube_at_hexagon_by_id('r', 'i5')
-        self.set_cube_at_hexagon_by_id('s', 'i6')
-        self.set_cube_at_hexagon_by_id('p', 'i7')
-        self.set_cube_at_hexagon_by_id('s', 'i3')
-        self.set_cube_at_hexagon_by_id('r', 'i2')
-        self.set_cube_at_hexagon_by_id('p', 'i1')
+        # self.set_cube_at_hexagon_by_id('r', 'i5')
+        # self.set_cube_at_hexagon_by_id('s', 'i6')
+        # self.set_cube_at_hexagon_by_id('p', 'i7')
+        # self.set_cube_at_hexagon_by_id('s', 'i3')
+        # self.set_cube_at_hexagon_by_id('r', 'i2')
+        # self.set_cube_at_hexagon_by_id('p', 'i1')
 
         # white reserve
         self.set_cube_in_reserve_by_id('W')
@@ -1237,11 +1247,25 @@ def main():
 
 
     def mcts_searcher(js):
+
         if False:
             searcher = mcts.mcts(iterationLimit=100) # number of mcts rounds
         else:
-            searcher = mcts.mcts(timeLimit=30_000) # time in milli-seconds
+            searcher = mcts.mcts(timeLimit=60_000) # time in milli-seconds
         action = searcher.search(initialState=js)
+
+        if constJersi.do_debug:
+            print(f"{searcher.root.numVisits=!s}")
+            print(f"{searcher.root.totalReward=!s}")
+            print(f"{searcher.root.isFullyExpanded=!s}")
+            print(f"{len(searcher.root.children)=!s}")
+            if True:
+                for (child_key, child) in searcher.root.children.items():
+                    print("--------------------------------")
+                    print(f"   child {child_key} ---")
+                    print(f"   {child.numVisits=!s}")
+                    print(f"   {child.totalReward=!s}")
+
         return action
 
 
@@ -1249,10 +1273,11 @@ def main():
     print("Hello!")
 
     searchers = [None, None]
-    searchers[TypeCubeColor.white] = mcts_searcher
-    searchers[TypeCubeColor.black] = random_searcher
+    searchers[TypeCubeColor.white] = random_searcher
+    searchers[TypeCubeColor.black] = mcts_searcher
 
     js = JersiState()
+    js.set_mcts_player(TypeCubeColor.black)
     js.show()
 
     iter_count = 100
