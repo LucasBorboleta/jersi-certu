@@ -493,6 +493,25 @@ def make_constHex():
         constHex.bit_size = int(math.ceil(math.log2(constHex.count + 1)))
 
 
+    def create_hexagons_layout():
+
+        constHex.layout = list()
+
+        constHex.layout.append( (2, np.array(["i1", "i2", "i3", "i4", "i5", "i6", "i7"])))
+        constHex.layout.append( (1, np.array(["h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8"])))
+        constHex.layout.append( (2, np.array(["g1", "g2", "g3", "g4", "g5", "g6", "g7"])))
+        constHex.layout.append( (1, np.array(["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"])))
+        constHex.layout.append( (0, np.array(["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9"])))
+        constHex.layout.append( (1, np.array(["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"])))
+        constHex.layout.append( (2, np.array(["c1", "c2", "c3", "c4", "c5", "c6", "c7"])))
+        constHex.layout.append( (1, np.array(["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"])))
+        constHex.layout.append( (2, np.array(["a1", "a2", "a3", "a4", "a5", "a6", "a7"])))
+
+        for (row_shift_count, row_hex_ids) in constHex.layout:
+            assert row_shift_count == (9 - len(row_hex_ids))
+            assert np.unique(row_hex_ids).size == len(row_hex_ids)
+
+
     def create_next_hexagons():
 
         constHex.next_fst = np.full((constHex.count, TypeHexDirection.count), constJersi.undefined, dtype=np.int8)
@@ -544,6 +563,7 @@ def make_constHex():
     constHex = types.SimpleNamespace()
 
     create_all_hexagons()
+    create_hexagons_layout()
     create_next_hexagons()
     create_kings_hexagons()
 
@@ -918,27 +938,15 @@ class JersiState:
 
     def show(self):
 
-        hex_row_layout = list()
-
-        hex_row_layout.append( (2, ["i1", "i2", "i3", "i4", "i5", "i6", "i7"]))
-        hex_row_layout.append( (1, ["h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8"]))
-        hex_row_layout.append( (2, ["g1", "g2", "g3", "g4", "g5", "g6", "g7"]))
-        hex_row_layout.append( (1, ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"]))
-        hex_row_layout.append( (0, ["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9"]))
-        hex_row_layout.append( (1, ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"]))
-        hex_row_layout.append( (2, ["c1", "c2", "c3", "c4", "c5", "c6", "c7"]))
-        hex_row_layout.append( (1, ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]))
-        hex_row_layout.append( (2, ["a1", "a2", "a3", "a4", "a5", "a6", "a7"]))
-
         shift = " " * len("a1KR")
 
         print()
 
-        for (shift_count, hex_id_row_list) in hex_row_layout:
+        for (row_shift_count, row_hex_ids) in constHex.layout:
 
-            row_text = shift*shift_count
+            row_text = shift*row_shift_count
 
-            for hex_id in hex_id_row_list:
+            for hex_id in row_hex_ids:
 
                 hex_index = np.argwhere(constHex.domain == hex_id)[0][0]
                 row_text += "%s" % hex_id
