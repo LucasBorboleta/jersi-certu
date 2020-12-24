@@ -1256,10 +1256,10 @@ def main():
 
     def mcts_searcher(js):
 
-        if False:
-            searcher = mcts.mcts(iterationLimit=100) # number of mcts rounds
+        if True:
+            searcher = mcts.mcts(iterationLimit=400, explorationConstant=1.) # number of mcts rounds
         else:
-            searcher = mcts.mcts(timeLimit=1_000) # time in milli-seconds
+            searcher = mcts.mcts(timeLimit=1_000, explorationConstant=1.) # time in milli-seconds
         action = searcher.search(initialState=js)
 
         if constJersi.do_debug:
@@ -1302,6 +1302,8 @@ def main():
 
         player = js.get_player()
 
+        action_count = len(js.get_actions())
+
         print()
         print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is thinking ...")
 
@@ -1312,7 +1314,7 @@ def main():
 
         print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is done")
 
-        print(f"iteration:{iter_index} {TypeCubeColor.domain[player]}-action:{action}")
+        print(f"iteration:{iter_index} {TypeCubeColor.domain[player]}-action:{action} selected amongst {action_count} actions")
         print("-"*40)
 
         js = js.take_action(action)
@@ -1328,7 +1330,7 @@ def main():
         print("-"*40)
 
         if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
-            print("nobody wins ; the game is a drawn between " +
+            print("nobody wins ; the game is a draw between " +
                   f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}" +
                   " and " +
                   f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" )
