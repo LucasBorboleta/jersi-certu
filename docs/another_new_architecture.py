@@ -3,12 +3,14 @@
 Data structure for "jersi" game : fast when performance is required.
 """
 
+import cProfile
+
 import copy
 import math
-
 import os
 import random
 import sys
+import timeit
 import types
 
 import numpy as np
@@ -918,24 +920,24 @@ class JersiState:
 
             self.terminal = False
 
-            indices_of_cubes_at_white_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.white]]
-            indices_of_cubes_at_white_ends = indices_of_cubes_at_white_ends[indices_of_cubes_at_white_ends != constJersi.undefined]
-            white_arrived = np.any(constCube.color[indices_of_cubes_at_white_ends] == TypeCubeColor.white)
+            # indices_of_cubes_at_white_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.white]]
+            # indices_of_cubes_at_white_ends = indices_of_cubes_at_white_ends[indices_of_cubes_at_white_ends != constJersi.undefined]
+            # white_arrived = np.any(constCube.color[indices_of_cubes_at_white_ends] == TypeCubeColor.white)
 
-            indices_of_cubes_at_black_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.black]]
-            indices_of_cubes_at_black_ends = indices_of_cubes_at_black_ends[indices_of_cubes_at_black_ends != constJersi.undefined]
-            black_arrived = np.any(constCube.color[indices_of_cubes_at_black_ends] == TypeCubeColor.black)
+            # indices_of_cubes_at_black_ends = self.hex_bottom[constHex.kind_ends[TypeCubeColor.black]]
+            # indices_of_cubes_at_black_ends = indices_of_cubes_at_black_ends[indices_of_cubes_at_black_ends != constJersi.undefined]
+            # black_arrived = np.any(constCube.color[indices_of_cubes_at_black_ends] == TypeCubeColor.black)
 
-            #if self.cube_hex[constCube.white_king] in constHex.kind_ends[TypeCubeColor.white]:
-            if white_arrived:
+            if self.cube_hex[constCube.white_king] in constHex.kind_ends[TypeCubeColor.white]:
+            #if white_arrived:
                 # white arrived at goal ==> white wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
                 self.rewards[TypeCubeColor.white] = 1
                 self.rewards[TypeCubeColor.black] = -1
 
-            #elif self.cube_hex[constCube.black_king] in constHex.kind_ends[TypeCubeColor.black]:
-            elif black_arrived:
+            elif self.cube_hex[constCube.black_king] in constHex.kind_ends[TypeCubeColor.black]:
+            #elif black_arrived:
                 # black arrived at goal ==> black wins
                 self.terminal = True
                 self.rewards = np.zeros(TypeCubeColor.count, dtype=np.int8)
@@ -1134,7 +1136,7 @@ class JersiState:
 
         # whites
         # self.set_cube_at_hexagon_by_id('F', 'b1')
-        # self.set_cube_at_hexagon_by_id('F', 'b8')
+        self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
         # self.set_cube_at_hexagon_by_id('R', 'b2')
@@ -1153,7 +1155,7 @@ class JersiState:
 
         # blacks
         # self.set_cube_at_hexagon_by_id('f', 'h1')
-        # self.set_cube_at_hexagon_by_id('f', 'h8')
+        self.set_cube_at_hexagon_by_id('f', 'h8')
         self.set_cube_at_hexagon_by_id('k', 'i4')
 
         # self.set_cube_at_hexagon_by_id('r', 'h7')
@@ -1256,7 +1258,13 @@ def main():
 
     def mcts_searcher(js):
 
-        if True:
+        # mcts uses the following formulation with explorationValue=explorationConstant ;
+        # so in order to match the most current found formula one selects explorationConstant=1.
+        #
+        # nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits +
+        #             explorationValue * math.sqrt(2 * math.log(node.numVisits) / child.numVisits)
+
+        if False:
             searcher = mcts.mcts(iterationLimit=400, explorationConstant=1.) # number of mcts rounds
         else:
             searcher = mcts.mcts(timeLimit=1_000, explorationConstant=1.) # time in milli-seconds
@@ -1356,5 +1364,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
 
+    if True:
+        main()
+    else:
+        cProfile.run("main()")
+        #print(timeit.timeit("main()", setup="from __main__ import main", number=1))
