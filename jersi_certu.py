@@ -1135,7 +1135,7 @@ class JersiState:
         self.clear_all_cubes()
 
         # whites
-        # self.set_cube_at_hexagon_by_id('F', 'b1')
+        self.set_cube_at_hexagon_by_id('F', 'b1')
         self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
@@ -1154,7 +1154,7 @@ class JersiState:
         # self.set_cube_at_hexagon_by_id('P', 'a7')
 
         # blacks
-        # self.set_cube_at_hexagon_by_id('f', 'h1')
+        self.set_cube_at_hexagon_by_id('f', 'h1')
         self.set_cube_at_hexagon_by_id('f', 'h8')
         self.set_cube_at_hexagon_by_id('k', 'i4')
 
@@ -1247,13 +1247,13 @@ class JersiAction:
         return hash(self.action_notation)
 
 
-def main():
+def random_searcher(js):
+    actions = js.get_actions()
+    action = random.choice(actions)
+    return action
 
 
-    def random_searcher(js):
-        actions = js.get_actions()
-        action = random.choice(actions)
-        return action
+def make_mcts_searcher(time_limit=1_000):
 
 
     def mcts_searcher(js):
@@ -1264,10 +1264,15 @@ def main():
         # nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits +
         #             explorationValue * math.sqrt(2 * math.log(node.numVisits) / child.numVisits)
 
-        if False:
-            searcher = mcts.mcts(iterationLimit=400, explorationConstant=1.) # number of mcts rounds
+        my_exploration_constant = 1.
+
+        if True:
+            # time in milli-seconds
+            searcher = mcts.mcts(timeLimit=time_limit, explorationConstant=my_exploration_constant)
         else:
-            searcher = mcts.mcts(timeLimit=1_000, explorationConstant=1.) # time in milli-seconds
+            # number of mcts rounds
+            searcher = mcts.mcts(iterationLimit=400, explorationConstant=my_exploration_constant)
+
         action = searcher.search(initialState=js)
 
         if constJersi.do_debug:
@@ -1284,80 +1289,111 @@ def main():
 
         return action
 
+    return mcts_searcher
+
+searcher_catalog = dict()
+searcher_catalog["random"] = random_searcher
+searcher_catalog["mcts1"] = make_mcts_searcher(time_limit=1_000)
+searcher_catalog["mcts2"] = make_mcts_searcher(time_limit=2_000)
+searcher_catalog["mcts5"] = make_mcts_searcher(time_limit=5_000)
+searcher_catalog["mcts10"] = make_mcts_searcher(time_limit=10_000)
+searcher_catalog["mcts30"] = make_mcts_searcher(time_limit=30_000)
+searcher_catalog["mcts60"] = make_mcts_searcher(time_limit=60_000)
+
+
+class Simulation:
+
+    def __init__(self):
+        self.selected_searcher_name = [None, None]
+        self.selected_searcher_name[TypeCubeColor.white] = random.choice(list(searcher_catalog.keys()))
+        self.selected_searcher_name[TypeCubeColor.black] = random.choice(list(searcher_catalog.keys()))
+
+        self.selected_searcher = [None, None]
+        self.selected_searcher[TypeCubeColor.white] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.white]]
+        self.selected_searcher[TypeCubeColor.black] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.black]]
+
+        self.js = JersiState()
+        self.js.show()
+
+        self.iter_count = 100
+        self.iter_index = 0
+
+        self.log = ""
+
+
+    def get_log(self):
+        return self.log
+
+
+    def has_next(self):
+        return self.iter_index < self.iter_count and not self.js.is_terminal()
+
+
+    def next(self):
+
+        self.log = ""
+
+        if self.has_next():
+            player = self.js.get_player()
+            player_name = f"{TypeCubeColor.domain[player]}-{self.selected_searcher_name[player]}"
+            action_count = len(self.js.get_actions())
+
+            print()
+            print(f"{player_name} is thinking ...")
+
+            if self.selected_searcher[player] != random_searcher:
+                self.js.set_mcts_player(player)
+
+            action = self.selected_searcher[player](self.js)
+
+            print(f"{player_name} is done")
+
+            self.log = f"iteration {self.iter_index}: {player_name} selects {action} amongst {action_count} actions"
+            print(self.log)
+            print("-"*40)
+
+            self.js = self.js.take_action(action)
+            self.js.show()
+
+            self.iter_index += 1
+
+        if self.js.is_terminal():
+
+            reward = self.js.get_reward()
+            player = self.js.get_player()
+
+            print()
+            print("-"*40)
+
+            white_player = f"{TypeCubeColor.domain[TypeCubeColor.white]}-{self.selected_searcher_name[TypeCubeColor.white]}"
+            black_player = f"{TypeCubeColor.domain[TypeCubeColor.black]}-{self.selected_searcher_name[TypeCubeColor.black]}"
+
+            if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
+                self.log += f"nobody wins ; the game is a draw between {white_player} and {black_player}"
+                print(self.log)
+
+            elif reward[TypeCubeColor.white] > reward[TypeCubeColor.black]:
+                self.log = f"{white_player} wins against {black_player}"
+                print(self.log)
+
+            else:
+                self.log = f"{black_player} wins against {white_player}"
+                print(self.log)
+
+        else:
+            print()
+            print("-"*40)
+            print("not a terminal state")
+
+
+def main():
 
     print()
     print("Hello!")
 
-    searcher_catalog = dict()
-    searcher_catalog["random"] = random_searcher
-    searcher_catalog["mcts"] = mcts_searcher
-
-    selected_searcher_name = [None, None]
-    selected_searcher_name[TypeCubeColor.white] = random.choice(list(searcher_catalog.keys()))
-    selected_searcher_name[TypeCubeColor.black] = random.choice(list(searcher_catalog.keys()))
-
-    selected_searcher = [None, None]
-    selected_searcher[TypeCubeColor.white] = searcher_catalog[selected_searcher_name[TypeCubeColor.white]]
-    selected_searcher[TypeCubeColor.black] = searcher_catalog[selected_searcher_name[TypeCubeColor.black]]
-
-    js = JersiState()
-    js.show()
-
-    iter_count = 100
-    iter_index = 0
-
-    while iter_index < iter_count and not js.is_terminal():
-
-        player = js.get_player()
-
-        action_count = len(js.get_actions())
-
-        print()
-        print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is thinking ...")
-
-        if selected_searcher[player] == mcts_searcher:
-            js.set_mcts_player(player)
-
-        action = selected_searcher[player](js)
-
-        print(f"{TypeCubeColor.domain[player]}-{selected_searcher_name[player]} is done")
-
-        print(f"iteration:{iter_index} {TypeCubeColor.domain[player]}-action:{action} selected amongst {action_count} actions")
-        print("-"*40)
-
-        js = js.take_action(action)
-        js.show()
-
-        iter_index += 1
-
-    if js.is_terminal():
-        reward = js.get_reward()
-        player = js.get_player()
-
-        print()
-        print("-"*40)
-
-        if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
-            print("nobody wins ; the game is a draw between " +
-                  f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}" +
-                  " and " +
-                  f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" )
-
-        elif reward[TypeCubeColor.white] > reward[TypeCubeColor.black]:
-            print(f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}" +
-                  " wins against " +
-                  f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" )
-
-        else:
-            print(f"{TypeCubeColor.domain[TypeCubeColor.black]}-{selected_searcher_name[TypeCubeColor.black]}" +
-                  " wins against " +
-                  f"{TypeCubeColor.domain[TypeCubeColor.white]}-{selected_searcher_name[TypeCubeColor.white]}")
-
-    else:
-        print()
-        print("-"*40)
-        print("not a terminal state")
-
+    simulation = Simulation()
+    while simulation.has_next():
+        simulation.next()
 
     print()
     print("Bye!")
