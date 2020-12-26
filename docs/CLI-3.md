@@ -1,6 +1,4 @@
-#  AI-interface
-
-## Command line interface
+## Command line interface for jersi-certu-3
 
 | Command                    | Description                                                  |
 | -------------------------- | ------------------------------------------------------------ |

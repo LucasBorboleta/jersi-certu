@@ -1,6 +1,8 @@
 # jersi-certu
 
-Jersi-certu is a Python3 program for playing the strategy game Jersi.
+Now jersi-certu-4 is being developed for playing the version 4 of the jersi rules. What follows is about jersi-certu-3.
+
+The Python3 program jersi-certu-3 is for playing the strategy game jersi version 3 
 
 The interface is text based. Indeed, the aim is to focus on the development of an AI. 
 

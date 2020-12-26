@@ -16,7 +16,7 @@ import types
 import numpy as np
 
 script_home = os.path.abspath(os.path.dirname(__file__))
-mcts_home = os.path.join(script_home, "..", "packages", "MCTS-master-2020-0330")
+mcts_home = os.path.join(script_home, "packages", "MCTS-master-2020-0330")
 sys.path.append(mcts_home)
 
 import mcts
