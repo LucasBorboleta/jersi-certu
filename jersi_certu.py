@@ -1135,7 +1135,7 @@ class JersiState:
         self.clear_all_cubes()
 
         # whites
-        self.set_cube_at_hexagon_by_id('F', 'b1')
+        # self.set_cube_at_hexagon_by_id('F', 'b1')
         self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
@@ -1155,7 +1155,7 @@ class JersiState:
 
         # blacks
         self.set_cube_at_hexagon_by_id('f', 'h1')
-        self.set_cube_at_hexagon_by_id('f', 'h8')
+        # self.set_cube_at_hexagon_by_id('f', 'h8')
         self.set_cube_at_hexagon_by_id('k', 'i4')
 
         # self.set_cube_at_hexagon_by_id('r', 'h7')
@@ -1253,8 +1253,12 @@ def random_searcher(js):
     return action
 
 
-def make_mcts_searcher(time_limit=1_000):
+def make_mcts_searcher(time_limit=None, iteration_limit=None):
 
+    assert time_limit is None or iteration_limit is None
+
+    if time_limit is None and iteration_limit is None:
+        time_limit = 1_000
 
     def mcts_searcher(js):
 
@@ -1266,12 +1270,13 @@ def make_mcts_searcher(time_limit=1_000):
 
         my_exploration_constant = 1.
 
-        if True:
+        if time_limit is not None:
             # time in milli-seconds
             searcher = mcts.mcts(timeLimit=time_limit, explorationConstant=my_exploration_constant)
-        else:
+
+        elif iteration_limit is not None:
             # number of mcts rounds
-            searcher = mcts.mcts(iterationLimit=400, explorationConstant=my_exploration_constant)
+            searcher = mcts.mcts(iterationLimit=iteration_limit, explorationConstant=my_exploration_constant)
 
         action = searcher.search(initialState=js)
 
@@ -1292,13 +1297,16 @@ def make_mcts_searcher(time_limit=1_000):
     return mcts_searcher
 
 searcher_catalog = dict()
+
 searcher_catalog["random"] = random_searcher
-searcher_catalog["mcts1"] = make_mcts_searcher(time_limit=1_000)
-searcher_catalog["mcts2"] = make_mcts_searcher(time_limit=2_000)
-searcher_catalog["mcts5"] = make_mcts_searcher(time_limit=5_000)
-searcher_catalog["mcts10"] = make_mcts_searcher(time_limit=10_000)
-searcher_catalog["mcts30"] = make_mcts_searcher(time_limit=30_000)
-searcher_catalog["mcts60"] = make_mcts_searcher(time_limit=60_000)
+
+# searcher_catalog["mcts-1s"] = make_mcts_searcher(time_limit=1_000)
+# searcher_catalog["mcts-2s"] = make_mcts_searcher(time_limit=2_000)
+# searcher_catalog["mcts-10s"] = make_mcts_searcher(time_limit=10_000)
+
+searcher_catalog["mcts-50i"] = make_mcts_searcher(iteration_limit=50)
+searcher_catalog["mcts-500i"] = make_mcts_searcher(iteration_limit=500)
+searcher_catalog["mcts-1ki"] = make_mcts_searcher(iteration_limit=1000)
 
 
 class Simulation:
@@ -1369,7 +1377,7 @@ class Simulation:
             black_player = f"{TypeCubeColor.domain[TypeCubeColor.black]}-{self.selected_searcher_name[TypeCubeColor.black]}"
 
             if reward[TypeCubeColor.white] == reward[TypeCubeColor.black]:
-                self.log += f"nobody wins ; the game is a draw between {white_player} and {black_player}"
+                self.log = f"nobody wins ; the game is a draw between {white_player} and {black_player}"
                 print(self.log)
 
             elif reward[TypeCubeColor.white] > reward[TypeCubeColor.black]:
