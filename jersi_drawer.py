@@ -436,35 +436,27 @@ def draw_mountain_face(canvas, cube_center, cube_vertices, face_color):
     face_vertex_SW = 0.5*cube_center + 0.5*cube_vertices[2]
     face_vertex_SE = 0.5*cube_center + 0.5*cube_vertices[3]
 
-    face_vertex_N = 0.5*(face_vertex_NW + face_vertex_NE)
-    face_vertex_S = 0.5*(face_vertex_SW + face_vertex_SE)
+    face_N = 0.5*(face_vertex_NW + face_vertex_NE)
+    face_S = 0.5*(face_vertex_SW + face_vertex_SE)
 
-    face_half_width = 0.5*(face_vertex_NE - face_vertex_NW)
+    face_W = 0.5*(face_vertex_NW + face_vertex_SW)
+    face_E = 0.5*(face_vertex_NE + face_vertex_SE)
 
-    face_center_up = cube_center + CUBE_LINE_WIDTH*UNIT_Y
-    face_center_down = cube_center - CUBE_LINE_WIDTH*UNIT_Y
-
-    face_up_W = face_center_up - face_half_width
-    face_up_E = face_center_up + face_half_width
-
-    face_down_W = face_center_down - face_half_width
-    face_down_E = face_center_down + face_half_width
-
-    face_data = [*face_vertex_N, *face_up_W, *face_up_E]
+    face_data = [*face_N, *face_W, *face_E]
 
     canvas.create_polygon(face_data,
-                          fill=face_color,
+                          fill='',
                           outline=face_color,
                           width=CUBE_LINE_WIDTH,
-                          joinstyle=tk.MITER)
+                          joinstyle=tk.ROUND)
 
-    face_data = [*face_vertex_S, *face_down_W, *face_down_E]
+    face_data = [*face_S, *face_W, *face_E]
 
     canvas.create_polygon(face_data,
-                          fill=face_color,
+                          fill='',
                           outline=face_color,
                           width=CUBE_LINE_WIDTH,
-                          joinstyle=tk.MITER)
+                          joinstyle=tk.ROUND)
 
 
 def draw_wise_face(canvas, cube_center, cube_vertices, face_color):
