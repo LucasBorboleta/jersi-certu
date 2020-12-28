@@ -1300,13 +1300,13 @@ searcher_catalog = dict()
 
 searcher_catalog["random"] = random_searcher
 
-# searcher_catalog["mcts-1s"] = make_mcts_searcher(time_limit=1_000)
+searcher_catalog["mcts-1s"] = make_mcts_searcher(time_limit=1_000)
 # searcher_catalog["mcts-2s"] = make_mcts_searcher(time_limit=2_000)
 # searcher_catalog["mcts-10s"] = make_mcts_searcher(time_limit=10_000)
 
-searcher_catalog["mcts-50i"] = make_mcts_searcher(iteration_limit=50)
-searcher_catalog["mcts-500i"] = make_mcts_searcher(iteration_limit=500)
-searcher_catalog["mcts-1ki"] = make_mcts_searcher(iteration_limit=1000)
+# searcher_catalog["mcts-50i"] = make_mcts_searcher(iteration_limit=50)
+# searcher_catalog["mcts-500i"] = make_mcts_searcher(iteration_limit=500)
+# searcher_catalog["mcts-1ki"] = make_mcts_searcher(iteration_limit=1000)
 
 
 class Simulation:
