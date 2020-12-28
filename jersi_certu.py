@@ -1300,25 +1300,50 @@ searcher_catalog = dict()
 
 searcher_catalog["random"] = random_searcher
 
-searcher_catalog["mcts-1s"] = make_mcts_searcher(time_limit=1_000)
-# searcher_catalog["mcts-2s"] = make_mcts_searcher(time_limit=2_000)
-# searcher_catalog["mcts-10s"] = make_mcts_searcher(time_limit=10_000)
+searcher_catalog["mcts-s-1"] = make_mcts_searcher(time_limit=1_000)
+searcher_catalog["mcts-s-2"] = make_mcts_searcher(time_limit=2_000)
+searcher_catalog["mcts-s-5"] = make_mcts_searcher(time_limit=5_000)
+searcher_catalog["mcts-s-10"] = make_mcts_searcher(time_limit=10_000)
+searcher_catalog["mcts-s-20"] = make_mcts_searcher(time_limit=20_000)
+searcher_catalog["mcts-s-30"] = make_mcts_searcher(time_limit=30_000)
+searcher_catalog["mcts-s-60"] = make_mcts_searcher(time_limit=60_000)
 
-# searcher_catalog["mcts-50i"] = make_mcts_searcher(iteration_limit=50)
-# searcher_catalog["mcts-500i"] = make_mcts_searcher(iteration_limit=500)
-# searcher_catalog["mcts-1ki"] = make_mcts_searcher(iteration_limit=1000)
+searcher_catalog["mcts-i-50"] = make_mcts_searcher(iteration_limit=50)
+searcher_catalog["mcts-i-100"] = make_mcts_searcher(iteration_limit=100)
+searcher_catalog["mcts-i-500"] = make_mcts_searcher(iteration_limit=500)
+searcher_catalog["mcts-i-1k"] = make_mcts_searcher(iteration_limit=1_000)
+searcher_catalog["mcts-i-10k"] = make_mcts_searcher(iteration_limit=10_000)
 
 
 class Simulation:
 
     def __init__(self):
         self.selected_searcher_name = [None, None]
-        self.selected_searcher_name[TypeCubeColor.white] = random.choice(list(searcher_catalog.keys()))
-        self.selected_searcher_name[TypeCubeColor.black] = random.choice(list(searcher_catalog.keys()))
-
         self.selected_searcher = [None, None]
+
+        self.js = None
+        self.iter_count = None
+        self.iter_index = None
+        self.log = None
+
+
+    def set_white_player(self, name):
+        self.selected_searcher_name[TypeCubeColor.white] = name
         self.selected_searcher[TypeCubeColor.white] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.white]]
+
+
+    def set_black_player(self, name):
+        self.selected_searcher_name[TypeCubeColor.black] = name
         self.selected_searcher[TypeCubeColor.black] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.black]]
+
+
+    def start(self):
+
+        assert self.selected_searcher_name[TypeCubeColor.white] is not None
+        assert self.selected_searcher_name[TypeCubeColor.black] is not None
+
+        assert self.selected_searcher[TypeCubeColor.white] is not None
+        assert self.selected_searcher[TypeCubeColor.black] is not None
 
         self.js = JersiState()
         self.js.show()
@@ -1400,6 +1425,12 @@ def main():
     print("Hello!")
 
     simulation = Simulation()
+
+    simulation.set_white_player(random.choice(list(searcher_catalog.keys())))
+    simulation.set_black_player(random.choice(list(searcher_catalog.keys())))
+
+    simulation.start()
+
     while simulation.has_next():
         simulation.next()
 

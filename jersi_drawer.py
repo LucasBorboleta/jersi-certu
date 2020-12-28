@@ -326,6 +326,10 @@ class JersiGui(tk.Frame):
 
     def create_widgets(self):
 
+        searcher_catalog_names = list(jersi_certu.searcher_catalog.keys())
+        searcher_catalog_names.sort()
+        searcher_catalog_names_width = max(map(len, searcher_catalog_names))
+
         self.canvas = tk.Canvas(self.master,
                                 height=CANVAS_HEIGHT,
                                 width=CANVAS_WIDTH)
@@ -336,6 +340,25 @@ class JersiGui(tk.Frame):
                                   textvariable=self.variable_log,
                                   width=90,
                                   foreground='red')
+
+        self.label_white_player = tk.Label(self.master, text='white')
+        self.variable_white_player = tk.StringVar()
+        self.combobox_white_player = ttk.Combobox(self.master,
+                                                  width=searcher_catalog_names_width,
+                                                  textvariable=self.variable_white_player,
+                                                  values=searcher_catalog_names)
+        self.combobox_white_player.config(state="readonly")
+        self.variable_white_player.set(searcher_catalog_names[0])
+
+
+        self.label_black_player = tk.Label(self.master, text='black')
+        self.variable_black_player = tk.StringVar()
+        self.combobox_black_player = ttk.Combobox(self.master,
+                                                  width=searcher_catalog_names_width,
+                                                  textvariable=self.variable_black_player,
+                                                  values=searcher_catalog_names)
+        self.combobox_black_player.config(state="readonly")
+        self.variable_black_player.set(searcher_catalog_names[0])
 
         self.variable_face = tk.BooleanVar()
         self.variable_face.set(self.draw_cube_faces)
@@ -359,14 +382,26 @@ class JersiGui(tk.Frame):
                                   text='Start',
                                   command=self.command_start_stop)
 
+        # row 0
+
         self.button_start_stop.grid(row=0, column=0, sticky=tk.W)
-        self.button_face.grid(row=0, column=1)
-        self.button_reserve.grid(row=0, column=2)
-        self.button_quit.grid(row=0, column=3, sticky=tk.E)
 
-        self.label_log.grid(row=1, columnspan=4)
+        self.label_white_player.grid(row=0, column=1)
+        self.combobox_white_player.grid(row=0, column=2)
 
-        self.canvas.grid(row=2, columnspan=4)
+        self.label_black_player.grid(row=0, column=3)
+        self.combobox_black_player.grid(row=0, column=4)
+
+        self.button_face.grid(row=0, column=5)
+        self.button_reserve.grid(row=0, column=6)
+
+        self.button_quit.grid(row=0, column=7, sticky=tk.E)
+
+        # row 1
+        self.label_log.grid(row=1, columnspan=8)
+
+        # row 2
+        self.canvas.grid(row=2, columnspan=8)
 
 
     def command_toggle_face(self):
@@ -393,16 +428,26 @@ class JersiGui(tk.Frame):
 
         if self.simulation_started:
 
-           self.variable_log.set("jersi started")
-           self.button_start_stop.configure(text="Stop")
+           self.combobox_white_player.config(state="disabled")
+           self.combobox_black_player.config(state="disabled")
 
            self.simulation = jersi_certu.Simulation()
+           self.simulation.set_white_player(self.variable_white_player.get())
+           self.simulation.set_black_player(self.variable_black_player.get())
+           self.simulation.start()
+
            self.state = JersiState(self.simulation)
            self.draw_state()
+
+           self.variable_log.set("jersi started")
+           self.button_start_stop.configure(text="Stop")
 
            self.canvas.after(1000, self.next_step)
 
         else:
+           self.combobox_white_player.config(state="readonly")
+           self.combobox_black_player.config(state="readonly")
+
            self.variable_log.set("jersi stopped")
            self.button_start_stop.configure(text="Start")
 
@@ -420,6 +465,9 @@ class JersiGui(tk.Frame):
                 self.variable_log.set(self.simulation.get_log())
 
         else:
+           self.combobox_white_player.config(state="readonly")
+           self.combobox_black_player.config(state="readonly")
+
            self.simulation_started = False
            self.button_start_stop.configure(text="Start")
 
@@ -809,20 +857,23 @@ class JersiState:
 
 
     def __init__(self, simulation=None):
-        self.hex_content = dict()
-        self.clear()
+        self.hex_content = None
+        self.make_empty_hexagons()
 
         if simulation is not None:
             self.update(simulation)
 
 
-    def clear(self):
+    def make_empty_hexagons(self):
+        if self.hex_content is None:
+            self.hex_content = dict()
+
         for (_, hexagon) in Hexagon.alls.items():
             self.hex_content[hexagon.label] = [None, None]
 
 
     def update(self, simulation):
-        self.clear()
+        self.make_empty_hexagons()
 
         for hex_index in jersi_certu.constHex.codomain:
 
