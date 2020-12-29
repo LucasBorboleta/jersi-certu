@@ -54,12 +54,12 @@ def jersi_assert(condition, message):
 # File path containing the icon to be displayed in the title bar of Jersi GUI
 JERSI_ICON_FILE = os.path.join(JERSI_HOME, 'jersi.ico')
 
-# Canvas dimensions
+# Canvas x-y dimensions in pixels
 CANVAS_RATIO = 1
 CANVAS_HEIGHT = 600
 CANVAS_WIDTH = int(CANVAS_HEIGHT * CANVAS_RATIO)
 
-# number of hexagons to draw
+# Canvas x-y dimensions in hexagon units
 NX = 9 + 2
 NY = 9
 
@@ -95,16 +95,16 @@ UNIT_U = UNIT_X
 UNIT_V = math.cos(HEXA_SIDE_ANGLE)*UNIT_X + math.sin(HEXA_SIDE_ANGLE)*UNIT_Y
 
 
-def rgb_color(rgb):
+def rgb_color_as_hexadecimal(rgb):
     (red, green, blue) = rgb
     return '#%02x%02x%02x' % (red, green, blue)
 
 
 class HexagonColor(enum.Enum):
-    INNER = rgb_color((166, 109, 60))
-    MAIN = rgb_color((242, 202, 128))
-    OUTER = rgb_color((191, 89, 52))
-    RESERVE = rgb_color((191, 184, 180))
+    INNER = rgb_color_as_hexadecimal((166, 109, 60))
+    MAIN = rgb_color_as_hexadecimal((242, 202, 128))
+    OUTER = rgb_color_as_hexadecimal((191, 89, 52))
+    RESERVE = rgb_color_as_hexadecimal((191, 184, 180))
 
 
 class CubeColor(enum.Enum):
@@ -128,23 +128,30 @@ class CubeSort(enum.Enum):
     WISE = 'W'
 
 
-CUBE_COLORED_SORTS = dict()
+def make_cube_colored_sorts():
 
-CUBE_COLORED_SORTS['K'] = (CubeSort.KING, CubeColor.WHITE)
-CUBE_COLORED_SORTS['F'] = (CubeSort.FOUL, CubeColor.WHITE)
-CUBE_COLORED_SORTS['R'] = (CubeSort.ROCK, CubeColor.WHITE)
-CUBE_COLORED_SORTS['P'] = (CubeSort.PAPER, CubeColor.WHITE)
-CUBE_COLORED_SORTS['S'] = (CubeSort.SCISSORS, CubeColor.WHITE)
-CUBE_COLORED_SORTS['M'] = (CubeSort.MOUNTAIN, CubeColor.WHITE)
-CUBE_COLORED_SORTS['W'] = (CubeSort.WISE, CubeColor.WHITE)
+    CUBE_COLORED_SORTS = dict()
 
-CUBE_COLORED_SORTS['k'] = (CubeSort.KING, CubeColor.BLACK)
-CUBE_COLORED_SORTS['f'] = (CubeSort.FOUL, CubeColor.BLACK)
-CUBE_COLORED_SORTS['r'] = (CubeSort.ROCK, CubeColor.BLACK)
-CUBE_COLORED_SORTS['p'] = (CubeSort.PAPER, CubeColor.BLACK)
-CUBE_COLORED_SORTS['s'] = (CubeSort.SCISSORS, CubeColor.BLACK)
-CUBE_COLORED_SORTS['m'] = (CubeSort.MOUNTAIN, CubeColor.BLACK)
-CUBE_COLORED_SORTS['w'] = (CubeSort.WISE, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['K'] = (CubeSort.KING, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['F'] = (CubeSort.FOUL, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['R'] = (CubeSort.ROCK, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['P'] = (CubeSort.PAPER, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['S'] = (CubeSort.SCISSORS, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['M'] = (CubeSort.MOUNTAIN, CubeColor.WHITE)
+    CUBE_COLORED_SORTS['W'] = (CubeSort.WISE, CubeColor.WHITE)
+
+    CUBE_COLORED_SORTS['k'] = (CubeSort.KING, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['f'] = (CubeSort.FOUL, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['r'] = (CubeSort.ROCK, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['p'] = (CubeSort.PAPER, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['s'] = (CubeSort.SCISSORS, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['m'] = (CubeSort.MOUNTAIN, CubeColor.BLACK)
+    CUBE_COLORED_SORTS['w'] = (CubeSort.WISE, CubeColor.BLACK)
+
+    return CUBE_COLORED_SORTS
+
+CUBE_COLORED_SORTS = make_cube_colored_sorts()
+
 
 
 class Hexagon:
@@ -301,18 +308,16 @@ class JersiGui(tk.Frame):
         # Draw reserve ?
         self.draw_reserve = True
 
-
         self.simulation_started = False
         self.simulation = None
         self.state = JersiState()
-
 
         master = tk.Tk()
         super().__init__(master)
         self.master = master
 
         tk.Tk.iconbitmap(self.master, default=JERSI_ICON_FILE)
-        tk.Tk.wm_title(self.master, "jersi drawer : draw a vectorial picture from an abstract state")
+        tk.Tk.wm_title(self.master, "jersi-certu : for evaluating AI agents and efficiency of the jersi rules engine")
 
         self.create_widgets()
 
