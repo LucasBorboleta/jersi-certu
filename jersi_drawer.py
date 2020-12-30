@@ -312,9 +312,8 @@ class JersiGui(tk.Frame):
         self.simulation = None
         self.state = JersiState()
 
-        master = tk.Tk()
-        super().__init__(master)
-        self.master = master
+        self.master = tk.Tk()
+        super().__init__(self.master)
 
         tk.Tk.iconbitmap(self.master, default=JERSI_ICON_FILE)
         tk.Tk.wm_title(self.master, "jersi-certu : for evaluating AI agents and efficiency of the jersi rules engine")
@@ -338,7 +337,6 @@ class JersiGui(tk.Frame):
         self.canvas = tk.Canvas(self.master,
                                 height=CANVAS_HEIGHT,
                                 width=CANVAS_WIDTH)
-
 
         self.variable_log = tk.StringVar()
         self.label_log = tk.Label(self.master,
