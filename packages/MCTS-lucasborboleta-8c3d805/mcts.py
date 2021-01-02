@@ -27,7 +27,7 @@ class treeNode():
 
 
 class mcts():
-    def __init__(self, timeLimit=None, iterationLimit=None, explorationConstant=1 / math.sqrt(2),
+    def __init__(self, timeLimit=None, iterationLimit=None, explorationConstant=math.sqrt(2),
                  rolloutPolicy=randomPolicy):
         if timeLimit != None:
             if iterationLimit != None:
@@ -54,9 +54,63 @@ class mcts():
             while time.time() < timeLimit:
                 self.executeRound()
         else:
-            for i in range(self.searchLimit):
+            for _ in range(self.searchLimit):
                 self.executeRound()
 
+        bestChild = self.getBestChild(self.root, 0)
+        return self.getAction(self.root, bestChild)
+
+    def searchInit(self, initialState):
+        self.root = treeNode(initialState, None)
+        if self.limitType == 'time':
+            self.__searchTimeBegin = time.time()
+            self.__searchTimeCurrent = self.__searchTimeBegin
+            self.__searchTimeEnd = self.__searchTimeBegin + self.timeLimit / 1000
+            self.__searchTimeSlice = 1000
+        else:
+            self.__searchIterationBegin = 0
+            self.__searchIterationCurrent = self.__searchIterationBegin
+            self.__searchIterationEnd = self.searchLimit
+            self.__searchIterationSlice = 50
+        self.__searchEnded = False
+
+    def searchEnded(self):
+        if not self.__searchEnded:
+            if self.limitType == 'time':
+                self.__searchTimeCurrent = time.time()
+                self.__searchEnded = self.__searchTimeCurrent >= self.__searchTimeEnd
+            else:
+                self.__searchEnded = self.__searchIterationCurrent >= self.__searchIterationEnd
+        return self.__searchEnded
+
+    def searchRun(self):
+        if not self.searchEnded():
+            if self.limitType == 'time':
+                self.__searchTimeSliceEnd = min(self.__searchTimeCurrent + self.__searchTimeSlice / 1000,
+                                                self.__searchTimeEnd)
+                while time.time() < self.__searchTimeSliceEnd:
+                    self.executeRound()
+            else:
+                self.__searchIterationSliceEnd = min(self.__searchIterationCurrent + self.__searchIterationSlice,
+                                                     self.__searchIterationEnd)
+                while self.__searchIterationCurrent < self.__searchIterationSliceEnd:
+                    self.executeRound()
+                    self.__searchIterationCurrent += 1
+
+
+    def searchGetProgression(self):
+        if self.searchEnded():
+            progression = 100
+        else:
+            if self.limitType == 'time':
+                progression = 100 * ((self.__searchTimeCurrent - self.__searchTimeBegin)/
+                                     (self.__searchTimeEnd - self.__searchTimeBegin))
+            else:
+                progression = 100 * ((self.__searchIterationCurrent - self.__searchIterationBegin)/
+                                     (self.__searchIterationEnd - self.__searchIterationBegin))
+        return progression
+
+    def searchGetAction(self):
         bestChild = self.getBestChild(self.root, 0)
         return self.getAction(self.root, bestChild)
 
@@ -75,6 +129,7 @@ class mcts():
 
     def expand(self, node):
         actions = node.state.getPossibleActions()
+        random.shuffle(actions)
         for action in actions:
             if action not in node.children:
                 newNode = treeNode(node.state.takeAction(action), node)
@@ -95,8 +150,8 @@ class mcts():
         bestValue = float("-inf")
         bestNodes = []
         for child in node.children.values():
-            nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits + explorationValue * math.sqrt(
-                2 * math.log(node.numVisits) / child.numVisits)
+            nodeValue = (node.state.getCurrentPlayer() * child.totalReward / child.numVisits +
+                         explorationValue * math.sqrt(math.log(node.numVisits) / child.numVisits))
             if nodeValue > bestValue:
                 bestValue = nodeValue
                 bestNodes = [child]
@@ -108,3 +163,12 @@ class mcts():
         for action, node in root.children.items():
             if node is bestChild:
                 return action
+
+    def getStatistics(self, action=None):
+        statistics = {}
+        statistics['rootNumVisits'] = self.root.numVisits
+        statistics['rootTotalReward'] = self.root.totalReward
+        if action is not None:
+            statistics['actionNumVisits'] = self.root.children[action].numVisits
+            statistics['actionTotalReward'] = self.root.children[action].totalReward
+        return statistics

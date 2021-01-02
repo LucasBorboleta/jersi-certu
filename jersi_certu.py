@@ -16,7 +16,7 @@ import types
 import numpy as np
 
 script_home = os.path.abspath(os.path.dirname(__file__))
-mcts_home = os.path.join(script_home, "packages", "MCTS-master-2020-0330")
+mcts_home = os.path.join(script_home, "packages", "MCTS-lucasborboleta-8c3d805")
 sys.path.append(mcts_home)
 
 import mcts
@@ -1135,8 +1135,8 @@ class JersiState:
         self.clear_all_cubes()
 
         # whites
-        # self.set_cube_at_hexagon_by_id('F', 'b1')
-        self.set_cube_at_hexagon_by_id('F', 'b8')
+        self.set_cube_at_hexagon_by_id('F', 'b1')
+        # self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
         # self.set_cube_at_hexagon_by_id('R', 'b2')
@@ -1247,72 +1247,82 @@ class JersiAction:
         return hash(self.action_notation)
 
 
-def random_searcher(js):
-    actions = js.get_actions()
-    action = random.choice(actions)
-    return action
+class RandomSearcher():
 
 
-def make_mcts_searcher(time_limit=None, iteration_limit=None):
+    def __init__(self):
+        pass
 
-    assert time_limit is None or iteration_limit is None
 
-    if time_limit is None and iteration_limit is None:
-        time_limit = 1_000
+    def search(self, state):
+        actions = state.get_actions()
+        action = random.choice(actions)
+        return action
 
-    def mcts_searcher(js):
 
-        # mcts uses the following formulation with explorationValue=explorationConstant ;
-        # so in order to match the most current found formula one selects explorationConstant=1.
-        #
-        # nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits +
-        #             explorationValue * math.sqrt(2 * math.log(node.numVisits) / child.numVisits)
+class MctsSearcher():
 
-        my_exploration_constant = 1.
 
-        if time_limit is not None:
+    def __init__(self, time_limit=None, iteration_limit=None):
+
+        assert time_limit is None or iteration_limit is None
+
+        if time_limit is None and iteration_limit is None:
+            time_limit = 1_000
+
+        self.time_limit = time_limit
+        self.iteration_limit = iteration_limit
+
+
+    def search(self, state):
+
+        if self.time_limit is not None:
             # time in milli-seconds
-            searcher = mcts.mcts(timeLimit=time_limit, explorationConstant=my_exploration_constant)
+            self.searcher = mcts.mcts(timeLimit=self.time_limit)
 
-        elif iteration_limit is not None:
+        elif self.iteration_limit is not None:
             # number of mcts rounds
-            searcher = mcts.mcts(iterationLimit=iteration_limit, explorationConstant=my_exploration_constant)
+            self.searcher = mcts.mcts(iterationLimit=self.iteration_limit)
 
-        action = searcher.search(initialState=js)
+        if False:
+            action = self.searcher.search(initialState=state)
+        else:
+            self.searcher.searchInit(initialState=state)
+            while not self.searcher.searchEnded():
+                progression = self.searcher.searchGetProgression()
+                print(f"progression:{progression:3.0f}")
+                self.searcher.searchRun()
+            progression = self.searcher.searchGetProgression()
+            print(f"progression:{progression:3.0f}")
+            action = self.searcher.searchGetAction()
 
         if constJersi.do_debug:
-            print(f"{searcher.root.numVisits=!s}")
-            print(f"{searcher.root.totalReward=!s}")
-            print(f"{searcher.root.isFullyExpanded=!s}")
-            print(f"{len(searcher.root.children)=!s}")
-            if True:
-                for (child_key, child) in searcher.root.children.items():
-                    print("--------------------------------")
-                    print(f"   child {child_key}")
-                    print(f"   {child.numVisits=!s}")
-                    print(f"   {child.totalReward=!s}")
+            statistics = self.searcher.getStatistics(action)
+            print(f"    mcts statitics for the chosen action: {statistics['actionTotalReward']} total reward over {statistics['actionNumVisits']} visits")
+            print(f"    mcts statitics for all explored actions: {statistics['rootTotalReward']} total reward over {statistics['rootNumVisits']} visits")
+            for (child_action, child) in self.searcher.root.children.items():
+                print(f"    action {child_action} numVisits={child.numVisits} totalReward={child.totalReward}")
 
         return action
 
-    return mcts_searcher
 
 searcher_catalog = dict()
 
-searcher_catalog["random"] = random_searcher
+searcher_catalog["random"] = RandomSearcher()
 
-searcher_catalog["mcts-s-1"] = make_mcts_searcher(time_limit=1_000)
-searcher_catalog["mcts-s-2"] = make_mcts_searcher(time_limit=2_000)
-searcher_catalog["mcts-s-5"] = make_mcts_searcher(time_limit=5_000)
-searcher_catalog["mcts-s-10"] = make_mcts_searcher(time_limit=10_000)
-searcher_catalog["mcts-s-20"] = make_mcts_searcher(time_limit=20_000)
-searcher_catalog["mcts-s-30"] = make_mcts_searcher(time_limit=30_000)
-searcher_catalog["mcts-s-60"] = make_mcts_searcher(time_limit=60_000)
+searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
+searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
+searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
+searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
+searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
+searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
+searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
 
-searcher_catalog["mcts-i-50"] = make_mcts_searcher(iteration_limit=50)
-searcher_catalog["mcts-i-100"] = make_mcts_searcher(iteration_limit=100)
-searcher_catalog["mcts-i-500"] = make_mcts_searcher(iteration_limit=500)
-searcher_catalog["mcts-i-1k"] = make_mcts_searcher(iteration_limit=1_000)
-searcher_catalog["mcts-i-10k"] = make_mcts_searcher(iteration_limit=10_000)
+searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
+searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
+searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
+searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
+searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
 
 
 class Simulation:
@@ -1329,12 +1339,12 @@ class Simulation:
 
     def set_white_player(self, name):
         self.selected_searcher_name[TypeCubeColor.white] = name
-        self.selected_searcher[TypeCubeColor.white] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.white]]
+        self.selected_searcher[TypeCubeColor.white] = searcher_catalog[name]
 
 
     def set_black_player(self, name):
         self.selected_searcher_name[TypeCubeColor.black] = name
-        self.selected_searcher[TypeCubeColor.black] = searcher_catalog[self.selected_searcher_name[TypeCubeColor.black]]
+        self.selected_searcher[TypeCubeColor.black] = searcher_catalog[name]
 
 
     def start(self):
@@ -1358,15 +1368,15 @@ class Simulation:
         return self.log
 
 
-    def has_next(self):
+    def has_next_turn(self):
         return self.iter_index < self.iter_count and not self.js.is_terminal()
 
 
-    def next(self):
+    def next_turn(self):
 
         self.log = ""
 
-        if self.has_next():
+        if self.has_next_turn():
             player = self.js.get_player()
             player_name = f"{TypeCubeColor.domain[player]}-{self.selected_searcher_name[player]}"
             action_count = len(self.js.get_actions())
@@ -1374,10 +1384,10 @@ class Simulation:
             print()
             print(f"{player_name} is thinking ...")
 
-            if self.selected_searcher[player] != random_searcher:
+            if isinstance(self.selected_searcher[player], MctsSearcher):
                 self.js.set_mcts_player(player)
 
-            action = self.selected_searcher[player](self.js)
+            action = self.selected_searcher[player].search(self.js)
 
             print(f"{player_name} is done")
 
@@ -1431,8 +1441,8 @@ def main():
 
     simulation.start()
 
-    while simulation.has_next():
-        simulation.next()
+    while simulation.has_next_turn():
+        simulation.next_turn()
 
     print()
     print("Bye!")

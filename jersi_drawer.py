@@ -338,6 +338,12 @@ class JersiGui(tk.Frame):
                                 height=CANVAS_HEIGHT,
                                 width=CANVAS_WIDTH)
 
+        self.progressbar = ttk.Progressbar(self.master,
+                                            orient=tk.HORIZONTAL,
+                                            length=300,
+                                            maximum=100,
+                                            mode='determinate')
+
         self.variable_log = tk.StringVar()
         self.label_log = tk.Label(self.master,
                                   textvariable=self.variable_log,
@@ -401,10 +407,13 @@ class JersiGui(tk.Frame):
         self.button_quit.grid(row=0, column=7, sticky=tk.E)
 
         # row 1
-        self.label_log.grid(row=1, columnspan=8)
+        self.progressbar.grid(row=1, columnspan=8)
 
         # row 2
-        self.canvas.grid(row=2, columnspan=8)
+        self.label_log.grid(row=2, columnspan=8)
+
+        # row 3
+        self.canvas.grid(row=3, columnspan=8)
 
 
     def command_toggle_face(self):
@@ -457,9 +466,9 @@ class JersiGui(tk.Frame):
 
     def next_step(self):
 
-        if self.simulation.has_next():
+        if self.simulation.has_next_turn():
 
-            self.simulation.next()
+            self.simulation.next_turn()
             self.state.update(self.simulation)
             self.draw_state()
 
