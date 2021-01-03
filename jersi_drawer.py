@@ -160,7 +160,7 @@ class Hexagon:
 
     def __init__(self, label, position_uv, color, in_reserve=False, reserve_shift=None):
         jersi_assert(in_reserve == (reserve_shift is not None),
-                     "in_reserve and reserve_shift not consisten for label '%s'" % label)
+                     "in_reserve and reserve_shift not consistent for label '%s'" % label)
 
         self.label = label
         self.position_uv = position_uv
@@ -303,7 +303,7 @@ class JersiGui(tk.Frame):
 
         # Draw faces of cubes ?
         # If 'False' the just display letter representing the sort of the cube
-        self.draw_cube_faces = True
+        self.draw_cube_faces = False
 
         # Draw reserve ?
         self.draw_reserve = True
@@ -312,11 +312,14 @@ class JersiGui(tk.Frame):
         self.simulation = None
         self.state = JersiState()
 
+        self.use_white_ia = True
+        self.use_black_ia = True
+
         self.master = tk.Tk()
         super().__init__(self.master)
 
         tk.Tk.iconbitmap(self.master, default=JERSI_ICON_FILE)
-        tk.Tk.wm_title(self.master, "jersi-certu : for evaluating AI agents and efficiency of the jersi rules engine")
+        tk.Tk.wm_title(self.master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
 
         self.create_widgets()
 
@@ -350,7 +353,15 @@ class JersiGui(tk.Frame):
                                   width=90,
                                   foreground='red')
 
-        self.label_white_player = tk.Label(self.master, text='white')
+        self.label_white_player = tk.Label(self.master, text='White')
+
+        self.variable_white_ia = tk.BooleanVar()
+        self.variable_white_ia.set(self.use_white_ia)
+        self.button_white_ia = ttk.Checkbutton (self.master,
+                                       text='IA',
+                                       command=self.command_toggle_white_ia,
+                                       variable=self.variable_white_ia)
+
         self.variable_white_player = tk.StringVar()
         self.combobox_white_player = ttk.Combobox(self.master,
                                                   width=searcher_catalog_names_width,
@@ -360,7 +371,15 @@ class JersiGui(tk.Frame):
         self.variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.label_black_player = tk.Label(self.master, text='black')
+        self.label_black_player = tk.Label(self.master, text='Black')
+
+        self.variable_black_ia = tk.BooleanVar()
+        self.variable_black_ia.set(self.use_black_ia)
+        self.button_black_ia = ttk.Checkbutton (self.master,
+                                       text='IA',
+                                       command=self.command_toggle_black_ia,
+                                       variable=self.variable_black_ia)
+
         self.variable_black_player = tk.StringVar()
         self.combobox_black_player = ttk.Combobox(self.master,
                                                   width=searcher_catalog_names_width,
@@ -396,24 +415,52 @@ class JersiGui(tk.Frame):
         self.button_start_stop.grid(row=0, column=0, sticky=tk.W)
 
         self.label_white_player.grid(row=0, column=1)
-        self.combobox_white_player.grid(row=0, column=2)
+        self.button_white_ia.grid(row=0, column=2)
+        self.combobox_white_player.grid(row=0, column=3)
 
-        self.label_black_player.grid(row=0, column=3)
-        self.combobox_black_player.grid(row=0, column=4)
+        self.label_black_player.grid(row=0, column=4)
+        self.button_black_ia.grid(row=0, column=5)
+        self.combobox_black_player.grid(row=0, column=6)
 
-        self.button_face.grid(row=0, column=5)
-        self.button_reserve.grid(row=0, column=6)
+        self.button_face.grid(row=0, column=7)
+        self.button_reserve.grid(row=0, column=8)
 
-        self.button_quit.grid(row=0, column=7, sticky=tk.E)
+        self.button_quit.grid(row=0, column=9, sticky=tk.E)
 
         # row 1
-        self.progressbar.grid(row=1, columnspan=8)
+        self.progressbar.grid(row=1, columnspan=10)
 
         # row 2
-        self.label_log.grid(row=2, columnspan=8)
+        self.label_log.grid(row=2, columnspan=10)
 
         # row 3
-        self.canvas.grid(row=3, columnspan=8)
+        self.canvas.grid(row=3, columnspan=10)
+
+
+    def command_toggle_white_ia(self):
+        self.variable_log.set("toggle white IA ...")
+
+        self.use_white_ia = self.variable_white_ia.get()
+
+        if self.use_white_ia:
+           self.combobox_white_player.config(state="readonly")
+        else:
+           self.combobox_white_player.config(state="disabled")
+
+        self.variable_log.set("toggle white IA done")
+
+
+    def command_toggle_black_ia(self):
+        self.variable_log.set("toggle black IA ...")
+
+        self.use_black_ia = self.variable_black_ia.get()
+
+        if self.use_black_ia:
+           self.combobox_black_player.config(state="readonly")
+        else:
+           self.combobox_black_player.config(state="disabled")
+
+        self.variable_log.set("toggle black IA done")
 
 
     def command_toggle_face(self):

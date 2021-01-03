@@ -1135,8 +1135,8 @@ class JersiState:
         self.clear_all_cubes()
 
         # whites
-        self.set_cube_at_hexagon_by_id('F', 'b1')
-        # self.set_cube_at_hexagon_by_id('F', 'b8')
+        # self.set_cube_at_hexagon_by_id('F', 'b1')
+        self.set_cube_at_hexagon_by_id('F', 'b8')
         self.set_cube_at_hexagon_by_id('K', 'a4')
 
         # self.set_cube_at_hexagon_by_id('R', 'b2')
@@ -1276,25 +1276,20 @@ class MctsSearcher():
 
     def search(self, state):
 
-        if self.time_limit is not None:
-            # time in milli-seconds
-            self.searcher = mcts.mcts(timeLimit=self.time_limit)
+        use_slices = True
 
-        elif self.iteration_limit is not None:
-            # number of mcts rounds
-            self.searcher = mcts.mcts(iterationLimit=self.iteration_limit)
+        self.searchInit(state)
 
-        if False:
-            action = self.searcher.search(initialState=state)
-        else:
-            self.searcher.searchInit(initialState=state)
-            while not self.searcher.searchEnded():
-                progression = self.searcher.searchGetProgression()
+        if use_slices:
+            while not self.searchEnded():
+                progression = self.searchGetProgression()
                 print(f"progression:{progression:3.0f}")
-                self.searcher.searchRun()
-            progression = self.searcher.searchGetProgression()
+                self.searchRun()
+            progression = self.searchGetProgression()
             print(f"progression:{progression:3.0f}")
-            action = self.searcher.searchGetAction()
+            action = self.searchGetAction()
+        else:
+            action = self.searcher.search(initialState=state)
 
         if constJersi.do_debug:
             statistics = self.searcher.getStatistics(action)
@@ -1306,23 +1301,53 @@ class MctsSearcher():
         return action
 
 
+    def searchInit(self, initialState):
+
+        if self.time_limit is not None:
+            # time in milli-seconds
+            self.searcher = mcts.mcts(timeLimit=self.time_limit)
+
+        elif self.iteration_limit is not None:
+            # number of mcts rounds
+            self.searcher = mcts.mcts(iterationLimit=self.iteration_limit)
+
+        self.searcher.searchInit(initialState)
+
+
+    def searchEnded(self):
+        return self.searcher.searchEnded()
+
+
+    def searchRun(self):
+        self.searcher.searchRun()
+
+
+    def searchGetProgression(self):
+        return self.searcher.searchGetProgression()
+
+
+    def searchGetAction(self):
+        return self.searcher.searchGetAction()
+
+
+
 searcher_catalog = dict()
 
 searcher_catalog["random"] = RandomSearcher()
 
-searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
-searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
-searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
+# searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
+# searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
+# searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
 searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
 searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
-searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
-searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
+# searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
+# searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
 
 searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
-searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
-searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
-searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
-searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
+# searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
+# searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
+# searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
+# searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
 
 
 class Simulation:
