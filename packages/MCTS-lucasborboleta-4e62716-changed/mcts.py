@@ -54,7 +54,7 @@ class mcts():
             while time.time() < timeLimit:
                 self.executeRound()
         else:
-            for _ in range(self.searchLimit):
+            for i in range(self.searchLimit):
                 self.executeRound()
 
         bestChild = self.getBestChild(self.root, 0)
@@ -108,11 +108,21 @@ class mcts():
             else:
                 progression = 100 * ((self.__searchIterationCurrent - self.__searchIterationBegin)/
                                      (self.__searchIterationEnd - self.__searchIterationBegin))
+
         return progression
 
     def searchGetAction(self):
         bestChild = self.getBestChild(self.root, 0)
         return self.getAction(self.root, bestChild)
+
+    def getStatistics(self, action=None):
+        statistics = {}
+        statistics['rootNumVisits'] = self.root.numVisits
+        statistics['rootTotalReward'] = self.root.totalReward
+        if action is not None:
+            statistics['actionNumVisits'] = self.root.children[action].numVisits
+            statistics['actionTotalReward'] = self.root.children[action].totalReward
+        return statistics
 
     def executeRound(self):
         node = self.selectNode(self.root)
@@ -163,12 +173,3 @@ class mcts():
         for action, node in root.children.items():
             if node is bestChild:
                 return action
-
-    def getStatistics(self, action=None):
-        statistics = {}
-        statistics['rootNumVisits'] = self.root.numVisits
-        statistics['rootTotalReward'] = self.root.totalReward
-        if action is not None:
-            statistics['actionNumVisits'] = self.root.children[action].numVisits
-            statistics['actionTotalReward'] = self.root.children[action].totalReward
-        return statistics

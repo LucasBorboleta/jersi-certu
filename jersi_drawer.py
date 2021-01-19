@@ -934,96 +934,38 @@ class JersiState:
     def update(self, simulation):
         self.make_empty_hexagons()
 
-        for hex_index in jersi_certu.constHex.codomain:
+        hexagons = jersi_certu.Hexagon.get_all()
+        cubes = jersi_certu.Cube.get_all()
 
-            hex_label = jersi_certu.constHex.domain[hex_index]
+        for hexagon in hexagons:
 
-            if simulation.js.hex_status[hex_index] == jersi_certu.TypeHexStatus.has_no_cube:
+            hex_index = hexagon.index
+            hex_label = hexagon.name
+
+            if simulation.js.hexagon_bottom[hex_index] == jersi_certu.Null.CUBE:
+                # hexagon has zero cube
                 pass
 
-            elif simulation.js.hex_status[hex_index] == jersi_certu.TypeHexStatus.has_one_cube:
-                bottom_cube_index = simulation.js.hex_bottom[hex_index]
-                bottom_cube_csort_index = jersi_certu.constCube.csort[bottom_cube_index]
-                bottom_cube_label = jersi_certu.TypeCubeColoredSort.domain[bottom_cube_csort_index]
-
+            elif simulation.js.hexagon_top[hex_index] == jersi_certu.Null.CUBE:
+                # hexagon has one cube
+                bottom_cube_index = simulation.js.hexagon_bottom[hex_index]
+                bottom_cube_label = cubes[bottom_cube_index].label
                 self.set_cube_at_position(hex_label, bottom_cube_label)
 
-            elif simulation.js.hex_status[hex_index] == jersi_certu.TypeHexStatus.has_two_cubes:
-                bottom_cube_index = simulation.js.hex_bottom[hex_index]
-                bottom_cube_csort_index = jersi_certu.constCube.csort[bottom_cube_index]
-                bottom_cube_label = jersi_certu.TypeCubeColoredSort.domain[bottom_cube_csort_index]
+            elif simulation.js.hexagon_top[hex_index] != jersi_certu.Null.CUBE:
+                # hexagon has two cubes
 
-                top_cube_index = simulation.js.hex_top[hex_index]
-                top_cube_csort_index = jersi_certu.constCube.csort[top_cube_index]
-                top_cube_label = jersi_certu.TypeCubeColoredSort.domain[top_cube_csort_index]
+                bottom_cube_index = simulation.js.hexagon_bottom[hex_index]
+                bottom_cube_label = cubes[bottom_cube_index].label
+
+                top_cube_index = simulation.js.hexagon_top[hex_index]
+                top_cube_label = cubes[top_cube_index].label
 
                 self.set_cube_at_position(hex_label, bottom_cube_label)
                 self.set_cube_at_position(hex_label, top_cube_label)
 
             else:
                 assert False
-
-
-        # white and black reserves
-
-        cube_reserved_selection = (simulation.js.cube_status == jersi_certu.TypeCubeStatus.reserved)
-
-        white_cube_selection = (jersi_certu.constCube.color == jersi_certu.TypeCubeColor.white)
-        black_cube_selection = (jersi_certu.constCube.color == jersi_certu.TypeCubeColor.black)
-
-        mountain_cube_selection = (jersi_certu.constCube.sort == jersi_certu.TypeCubeSort.mountain)
-        wise_cube_selection = (jersi_certu.constCube.sort == jersi_certu.TypeCubeSort.wise)
-
-        # white reserve
-
-        white_mountain_hex_labels = ['a', 'a', 'b', 'b']
-        white_wise_hex_labels =['c', 'c']
-
-        white_wise_indices = jersi_certu.constCube.codomain[cube_reserved_selection &
-                                                                white_cube_selection
-                                                                & wise_cube_selection]
-
-        white_wise_labels = jersi_certu.TypeCubeColoredSort.domain[jersi_certu.constCube.csort[white_wise_indices]]
-
-        wise_wise_count = white_wise_labels.size
-        for (hex_label, wise_label) in zip(white_wise_hex_labels[:wise_wise_count], white_wise_labels):
-            self.set_cube_at_position(hex_label, wise_label)
-
-        white_mountain_indices = jersi_certu.constCube.codomain[cube_reserved_selection &
-                                                                white_cube_selection
-                                                                & mountain_cube_selection]
-
-        white_mountain_labels = jersi_certu.TypeCubeColoredSort.domain[jersi_certu.constCube.csort[white_mountain_indices]]
-
-        mountain_wise_count = white_mountain_labels.size
-        for (hex_label, mountain_label) in zip(white_mountain_hex_labels[:mountain_wise_count], white_mountain_labels):
-            self.set_cube_at_position(hex_label, mountain_label)
-
-
-        # black reserve
-
-        black_mountain_hex_labels = ['i', 'i', 'h', 'h']
-        black_wise_hex_labels =['g', 'g']
-
-        black_wise_indices = jersi_certu.constCube.codomain[cube_reserved_selection &
-                                                                black_cube_selection
-                                                                & wise_cube_selection]
-
-        black_wise_labels = jersi_certu.TypeCubeColoredSort.domain[jersi_certu.constCube.csort[black_wise_indices]]
-
-        wise_wise_count = black_wise_labels.size
-        for (hex_label, wise_label) in zip(black_wise_hex_labels[:wise_wise_count], black_wise_labels):
-            self.set_cube_at_position(hex_label, wise_label)
-
-        black_mountain_indices = jersi_certu.constCube.codomain[cube_reserved_selection &
-                                                                black_cube_selection
-                                                                & mountain_cube_selection]
-
-        black_mountain_labels = jersi_certu.TypeCubeColoredSort.domain[jersi_certu.constCube.csort[black_mountain_indices]]
-
-        mountain_wise_count = black_mountain_labels.size
-        for (hex_label, mountain_label) in zip(black_mountain_hex_labels[:mountain_wise_count], black_mountain_labels):
-            self.set_cube_at_position(hex_label, mountain_label)
 
 
     def set_cube_at_position(self, position_label, cube_label):
