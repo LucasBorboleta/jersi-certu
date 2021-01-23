@@ -934,8 +934,8 @@ class JersiState:
     def update(self, simulation):
         self.make_empty_hexagons()
 
-        hexagons = jersi_certu.Hexagon.get_all()
-        cubes = jersi_certu.Cube.get_all()
+        hexagons = jersi_certu.Hexagon.get_all_sorted()
+        cubes = jersi_certu.Cube.get_all_sorted()
 
         for hexagon in hexagons:
 
