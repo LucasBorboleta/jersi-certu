@@ -19,14 +19,6 @@ sys.path.append(_mcts_home)
 import mcts
 
 
-def rgb_color_as_hexadecimal(rgb_triplet):
-    (red, green, blue) = rgb_triplet
-    assert 0 <= red <= 255
-    assert 0 <= green <= 255
-    assert 0 <= red <= 255
-    return '#%02x%02x%02x' % (red, green, blue)
-
-
 @enum.unique
 class Capture(enum.Enum):
     KING = enum.auto()
@@ -52,12 +44,12 @@ class CubeStatus(enum.IntEnum):
     RESERVED = -123
 
 
-@enum.unique
-class HexagonColor(enum.Enum):
-    BORDER = rgb_color_as_hexadecimal((191, 89, 52))
-    DARK = rgb_color_as_hexadecimal((166, 109, 60))
-    LIGHT = rgb_color_as_hexadecimal((242, 202, 128))
-    RESERVE = rgb_color_as_hexadecimal((191, 184, 180))
+# @enum.unique
+# class HexagonColor(enum.Enum):
+#     BORDER = rgb_color_as_hexadecimal((191, 89, 52))
+#     DARK = rgb_color_as_hexadecimal((166, 109, 60))
+#     LIGHT = rgb_color_as_hexadecimal((242, 202, 128))
+#     RESERVE = rgb_color_as_hexadecimal((191, 184, 180))
 
 
 @enum.unique
@@ -596,116 +588,6 @@ class Hexagon:
         Hexagon('i5', (-1, 4))
         Hexagon('i6', (0, 4))
         Hexagon('i7', (1, 4))
-
-
-class GraphicalHexagon:
-
-    __all_sorted_hexagons = []
-    __init_done = False
-    __name_to_hexagon = {}
-
-    all = None
-
-
-    def __init__(self, hexagon, color, shift_xy=None):
-
-        assert hexagon.name not in GraphicalHexagon.__name_to_hexagon
-        assert color in HexagonColor
-        assert (shift_xy is not None) == hexagon.reserve
-
-        self.name = hexagon.name
-        self.position_uv = hexagon.position_uv
-        self.reserve = hexagon.reserve
-        self.index = hexagon.index
-        self.color = color
-        self.shift_xy = shift_xy
-
-        GraphicalHexagon.__name_to_hexagon[self.name] = self
-
-
-    def __str__(self):
-        return f"GraphicalHexagon({self.name}, {self.position_uv}, {self.reserve}, {self.index}, {self.color}, {self.shift_xy})"
-
-
-    @staticmethod
-    def get_all_sorted():
-        return GraphicalHexagon.__all_sorted_hexagons
-
-
-    @staticmethod
-    def init():
-        if not GraphicalHexagon.__init_done:
-            GraphicalHexagon.__create_hexagons()
-            GraphicalHexagon.__create_all_sorted_hexagons()
-            GraphicalHexagon.__init_done = True
-
-
-    @staticmethod
-    def show_all():
-        for hexagon in GraphicalHexagon.__all_sorted_hexagons:
-            print(hexagon)
-
-
-    @staticmethod
-    def __create_all_sorted_hexagons():
-        for name in sorted(GraphicalHexagon.__name_to_hexagon.keys()):
-            GraphicalHexagon.__all_sorted_hexagons.append(GraphicalHexagon.__name_to_hexagon[name])
-
-        GraphicalHexagon.all = GraphicalHexagon.__all_sorted_hexagons
-
-
-    @staticmethod
-    def __create_hexagons():
-
-        borders = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7']
-        borders += ['i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7']
-        borders += ['b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1']
-        borders += ['b8', 'c7', 'd8', 'e9', 'f8', 'g7', 'h8']
-
-        darks = ['c3', 'c4', 'c5']
-        darks += ['g3', 'g4', 'g5']
-        darks += ['d3', 'e3', 'f3']
-        darks += ['d6', 'e7', 'f6']
-        darks += ['e5']
-
-        for hexagon in Hexagon.all:
-
-            if hexagon.reserve:
-                color = HexagonColor.RESERVE
-
-                if hexagon.name == 'a':
-                    shift_xy = (0.75, -1.00)
-
-                elif hexagon.name == 'b':
-                    shift_xy = (0.25, 0.00)
-
-                elif hexagon.name == 'c':
-                    shift_xy = (0.75, 1.00)
-
-                elif hexagon.name == 'g':
-                    shift_xy = (-0.75, -1.00)
-
-                elif hexagon.name == 'h':
-                    shift_xy = (-0.25, 0.00)
-
-                elif hexagon.name == 'i':
-                    shift_xy = (-0.75, 1.00)
-
-                else:
-                    assert False
-
-            elif hexagon.name in borders:
-                color = HexagonColor.BORDER
-                shift_xy = None
-
-            elif hexagon.name in darks:
-                color = HexagonColor.DARK
-                shift_xy = None
-            else:
-                color = HexagonColor.LIGHT
-                shift_xy = None
-
-            GraphicalHexagon(hexagon, color, shift_xy)
 
 
 class Notation:
@@ -2134,7 +2016,6 @@ def run_simulation():
 
 Cube.init()
 Hexagon.init()
-GraphicalHexagon.init()
 
 
 if __name__ == "__main__":
