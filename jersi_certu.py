@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""jersi_certu.py implements a rule engine for the JERSI boardgame."""
+
+_COPYRIGHT_AND_LICENSE = """
+JERSI-CERTU implements a GUI and a rule engine for the JERSI boardgame.
+
+Copyright (C) 2020 Lucas Borboleta (lucas.borboleta@free.fr).
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses>.
+"""
 
 
 import array
@@ -109,7 +124,7 @@ class Cube:
     __name_to_cube = {}
     __sort_and_player_to_label = {}
 
-    all = None
+    all = None # shortcut to Cube.get_all()
     black_king_index = None
     white_king_index = None
 
@@ -147,7 +162,7 @@ class Cube:
 
 
     def __str__(self):
-        return f"Cube({self.name}, {self.label}, {self.sort}, {self.player})"
+        return f"Cube({self.name}, {self.label}, {self.sort}, {self.player}, {self.index})"
 
 
     def beats(self, other):
@@ -180,6 +195,11 @@ class Cube:
     @staticmethod
     def get(name):
         return Cube.__name_to_cube[name]
+
+
+    @staticmethod
+    def get_all():
+        return Cube.__all_sorted_cubes
 
 
     @staticmethod
@@ -297,7 +317,7 @@ class Hexagon:
     __next_snd_indices = []
     __position_uv_to_hexagon = {}
 
-    all = None
+    all = None # shortcut to Hexagon.get_all()
 
 
     def __init__(self, name, position_uv, reserve=False):
@@ -328,6 +348,11 @@ class Hexagon:
     @staticmethod
     def get(name):
         return Hexagon.__name_to_hexagon[name]
+
+
+    @staticmethod
+    def get_all():
+        return Hexagon.__all_sorted_hexagons
 
 
     @staticmethod
@@ -732,121 +757,139 @@ class JersiActionAppender:
 class JersiState:
 
     __max_credit = 40
+    # __max_credit = 5 # For debug
     # __max_credit = 10_000 # For debug
 
 
     def __init__(self):
 
-        self.cube_status = None
-        self.hexagon_bottom = None
-        self.hexagon_top = None
+        self.__cube_status = None
+        self.__hexagon_bottom = None
+        self.__hexagon_top = None
 
-        self.credit = JersiState.__max_credit
-        self.player = Player.WHITE
-        self.turn = 1
+        self.__credit = JersiState.__max_credit
+        self.__player = Player.WHITE
+        self.__turn = 1
 
-        self.actions = None
-        self.taken = False
-        self.terminal_case = None
-        self.terminated = None
-        self.rewards = None
+        self.__actions = None
+        self.__taken = False
+        self.__terminal_case = None
+        self.__terminated = None
+        self.__rewards = None
 
         self.___init_hexagon_top_and_bottom()
         self.___init_cube_status()
 
 
+    def __fork(self):
+
+        state = copy.copy(self)
+
+        state.__cube_status = copy.deepcopy(state.__cube_status)
+        state.__hexagon_bottom = copy.deepcopy(state.__hexagon_bottom)
+        state.__hexagon_top = copy.deepcopy(state.__hexagon_top)
+
+        state.__actions = None
+        state.__taken = False
+        state.__terminal_case = None
+        state.__terminated = None
+        state.__rewards = None
+
+        return state
+
+
     def ___init_cube_status(self):
 
-        self.cube_status = array.array('b', [CubeStatus.ACTIVATED for _ in Cube.all])
+        self.__cube_status = array.array('b', [CubeStatus.ACTIVATED for _ in Cube.all])
 
         for (cube_index, cube) in enumerate(Cube.all):
 
             if cube.sort in (CubeSort.MOUNTAIN, CubeSort.WISE):
-                self.cube_status[cube_index] = CubeStatus.RESERVED
+                self.__cube_status[cube_index] = CubeStatus.RESERVED
 
-            if not (cube_index in self.hexagon_bottom or cube_index in self.hexagon_top):
-                self.cube_status[cube_index] = CubeStatus.CAPTURED
+            if not (cube_index in self.__hexagon_bottom or cube_index in self.__hexagon_top):
+                self.__cube_status[cube_index] = CubeStatus.CAPTURED
 
 
     def ___init_hexagon_top_and_bottom(self):
 
-        self.hexagon_top = array.array('b', [Null.CUBE for _ in Hexagon.all])
-        self.hexagon_bottom = array.array('b', [Null.CUBE for _ in Hexagon.all])
+        self.__hexagon_top = array.array('b', [Null.CUBE for _ in Hexagon.all])
+        self.__hexagon_bottom = array.array('b', [Null.CUBE for _ in Hexagon.all])
 
         # whites
-        self.set_cube_at_hexagon_by_names('F1', 'b1')
-        self.set_cube_at_hexagon_by_names('F2', 'b8')
-        self.set_cube_at_hexagon_by_names('K1', 'a4')
+        self.__set_cube_at_hexagon_by_names('F1', 'b1')
+        self.__set_cube_at_hexagon_by_names('F2', 'b8')
+        self.__set_cube_at_hexagon_by_names('K1', 'a4')
 
-        self.set_cube_at_hexagon_by_names('R1', 'b2')
-        self.set_cube_at_hexagon_by_names('P1', 'b3')
-        self.set_cube_at_hexagon_by_names('S1', 'b4')
-        self.set_cube_at_hexagon_by_names('R2', 'b5')
-        self.set_cube_at_hexagon_by_names('P2', 'b6')
-        self.set_cube_at_hexagon_by_names('S2', 'b7')
+        self.__set_cube_at_hexagon_by_names('R1', 'b2')
+        self.__set_cube_at_hexagon_by_names('P1', 'b3')
+        self.__set_cube_at_hexagon_by_names('S1', 'b4')
+        self.__set_cube_at_hexagon_by_names('R2', 'b5')
+        self.__set_cube_at_hexagon_by_names('P2', 'b6')
+        self.__set_cube_at_hexagon_by_names('S2', 'b7')
 
-        self.set_cube_at_hexagon_by_names('R3', 'a3')
-        self.set_cube_at_hexagon_by_names('S3', 'a2')
-        self.set_cube_at_hexagon_by_names('P3', 'a1')
-        self.set_cube_at_hexagon_by_names('S4', 'a5')
-        self.set_cube_at_hexagon_by_names('R4', 'a6')
-        self.set_cube_at_hexagon_by_names('P4', 'a7')
+        self.__set_cube_at_hexagon_by_names('R3', 'a3')
+        self.__set_cube_at_hexagon_by_names('S3', 'a2')
+        self.__set_cube_at_hexagon_by_names('P3', 'a1')
+        self.__set_cube_at_hexagon_by_names('S4', 'a5')
+        self.__set_cube_at_hexagon_by_names('R4', 'a6')
+        self.__set_cube_at_hexagon_by_names('P4', 'a7')
 
         # blacks
-        self.set_cube_at_hexagon_by_names('f1', 'h1')
-        self.set_cube_at_hexagon_by_names('f2', 'h8')
-        self.set_cube_at_hexagon_by_names('k1', 'i4')
+        self.__set_cube_at_hexagon_by_names('f1', 'h1')
+        self.__set_cube_at_hexagon_by_names('f2', 'h8')
+        self.__set_cube_at_hexagon_by_names('k1', 'i4')
 
-        self.set_cube_at_hexagon_by_names('r1', 'h7')
-        self.set_cube_at_hexagon_by_names('p1', 'h6')
-        self.set_cube_at_hexagon_by_names('s1', 'h5')
-        self.set_cube_at_hexagon_by_names('r2', 'h4')
-        self.set_cube_at_hexagon_by_names('p2', 'h3')
-        self.set_cube_at_hexagon_by_names('s2', 'h2')
+        self.__set_cube_at_hexagon_by_names('r1', 'h7')
+        self.__set_cube_at_hexagon_by_names('p1', 'h6')
+        self.__set_cube_at_hexagon_by_names('s1', 'h5')
+        self.__set_cube_at_hexagon_by_names('r2', 'h4')
+        self.__set_cube_at_hexagon_by_names('p2', 'h3')
+        self.__set_cube_at_hexagon_by_names('s2', 'h2')
 
-        self.set_cube_at_hexagon_by_names('r3', 'i5')
-        self.set_cube_at_hexagon_by_names('s3', 'i6')
-        self.set_cube_at_hexagon_by_names('p3', 'i7')
-        self.set_cube_at_hexagon_by_names('s4', 'i3')
-        self.set_cube_at_hexagon_by_names('r4', 'i2')
-        self.set_cube_at_hexagon_by_names('p4', 'i1')
+        self.__set_cube_at_hexagon_by_names('r3', 'i5')
+        self.__set_cube_at_hexagon_by_names('s3', 'i6')
+        self.__set_cube_at_hexagon_by_names('p3', 'i7')
+        self.__set_cube_at_hexagon_by_names('s4', 'i3')
+        self.__set_cube_at_hexagon_by_names('r4', 'i2')
+        self.__set_cube_at_hexagon_by_names('p4', 'i1')
 
         # white reserve
-        self.set_cube_at_hexagon_by_names('W1', 'c')
-        self.set_cube_at_hexagon_by_names('W2', 'c')
+        self.__set_cube_at_hexagon_by_names('W1', 'c')
+        self.__set_cube_at_hexagon_by_names('W2', 'c')
 
-        self.set_cube_at_hexagon_by_names('M1', 'b')
-        self.set_cube_at_hexagon_by_names('M2', 'b')
+        self.__set_cube_at_hexagon_by_names('M1', 'b')
+        self.__set_cube_at_hexagon_by_names('M2', 'b')
 
-        self.set_cube_at_hexagon_by_names('M3', 'a')
-        self.set_cube_at_hexagon_by_names('M4', 'a')
+        self.__set_cube_at_hexagon_by_names('M3', 'a')
+        self.__set_cube_at_hexagon_by_names('M4', 'a')
 
         # black reserve
-        self.set_cube_at_hexagon_by_names('m1', 'i')
-        self.set_cube_at_hexagon_by_names('m2', 'i')
+        self.__set_cube_at_hexagon_by_names('m1', 'i')
+        self.__set_cube_at_hexagon_by_names('m2', 'i')
 
-        self.set_cube_at_hexagon_by_names('m3', 'h')
-        self.set_cube_at_hexagon_by_names('m4', 'h')
+        self.__set_cube_at_hexagon_by_names('m3', 'h')
+        self.__set_cube_at_hexagon_by_names('m4', 'h')
 
-        self.set_cube_at_hexagon_by_names('w1', 'g')
-        self.set_cube_at_hexagon_by_names('w2', 'g')
+        self.__set_cube_at_hexagon_by_names('w1', 'g')
+        self.__set_cube_at_hexagon_by_names('w2', 'g')
 
 
-    def set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
+    def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
         cube_index = Cube.get(cube_name).index
         hexagon_index = Hexagon.get(hexagon_name).index
-        self.set_cube_at_hexagon(cube_index, hexagon_index)
+        self.__set_cube_at_hexagon(cube_index, hexagon_index)
 
 
-    def set_cube_at_hexagon(self, cube_index, hexagon_index):
+    def __set_cube_at_hexagon(self, cube_index, hexagon_index):
 
-        if self.hexagon_bottom[hexagon_index] == Null.CUBE:
+        if self.__hexagon_bottom[hexagon_index] == Null.CUBE:
             # hexagon has zero cube
-            self.hexagon_bottom[hexagon_index] = cube_index
+            self.__hexagon_bottom[hexagon_index] = cube_index
 
-        elif self.hexagon_top[hexagon_index] == Null.CUBE:
+        elif self.__hexagon_top[hexagon_index] == Null.CUBE:
             # hexagon has one cube
-            self.hexagon_top[hexagon_index] = cube_index
+            self.__hexagon_top[hexagon_index] = cube_index
 
         else:
             # hexagon is expected with either zero or one cube
@@ -869,8 +912,8 @@ class JersiState:
                 hexagon = Hexagon.get(hexagon_name)
                 hexagon_index = hexagon.index
 
-                top_index = self.hexagon_top[hexagon_index]
-                bottom_index = self.hexagon_bottom[hexagon_index]
+                top_index = self.__hexagon_top[hexagon_index]
+                bottom_index = self.__hexagon_bottom[hexagon_index]
 
                 if bottom_index == Null.CUBE:
                     row_text += ".."
@@ -893,7 +936,7 @@ class JersiState:
         reserved_labels = collections.Counter()
         captured_labels = collections.Counter()
 
-        for (cube_index, cube_status) in enumerate(self.cube_status):
+        for (cube_index, cube_status) in enumerate(self.__cube_status):
             cube = Cube.all[cube_index]
 
             if cube_status == CubeStatus.RESERVED:
@@ -903,38 +946,29 @@ class JersiState:
                 captured_labels[cube.label] += 1
 
         print()
-        print(f"turn {self.turn} / player {self.player} / credit {self.credit} / " +
+        print(f"turn {self.__turn} / player {self.__player} / credit {self.__credit} / " +
               "reserved %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(reserved_labels.items())]) + " / " +
               "captured %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(captured_labels.items())]))
 
 
-    def fork(self):
-
-        state = copy.copy(self)
-
-        state.cube_status = copy.deepcopy(state.cube_status)
-        state.hexagon_bottom = copy.deepcopy(state.hexagon_bottom)
-        state.hexagon_top = copy.deepcopy(state.hexagon_top)
-
-        state.actions = None
-        state.taken = False
-        state.terminal_case = None
-        state.terminated = None
-        state.rewards = None
-
-        return state
-
-
     def get_current_player(self):
-        return self.player
+        return self.__player
+
+
+    def get_hexagon_bottom(self):
+        return self.__hexagon_bottom
+
+
+    def get_hexagon_top(self):
+        return self.__hexagon_top
 
 
     def get_other_player(self):
 
-        if self.player == Player.WHITE:
+        if self.__player == Player.WHITE:
             return Player.BLACK
 
-        elif self.player == Player.BLACK:
+        elif self.__player == Player.BLACK:
             return Player.WHITE
 
         else:
@@ -943,144 +977,153 @@ class JersiState:
 
     def get_rewards(self):
         assert self.is_terminal()
-        return self.rewards
+        return self.__rewards
+
+
+    def get_terminal_case(self):
+        return self.__terminal_case
+
+
+    def get_turn(self):
+        return self.__turn
 
 
     def take_action(self, action):
 
         state = action.state
 
-        if state.taken == False:
-            state.taken = True
-            state.player = state.get_other_player()
-            state.turn += 1
-            state.credit = max(0, state.credit - 1)
+        if state.__taken == False:
+            state.__taken = True
+            state.__player = state.get_other_player()
+            state.__turn += 1
+            state.__credit = max(0, state.__credit - 1)
 
             if action.capture in (Capture.SOME, Capture.KING):
-                state.credit = JersiState.__max_credit
+                state.__credit = JersiState.__max_credit
 
         return state
 
 
     def is_terminal(self):
 
-        if self.terminated is None:
+        if self.__terminated is None:
 
-            self.terminated = False
+            self.__terminated = False
 
-            white_captured = self.cube_status[Cube.white_king_index] == CubeStatus.CAPTURED
-            black_captured = self.cube_status[Cube.black_king_index] == CubeStatus.CAPTURED
+            white_captured = self.__cube_status[Cube.white_king_index] == CubeStatus.CAPTURED
+            black_captured = self.__cube_status[Cube.black_king_index] == CubeStatus.CAPTURED
 
             white_arrived = False
             black_arrived = False
 
             if not (white_captured or black_captured):
 
-                if Cube.white_king_index in self.hexagon_bottom:
-                    hexagon_index = self.hexagon_bottom.index(Cube.white_king_index)
+                if Cube.white_king_index in self.__hexagon_bottom:
+                    hexagon_index = self.__hexagon_bottom.index(Cube.white_king_index)
                     white_arrived = hexagon_index in Hexagon.get_king_end_indices(Player.WHITE)
 
                 else:
-                    hexagon_index = self.hexagon_top.index(Cube.white_king_index)
+                    hexagon_index = self.__hexagon_top.index(Cube.white_king_index)
                     white_arrived = hexagon_index in Hexagon.get_king_end_indices(Player.WHITE)
 
                 if not white_arrived:
 
-                    if Cube.black_king_index in self.hexagon_bottom:
-                        hexagon_index = self.hexagon_bottom.index(Cube.black_king_index)
+                    if Cube.black_king_index in self.__hexagon_bottom:
+                        hexagon_index = self.__hexagon_bottom.index(Cube.black_king_index)
                         black_arrived = hexagon_index in Hexagon.get_king_end_indices(Player.BLACK)
 
                     else:
-                        hexagon_index = self.hexagon_top.index(Cube.black_king_index)
+                        hexagon_index = self.__hexagon_top.index(Cube.black_king_index)
                         black_arrived = hexagon_index in Hexagon.get_king_end_indices(Player.BLACK)
 
             if white_captured:
                 # white king captured without possible relocation ==> black wins
-                self.terminated = True
-                self.terminal_case = TerminalCase.WHITE_CAPTURED
-                self.rewards = [Reward.DRAW for _ in Player]
-                self.rewards[Player.BLACK] = Reward.WIN
-                self.rewards[Player.WHITE] = Reward.LOSS
+                self.__terminated = True
+                self.__terminal_case = TerminalCase.WHITE_CAPTURED
+                self.__rewards = [Reward.DRAW for _ in Player]
+                self.__rewards[Player.BLACK] = Reward.WIN
+                self.__rewards[Player.WHITE] = Reward.LOSS
 
             elif black_captured:
                 # black king captured without possible relocation ==> white wins
-                self.terminated = True
-                self.terminal_case = TerminalCase.BLACK_CAPTURED
-                self.rewards = [Reward.DRAW for _ in Player]
-                self.rewards[Player.WHITE] = Reward.WIN
-                self.rewards[Player.BLACK] = Reward.LOSS
+                self.__terminated = True
+                self.__terminal_case = TerminalCase.BLACK_CAPTURED
+                self.__rewards = [Reward.DRAW for _ in Player]
+                self.__rewards[Player.WHITE] = Reward.WIN
+                self.__rewards[Player.BLACK] = Reward.LOSS
 
             elif white_arrived:
                 # white arrived at goal ==> white wins
-                self.terminated = True
-                self.terminal_case = TerminalCase.WHITE_ARRIVED
-                self.rewards = [Reward.DRAW for _ in Player]
-                self.rewards[Player.WHITE] = Reward.WIN
-                self.rewards[Player.BLACK] = Reward.LOSS
+                self.__terminated = True
+                self.__terminal_case = TerminalCase.WHITE_ARRIVED
+                self.__rewards = [Reward.DRAW for _ in Player]
+                self.__rewards[Player.WHITE] = Reward.WIN
+                self.__rewards[Player.BLACK] = Reward.LOSS
 
             elif black_arrived:
                 # black arrived at goal ==> black wins
-                self.terminated = True
-                self.terminal_case = TerminalCase.BLACK_ARRIVED
-                self.rewards = [Reward.DRAW for _ in Player]
-                self.rewards[Player.BLACK] = Reward.WIN
-                self.rewards[Player.WHITE] = Reward.LOSS
+                self.__terminated = True
+                self.__terminal_case = TerminalCase.BLACK_ARRIVED
+                self.__rewards = [Reward.DRAW for _ in Player]
+                self.__rewards[Player.BLACK] = Reward.WIN
+                self.__rewards[Player.WHITE] = Reward.LOSS
 
-            elif self.credit == 0:
+            elif self.__credit == 0:
                 # credit is exhausted ==> nobody wins
-                self.terminated = True
-                self.terminal_case = TerminalCase.ZERO_CREDIT
-                self.rewards = [Reward.DRAW for _ in Player]
+                self.__terminated = True
+                self.__terminal_case = TerminalCase.ZERO_CREDIT
+                self.__rewards = [Reward.DRAW for _ in Player]
 
             elif len(self.get_actions()) == 0:
                 # the current player looses and the other player wins
-                self.terminated = True
-                self.rewards = [Reward.DRAW for _ in Player]
+                self.__terminated = True
+                self.__rewards = [Reward.DRAW for _ in Player]
 
-                if self.player == Player.WHITE:
-                    self.terminal_case = TerminalCase.WHITE_BLOCKED
-                    self.rewards[Player.WHITE] = Reward.LOSS
-                    self.rewards[Player.BLACK] = Reward.WIN
+                if self.__player == Player.WHITE:
+                    self.__terminal_case = TerminalCase.WHITE_BLOCKED
+                    self.__rewards[Player.WHITE] = Reward.LOSS
+                    self.__rewards[Player.BLACK] = Reward.WIN
                 else:
-                    self.terminal_case = TerminalCase.BLACK_BLOCKED
-                    self.rewards[Player.BLACK] = Reward.LOSS
-                    self.rewards[Player.WHITE] = Reward.WIN
+                    self.__terminal_case = TerminalCase.BLACK_BLOCKED
+                    self.__rewards[Player.BLACK] = Reward.LOSS
+                    self.__rewards[Player.WHITE] = Reward.WIN
 
-        return self.terminated
+        return self.__terminated
 
 
     def get_actions(self):
-        if self.actions is None:
-            self.actions = self.find_drops() + self.find_moves()
-        return self.actions
+        if self.__actions is None:
+            self.__actions = self.__find_drops() + self.__find_moves()
+        return self.__actions
 
+    ### Action finders
 
-    def find_drops(self):
+    def __find_drops(self):
         action_appender = JersiActionAppender()
 
-        for cube_1_index in self.find_droppable_cubes():
+        for cube_1_index in self.__find_droppable_cubes():
             for destination_1 in Hexagon.get_all_active_indices():
-                action_1 = self.try_drop(cube_1_index, destination_1)
+                action_1 = self.__try_drop(cube_1_index, destination_1)
                 if action_1 is not None:
                     action_appender.append(action_1)
 
-                    state_1 = action_1.state.fork()
+                    state_1 = action_1.state.__fork()
 
-                    for cube_2_index in state_1.find_droppable_cubes():
+                    for cube_2_index in state_1.__find_droppable_cubes():
                         for destination_2 in [destination_1] + Hexagon.get_next_fst_active_indices(destination_1):
-                            action_2 = state_1.try_drop(cube_2_index, destination_2, previous_action=action_1)
+                            action_2 = state_1.__try_drop(cube_2_index, destination_2, previous_action=action_1)
                             if action_2 is not None:
                                 action_appender.append(action_2)
 
         return action_appender.get_actions()
 
 
-    def find_moves(self):
-        actions = self.find_cube_first_moves() + self.find_stack_first_moves()
-        return self.find_king_relocations(actions)
+    def __find_moves(self):
+        actions = self.__find_cube_first_moves() + self.__find_stack_first_moves()
+        return self.__find_king_relocations(actions)
 
 
-    def find_king_relocations(self, move_actions):
+    def __find_king_relocations(self, move_actions):
 
         actions = []
 
@@ -1092,7 +1135,7 @@ class JersiState:
                 can_relocate_king = False
 
                 for destination_king in Hexagon.get_king_begin_indices(king.player):
-                    action_king = action.state.try_relocate_king(king_index, destination_king, previous_action=action)
+                    action_king = action.state.__try_relocate_king(king_index, destination_king, previous_action=action)
                     if action_king is not None:
                         actions.append(action_king)
                         can_relocate_king = True
@@ -1106,88 +1149,89 @@ class JersiState:
         return actions
 
 
-    def find_cube_first_moves(self):
+    def __find_cube_first_moves(self):
         actions = []
 
-        for source_1 in self.find_hexagons_with_movable_cube():
+        for source_1 in self.__find_hexagons_with_movable_cube():
 
             for direction_1 in HexagonDirection:
                 destination_1 = Hexagon.get_next_fst_indices(source_1, direction_1)
                 if destination_1 != Null.HEXAGON:
-                    action_1 = self.try_move_cube(source_1, destination_1)
+                    action_1 = self.__try_move_cube(source_1, destination_1)
                     if action_1 is not None:
                         actions.append(action_1)
 
-                        state_1 = action_1.state.fork()
-                        if state_1.is_hexagon_with_movable_stack(destination_1):
+                        state_1 = action_1.state.__fork()
+                        if state_1.__is_hexagon_with_movable_stack(destination_1):
 
                             for direction_2 in HexagonDirection:
                                 destination_21 = Hexagon.get_next_fst_indices(destination_1, direction_2)
                                 if destination_21 != Null.HEXAGON:
-                                    action_21 = state_1.try_move_stack(destination_1, destination_21, previous_action=action_1)
+                                    action_21 = state_1.__try_move_stack(destination_1, destination_21, previous_action=action_1)
                                     if action_21 is not None:
                                         actions.append(action_21)
 
-                                    if self.hexagon_bottom[destination_21] == Null.CUBE:
+                                    if self.__hexagon_bottom[destination_21] == Null.CUBE:
                                         # stack can cross destination_21 with zero cube
                                         destination_22 = Hexagon.get_next_snd_indices(destination_1, direction_2)
                                         if destination_22 != Null.HEXAGON:
-                                            action_22 = state_1.try_move_stack(destination_1, destination_22, previous_action=action_1)
+                                            action_22 = state_1.__try_move_stack(destination_1, destination_22, previous_action=action_1)
                                             if action_22 is not None:
                                                 actions.append(action_22)
         return actions
 
 
-    def find_stack_first_moves(self):
+    def __find_stack_first_moves(self):
         actions = []
 
-        for source_1 in self.find_hexagons_with_movable_stack():
+        for source_1 in self.__find_hexagons_with_movable_stack():
 
             for direction_1 in HexagonDirection:
                 destination_11 = Hexagon.get_next_fst_indices(source_1, direction_1)
                 if destination_11 != Null.HEXAGON:
-                    action_11 = self.try_move_stack(source_1, destination_11)
+                    action_11 = self.__try_move_stack(source_1, destination_11)
                     if action_11 is not None:
                         actions.append(action_11)
 
-                        state_11 = action_11.state.fork()
+                        state_11 = action_11.state.__fork()
 
                         for direction_21 in HexagonDirection:
                             destination_21 = Hexagon.get_next_fst_indices(destination_11, direction_21)
                             if destination_21 != Null.HEXAGON:
-                                action_21 = state_11.try_move_cube(destination_11, destination_21, previous_action=action_11)
+                                action_21 = state_11.__try_move_cube(destination_11, destination_21, previous_action=action_11)
                                 if action_21 is not None:
                                     actions.append(action_21)
 
-                    if self.hexagon_bottom[destination_11] == Null.CUBE:
+                    if self.__hexagon_bottom[destination_11] == Null.CUBE:
                         # stack can cross destination_11 with zero cube
                         destination_12 = Hexagon.get_next_snd_indices(source_1, direction_1)
                         if destination_12 != Null.HEXAGON:
-                            action_12 = self.try_move_stack(source_1, destination_12)
+                            action_12 = self.__try_move_stack(source_1, destination_12)
                             if action_12 is not None:
                                 actions.append(action_12)
 
-                                state_12 = action_12.state.fork()
+                                state_12 = action_12.state.__fork()
 
                                 for direction_22 in HexagonDirection:
                                     destination_22 = Hexagon.get_next_fst_indices(destination_12, direction_22)
                                     if destination_22 != Null.HEXAGON:
-                                        action_22 = state_12.try_move_cube(destination_12, destination_22, previous_action=action_12)
+                                        action_22 = state_12.__try_move_cube(destination_12, destination_22, previous_action=action_12)
                                         if action_22 is not None:
                                             actions.append(action_22)
         return actions
 
+    ### Cubes and hexagons finders
 
-    def find_droppable_cubes(self):
+    def __find_droppable_cubes(self):
         droppable_cubes = []
 
         mountain_found = False
         wise_found = False
 
-        for (src_cube_index, src_cube_status) in enumerate(self.cube_status):
+        for (src_cube_index, src_cube_status) in enumerate(self.__cube_status):
             if src_cube_status == CubeStatus.RESERVED:
                 cube = Cube.all[src_cube_index]
-                if cube.player == self.player:
+                if cube.player == self.__player:
 
                     if cube.sort == CubeSort.MOUNTAIN and not mountain_found:
                         droppable_cubes.append(src_cube_index)
@@ -1202,101 +1246,103 @@ class JersiState:
         return droppable_cubes
 
 
-    def find_hexagons_with_movable_cube(self):
-         return [x for x in Hexagon.get_all_active_indices() if self.is_hexagon_with_movable_cube(x)]
+    def __find_hexagons_with_movable_cube(self):
+         return [x for x in Hexagon.get_all_active_indices() if self.__is_hexagon_with_movable_cube(x)]
 
 
-    def find_hexagons_with_movable_stack(self):
-        return [x for x in Hexagon.get_all_active_indices() if self.is_hexagon_with_movable_stack(x)]
+    def __find_hexagons_with_movable_stack(self):
+        return [x for x in Hexagon.get_all_active_indices() if self.__is_hexagon_with_movable_stack(x)]
 
+    ### Hexagon predicates
 
-    def is_hexagon_with_movable_cube(self, hexagon_index):
+    def __is_hexagon_with_movable_cube(self, hexagon_index):
         to_be_returned = False
 
         if Hexagon.all[hexagon_index].reserve:
             to_be_returned = False
 
-        elif self.hexagon_top[hexagon_index] != Null.CUBE:
-            cube_index = self.hexagon_top[hexagon_index]
+        elif self.__hexagon_top[hexagon_index] != Null.CUBE:
+            cube_index = self.__hexagon_top[hexagon_index]
             cube = Cube.all[cube_index]
-            if cube.player == self.player and cube.sort != CubeSort.MOUNTAIN:
+            if cube.player == self.__player and cube.sort != CubeSort.MOUNTAIN:
                 to_be_returned = True
 
-        elif self.hexagon_bottom[hexagon_index] != Null.CUBE:
-            cube_index = self.hexagon_bottom[hexagon_index]
+        elif self.__hexagon_bottom[hexagon_index] != Null.CUBE:
+            cube_index = self.__hexagon_bottom[hexagon_index]
             cube = Cube.all[cube_index]
-            if cube.player == self.player and cube.sort != CubeSort.MOUNTAIN:
+            if cube.player == self.__player and cube.sort != CubeSort.MOUNTAIN:
                 to_be_returned = True
 
         return to_be_returned
 
 
-    def is_hexagon_with_movable_stack(self, hexagon_index):
+    def __is_hexagon_with_movable_stack(self, hexagon_index):
         to_be_returned = False
 
         if Hexagon.all[hexagon_index].reserve:
             to_be_returned = False
 
         else:
-            top_index = self.hexagon_top[hexagon_index]
-            bottom_index = self.hexagon_bottom[hexagon_index]
+            top_index = self.__hexagon_top[hexagon_index]
+            bottom_index = self.__hexagon_bottom[hexagon_index]
 
             if top_index != Null.CUBE and bottom_index != Null.CUBE:
 
                 top = Cube.all[top_index]
                 bottom = Cube.all[bottom_index]
 
-                if (top.player == self.player and bottom.player == self.player and
+                if (top.player == self.__player and bottom.player == self.__player and
                     top.sort != CubeSort.MOUNTAIN and bottom.sort != CubeSort.MOUNTAIN):
                     to_be_returned = True
 
         return to_be_returned
 
+    ### Action triers
 
-    def try_drop(self, src_cube_index, dst_hexagon_index, previous_action=None):
+    def __try_drop(self, src_cube_index, dst_hexagon_index, previous_action=None):
 
         src_cube = Cube.all[src_cube_index]
         src_cube_label = src_cube.label
         dst_hexagon_name = Hexagon.all[dst_hexagon_index].name
         notation = Notation.drop_cube(src_cube_label, dst_hexagon_name, previous_action=previous_action)
 
-        if src_cube.player != self.player:
+        if src_cube.player != self.__player:
             action = None
 
         elif src_cube.sort not in (CubeSort.MOUNTAIN, CubeSort.WISE):
             action = None
 
-        elif self.cube_status[src_cube_index] != CubeStatus.RESERVED:
+        elif self.__cube_status[src_cube_index] != CubeStatus.RESERVED:
             action = None
 
         elif Hexagon.all[dst_hexagon_index].reserve:
             action = None
 
-        elif self.hexagon_bottom[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_bottom[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has zero cube
 
-            state = self.fork()
+            state = self.__fork()
 
-            if src_cube_index in state.hexagon_top:
-                src_hexagon_index = state.hexagon_top.index(src_cube_index)
-                state.hexagon_top[src_hexagon_index] = Null.CUBE
+            if src_cube_index in state.__hexagon_top:
+                src_hexagon_index = state.__hexagon_top.index(src_cube_index)
+                state.__hexagon_top[src_hexagon_index] = Null.CUBE
             else:
-                src_hexagon_index = state.hexagon_bottom.index(src_cube_index)
-                state.hexagon_bottom[src_hexagon_index] = Null.CUBE
+                src_hexagon_index = state.__hexagon_bottom.index(src_cube_index)
+                state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
 
             assert Hexagon.all[src_hexagon_index].reserve
 
-            state.hexagon_bottom[dst_hexagon_index] = src_cube_index
-            state.cube_status[src_cube_index] = CubeStatus.ACTIVATED
+            state.__hexagon_bottom[dst_hexagon_index] = src_cube_index
+            state.__cube_status[src_cube_index] = CubeStatus.ACTIVATED
             action = JersiAction(notation, state)
 
-        elif self.hexagon_top[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_top[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has one cube
 
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
-            if dst_bottom.player != self.player:
+            if dst_bottom.player != self.__player:
                 action = None
 
             elif dst_bottom.sort == CubeSort.KING:
@@ -1306,19 +1352,19 @@ class JersiState:
                 action = None
 
             else:
-                state = self.fork()
+                state = self.__fork()
 
-                if src_cube_index in state.hexagon_top:
-                    src_hexagon_index = state.hexagon_top.index(src_cube_index)
-                    state.hexagon_top[src_hexagon_index] = Null.CUBE
+                if src_cube_index in state.__hexagon_top:
+                    src_hexagon_index = state.__hexagon_top.index(src_cube_index)
+                    state.__hexagon_top[src_hexagon_index] = Null.CUBE
                 else:
-                    src_hexagon_index = state.hexagon_bottom.index(src_cube_index)
-                    state.hexagon_bottom[src_hexagon_index] = Null.CUBE
+                    src_hexagon_index = state.__hexagon_bottom.index(src_cube_index)
+                    state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
 
                 assert Hexagon.all[src_hexagon_index].reserve
 
-                state.hexagon_top[dst_hexagon_index] = src_cube_index
-                state.cube_status[src_cube_index] = CubeStatus.ACTIVATED
+                state.__hexagon_top[dst_hexagon_index] = src_cube_index
+                state.__cube_status[src_cube_index] = CubeStatus.ACTIVATED
                 action = JersiAction(notation, state)
 
         else:
@@ -1328,7 +1374,7 @@ class JersiState:
         return action
 
 
-    def try_relocate_king(self, king_index, dst_hexagon_index, previous_action=None):
+    def __try_relocate_king(self, king_index, dst_hexagon_index, previous_action=None):
 
         king = Cube.all[king_index]
         king_label = king.label
@@ -1337,39 +1383,39 @@ class JersiState:
         if king.sort != CubeSort.KING:
             action = None
 
-        elif king.player == self.player:
+        elif king.player == self.__player:
             action = None
 
-        elif self.cube_status[king_index] != CubeStatus.CAPTURED:
+        elif self.__cube_status[king_index] != CubeStatus.CAPTURED:
             action = None
 
         elif dst_hexagon_index not in Hexagon.get_king_begin_indices(king.player):
             action = None
 
-        elif self.hexagon_top[dst_hexagon_index] != Null.CUBE:
+        elif self.__hexagon_top[dst_hexagon_index] != Null.CUBE:
             # hexagon has two cubes
             action = None
 
-        elif self.hexagon_bottom[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_bottom[dst_hexagon_index] == Null.CUBE:
             # hexagon has zero cube
 
-            state = self.fork()
-            state.hexagon_bottom[dst_hexagon_index] = king_index
-            state.cube_status[king_index] = CubeStatus.ACTIVATED
+            state = self.__fork()
+            state.__hexagon_bottom[dst_hexagon_index] = king_index
+            state.__cube_status[king_index] = CubeStatus.ACTIVATED
             notation = Notation.relocate_king(king_label, dst_hexagon_name, previous_action=previous_action)
             action = JersiAction(notation, state, capture=Capture.KING, previous_action=previous_action)
 
         else:
             # hexagon has one cube
 
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
             if dst_bottom.player == king.player or dst_bottom.sort == CubeSort.MOUNTAIN:
 
-                state = self.fork()
-                state.hexagon_top[dst_hexagon_index] = king_index
-                state.cube_status[king_index] = CubeStatus.ACTIVATED
+                state = self.__fork()
+                state.__hexagon_top[dst_hexagon_index] = king_index
+                state.__cube_status[king_index] = CubeStatus.ACTIVATED
                 notation = Notation.relocate_king(king_label, dst_hexagon_name, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=Capture.KING, previous_action=previous_action)
 
@@ -1379,77 +1425,77 @@ class JersiState:
         return action
 
 
-    def try_move_cube(self, src_hexagon_index, dst_hexagon_index, previous_action=None):
+    def __try_move_cube(self, src_hexagon_index, dst_hexagon_index, previous_action=None):
 
         src_hexagon_name = Hexagon.all[src_hexagon_index].name
         dst_hexagon_name = Hexagon.all[dst_hexagon_index].name
 
-        if not self.is_hexagon_with_movable_cube(src_hexagon_index):
+        if not self.__is_hexagon_with_movable_cube(src_hexagon_index):
             action = None
 
         elif Hexagon.all[dst_hexagon_index].reserve:
             action = None
 
-        elif self.hexagon_bottom[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_bottom[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has zero cube
 
-            state = self.fork()
+            state = self.__fork()
 
-            if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                src_cube_index = state.hexagon_top[src_hexagon_index]
-                state.hexagon_top[src_hexagon_index] = Null.CUBE
+            if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                src_cube_index = state.__hexagon_top[src_hexagon_index]
+                state.__hexagon_top[src_hexagon_index] = Null.CUBE
             else:
-                src_cube_index = state.hexagon_bottom[src_hexagon_index]
-                state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-            state.hexagon_bottom[dst_hexagon_index] = src_cube_index
+                src_cube_index = state.__hexagon_bottom[src_hexagon_index]
+                state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+            state.__hexagon_bottom[dst_hexagon_index] = src_cube_index
 
             notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=Capture.NONE, previous_action=previous_action)
             action = JersiAction(notation, state, previous_action=previous_action)
 
-        elif self.hexagon_top[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_top[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has one cube
 
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
-            if self.hexagon_top[src_hexagon_index] != Null.CUBE:
-                src_cube_index = self.hexagon_top[src_hexagon_index]
+            if self.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                src_cube_index = self.__hexagon_top[src_hexagon_index]
             else:
-                src_cube_index = self.hexagon_bottom[src_hexagon_index]
+                src_cube_index = self.__hexagon_bottom[src_hexagon_index]
             src_cube = Cube.all[src_cube_index]
 
             if dst_bottom.sort == CubeSort.MOUNTAIN:
-                state = self.fork()
+                state = self.__fork()
 
-                if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                    state.hexagon_top[src_hexagon_index] = Null.CUBE
+                if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                    state.__hexagon_top[src_hexagon_index] = Null.CUBE
                 else:
-                    state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_top[dst_hexagon_index] = src_cube_index
+                    state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_top[dst_hexagon_index] = src_cube_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=Capture.NONE, previous_action=previous_action)
                 action = JersiAction(notation, state, previous_action=previous_action)
 
-            elif dst_bottom.player != self.player:
+            elif dst_bottom.player != self.__player:
 
                 if src_cube.beats(dst_bottom):
                     # Capture the bottom cube
 
-                    state = self.fork()
+                    state = self.__fork()
 
-                    state.hexagon_bottom[dst_hexagon_index] = Null.CUBE
-                    state.cube_status[dst_bottom_index] = CubeStatus.CAPTURED
+                    state.__hexagon_bottom[dst_hexagon_index] = Null.CUBE
+                    state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                     if dst_bottom.sort == CubeSort.KING:
                         capture = Capture.KING
                     else:
                         capture = Capture.SOME
 
-                    if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                        state.hexagon_top[src_hexagon_index] = Null.CUBE
+                    if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                        state.__hexagon_top[src_hexagon_index] = Null.CUBE
                     else:
-                        state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                    state.hexagon_bottom[dst_hexagon_index] = src_cube_index
+                        state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                    state.__hexagon_bottom[dst_hexagon_index] = src_cube_index
 
                     notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                     action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
@@ -1460,75 +1506,75 @@ class JersiState:
                 action = None
 
             else:
-                state = self.fork()
+                state = self.__fork()
 
-                if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                    state.hexagon_top[src_hexagon_index] = Null.CUBE
+                if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                    state.__hexagon_top[src_hexagon_index] = Null.CUBE
                 else:
-                    state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_top[dst_hexagon_index] = src_cube_index
+                    state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_top[dst_hexagon_index] = src_cube_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=Capture.NONE, previous_action=previous_action)
                 action = JersiAction(notation, state, previous_action=previous_action)
 
         else:
             # destination hexagon has two cubes
-            dst_top_index = self.hexagon_top[dst_hexagon_index]
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_top_index = self.__hexagon_top[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
 
             dst_top = Cube.all[dst_top_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
-            if self.hexagon_top[src_hexagon_index] != Null.CUBE:
-                src_cube_index = self.hexagon_top[src_hexagon_index]
+            if self.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                src_cube_index = self.__hexagon_top[src_hexagon_index]
             else:
-                src_cube_index = self.hexagon_bottom[src_hexagon_index]
+                src_cube_index = self.__hexagon_bottom[src_hexagon_index]
             src_cube = Cube.all[src_cube_index]
 
-            if dst_top.player == self.player:
+            if dst_top.player == self.__player:
                 action = None
 
             elif src_cube.beats(dst_top) and dst_bottom.sort == CubeSort.MOUNTAIN:
                 # Capture the top of the stack
-                state = self.fork()
+                state = self.__fork()
 
-                state.hexagon_top[dst_hexagon_index] = Null.CUBE
-                state.cube_status[dst_top_index] = CubeStatus.CAPTURED
+                state.__hexagon_top[dst_hexagon_index] = Null.CUBE
+                state.__cube_status[dst_top_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
                     capture = Capture.KING
                 else:
                     capture = Capture.SOME
 
-                if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                    state.hexagon_top[src_hexagon_index] = Null.CUBE
+                if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                    state.__hexagon_top[src_hexagon_index] = Null.CUBE
                 else:
-                    state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_top[dst_hexagon_index] = src_cube_index
+                    state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_top[dst_hexagon_index] = src_cube_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
 
             elif src_cube.beats(dst_top) and dst_bottom.sort != CubeSort.MOUNTAIN:
                 # Capture the stack
-                state = self.fork()
+                state = self.__fork()
 
-                state.hexagon_top[dst_hexagon_index] = Null.CUBE
-                state.hexagon_bottom[dst_hexagon_index] = Null.CUBE
+                state.__hexagon_top[dst_hexagon_index] = Null.CUBE
+                state.__hexagon_bottom[dst_hexagon_index] = Null.CUBE
 
-                state.cube_status[dst_top_index] = CubeStatus.CAPTURED
-                state.cube_status[dst_bottom_index] = CubeStatus.CAPTURED
+                state.__cube_status[dst_top_index] = CubeStatus.CAPTURED
+                state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
                     capture = Capture.KING
                 else:
                     capture = Capture.SOME
 
-                if state.hexagon_top[src_hexagon_index] != Null.CUBE:
-                    state.hexagon_top[src_hexagon_index] = Null.CUBE
+                if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
+                    state.__hexagon_top[src_hexagon_index] = Null.CUBE
                 else:
-                    state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_bottom[dst_hexagon_index] = src_cube_index
+                    state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_bottom[dst_hexagon_index] = src_cube_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
@@ -1539,43 +1585,43 @@ class JersiState:
         return action
 
 
-    def try_move_stack(self, src_hexagon_index, dst_hexagon_index, previous_action=None):
+    def __try_move_stack(self, src_hexagon_index, dst_hexagon_index, previous_action=None):
 
         src_hexagon_name = Hexagon.all[src_hexagon_index].name
         dst_hexagon_name = Hexagon.all[dst_hexagon_index].name
 
-        if not self.is_hexagon_with_movable_cube(src_hexagon_index):
+        if not self.__is_hexagon_with_movable_cube(src_hexagon_index):
             action = None
 
         elif Hexagon.all[dst_hexagon_index].reserve:
             action = None
 
-        elif self.hexagon_bottom[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_bottom[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has zero cube
 
-            state = self.fork()
+            state = self.__fork()
 
-            src_bottom_index = state.hexagon_bottom[src_hexagon_index]
-            src_top_index = state.hexagon_top[src_hexagon_index]
+            src_bottom_index = state.__hexagon_bottom[src_hexagon_index]
+            src_top_index = state.__hexagon_top[src_hexagon_index]
 
-            state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-            state.hexagon_top[src_hexagon_index] = Null.CUBE
+            state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+            state.__hexagon_top[src_hexagon_index] = Null.CUBE
 
-            state.hexagon_bottom[dst_hexagon_index] = src_bottom_index
-            state.hexagon_top[dst_hexagon_index] = src_top_index
+            state.__hexagon_bottom[dst_hexagon_index] = src_bottom_index
+            state.__hexagon_top[dst_hexagon_index] = src_top_index
 
             notation = Notation.move_stack(src_hexagon_name, dst_hexagon_name, capture=Capture.NONE, previous_action=previous_action)
             action = JersiAction(notation, state, previous_action=previous_action)
 
-        elif self.hexagon_top[dst_hexagon_index] == Null.CUBE:
+        elif self.__hexagon_top[dst_hexagon_index] == Null.CUBE:
             # destination hexagon has one cube
 
-            src_bottom_index = self.hexagon_bottom[src_hexagon_index]
-            src_top_index = self.hexagon_top[src_hexagon_index]
+            src_bottom_index = self.__hexagon_bottom[src_hexagon_index]
+            src_top_index = self.__hexagon_top[src_hexagon_index]
 
             src_top = Cube.all[src_top_index]
 
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
             if src_top.player == dst_bottom.player:
@@ -1583,21 +1629,21 @@ class JersiState:
 
             elif src_top.beats(dst_bottom):
                 # capture the bottom cube
-                state = self.fork()
+                state = self.__fork()
 
-                state.hexagon_bottom[dst_hexagon_index] = Null.CUBE
-                state.cube_status[dst_bottom_index] = CubeStatus.CAPTURED
+                state.__hexagon_bottom[dst_hexagon_index] = Null.CUBE
+                state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                 if dst_bottom.sort == CubeSort.KING:
                     capture = Capture.KING
                 else:
                     capture = Capture.SOME
 
-                state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_top[src_hexagon_index] = Null.CUBE
+                state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_top[src_hexagon_index] = Null.CUBE
 
-                state.hexagon_bottom[dst_hexagon_index] = src_bottom_index
-                state.hexagon_top[dst_hexagon_index] = src_top_index
+                state.__hexagon_bottom[dst_hexagon_index] = src_bottom_index
+                state.__hexagon_top[dst_hexagon_index] = src_top_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
@@ -1608,15 +1654,15 @@ class JersiState:
         else:
             # destination hexagon has two cubes
 
-            src_top_index = self.hexagon_top[src_hexagon_index]
+            src_top_index = self.__hexagon_top[src_hexagon_index]
             src_top = Cube.all[src_top_index]
 
-            src_bottom_index = self.hexagon_bottom[src_hexagon_index]
+            src_bottom_index = self.__hexagon_bottom[src_hexagon_index]
 
-            dst_top_index = self.hexagon_top[dst_hexagon_index]
+            dst_top_index = self.__hexagon_top[dst_hexagon_index]
             dst_top = Cube.all[dst_top_index]
 
-            dst_bottom_index = self.hexagon_bottom[dst_hexagon_index]
+            dst_bottom_index = self.__hexagon_bottom[dst_hexagon_index]
             dst_bottom = Cube.all[dst_bottom_index]
 
             if src_top.player == dst_top.player:
@@ -1624,24 +1670,24 @@ class JersiState:
 
             elif src_top.beats(dst_top) and dst_bottom.sort != CubeSort.MOUNTAIN:
                 # capture the stack
-                state = self.fork()
+                state = self.__fork()
 
-                state.hexagon_bottom[dst_hexagon_index] = Null.CUBE
-                state.hexagon_top[dst_hexagon_index] = Null.CUBE
+                state.__hexagon_bottom[dst_hexagon_index] = Null.CUBE
+                state.__hexagon_top[dst_hexagon_index] = Null.CUBE
 
-                state.cube_status[dst_bottom_index] = CubeStatus.CAPTURED
-                state.cube_status[dst_top_index] = CubeStatus.CAPTURED
+                state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
+                state.__cube_status[dst_top_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
                     capture = Capture.KING
                 else:
                     capture = Capture.SOME
 
-                state.hexagon_bottom[src_hexagon_index] = Null.CUBE
-                state.hexagon_top[src_hexagon_index] = Null.CUBE
+                state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
+                state.__hexagon_top[src_hexagon_index] = Null.CUBE
 
-                state.hexagon_bottom[dst_hexagon_index] = src_bottom_index
-                state.hexagon_top[dst_hexagon_index] = src_top_index
+                state.__hexagon_bottom[dst_hexagon_index] = src_bottom_index
+                state.__hexagon_top[dst_hexagon_index] = src_top_index
 
                 notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
@@ -1660,14 +1706,10 @@ class MctsState:
         self.__maximizer_player = maximizer_player
 
 
-    def __getPreviousPlayer(self):
-       return -self.getCurrentPlayer()
-
-
     def getCurrentPlayer(self):
        """ Returns 1 if it is the maximizer player's turn to choose an action,
        or -1 for the minimiser player"""
-       return 1 if self.__jersi_state.player == self.__maximizer_player else -1
+       return 1 if self.__jersi_state.get_current_player() == self.__maximizer_player else -1
 
 
     def isTerminal(self):
@@ -1736,6 +1778,7 @@ def run_game(do_print=True):
 
             # action = random.choice(actions)
             # statistics = None
+
         else:
             action = random.choice(actions)
             statistics = None
@@ -1762,7 +1805,7 @@ def run_game(do_print=True):
             rewards = state.get_rewards()
             player = state.get_current_player()
 
-            print(f"{state.terminal_case}")
+            print(f"{state.get_terminal_case()}")
 
             if rewards[Player.WHITE] == rewards[Player.BLACK]:
                 text = f"nobody wins ; the game is a draw between {Player.name(Player.WHITE)} and {Player.name(Player.BLACK)}"
@@ -1779,9 +1822,9 @@ def run_game(do_print=True):
         else:
             assert False
 
-        print(f"{action_count_total} possible actions over {state.turn} turns ; {action_count_total/state.turn:.1f} average possible actions per turn")
+        print(f"{action_count_total} possible actions over {state.get_turn()} turns ; {action_count_total/state.get_turn():.1f} average possible actions per turn")
 
-    return state.terminal_case
+    return state.get_terminal_case()
 
 
 class RandomSearcher():
@@ -1874,19 +1917,19 @@ searcher_catalog["random"] = RandomSearcher()
 
 searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
 searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
-searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
-searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
-searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
-searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
-searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
-searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
+# searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
+# searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
+# searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
+# searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
+# searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
+# searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
 
-searcher_catalog["mcts-i-10"] = MctsSearcher(iteration_limit=10)
-searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
-searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
-searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
-searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
-searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
+# searcher_catalog["mcts-i-10"] = MctsSearcher(iteration_limit=10)
+# searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
+# searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
+# searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
+# searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
+# searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
 
 
 class Simulation:
@@ -2019,17 +2062,26 @@ def run_simulation():
         simulation.next_turn()
 
 
-Cube.init()
-Hexagon.init()
-
-
-if __name__ == "__main__":
-    if True:
-        run_games()
+def main():
+    print("Hello")
+    print(_COPYRIGHT_AND_LICENSE)
 
     if False:
+        run_games()
+
+    if True:
         run_simulation()
 
     if False:
         cProfile.run("run_games()")
         #print(timeit.timeit("main()", setup="from __main__ import main", number=1))
+
+    print("Bye")
+
+
+Cube.init()
+Hexagon.init()
+
+
+if __name__ == "__main__":
+    main()

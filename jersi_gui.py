@@ -1,12 +1,11 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Nov 21 15:03:54 2020
 
-@author: Lucas Borboleta
-"""
+"""jersi_gui.py implements a GUI for the JERSI boardgame."""
+
 
 _COPYRIGHT_AND_LICENSE = """
-JERSI-DRAWER draws a vectorial picture of JERSI boardgame state from an abstract state.
+JERSI-CERTU implements a GUI and a rule engine for the JERSI boardgame.
 
 Copyright (C) 2020 Lucas Borboleta (lucas.borboleta@free.fr).
 
@@ -23,60 +22,15 @@ import math
 import os
 import sys
 
-JERSI_HOME = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(JERSI_HOME)
-
-import jersi_certu
-
 import tkinter as tk
 from tkinter import font
 from tkinter import ttk
 
 import numpy as np
 
-
-# File path containing the icon to be displayed in the title bar of Jersi GUI
-JERSI_ICON_FILE = os.path.join(JERSI_HOME, 'jersi.ico')
-
-# Canvas x-y dimensions in pixels
-CANVAS_RATIO = 1
-CANVAS_HEIGHT = 600
-CANVAS_WIDTH = int(CANVAS_HEIGHT * CANVAS_RATIO)
-
-# Canvas x-y dimensions in hexagon units
-NX = 9 + 2
-NY = 9
-
-# Hexagon geometrical data
-HEXA_VERTEX_COUNT = 6
-HEXA_SIDE_ANGLE = 2*math.pi/HEXA_VERTEX_COUNT
-HEXA_WIDTH = min(CANVAS_HEIGHT, CANVAS_WIDTH) / max(NX, NY)
-HEXA_SIDE = HEXA_WIDTH*math.tan(HEXA_SIDE_ANGLE/2)
-HEXA_DELTA_Y = math.sqrt(HEXA_SIDE**2 -(HEXA_WIDTH/2)**2)
-
-# Cube (square) geometrical data
-CUBE_VERTEX_COUNT = 4
-CUBE_SIDE_ANGLE = math.pi/2
-
-# Font used for text in the canvas
-FONT_FAMILY = 'Calibri'
-FONT_LABEL_SIZE = int(0.30*HEXA_SIDE) # size for 'e5', 'f5' ...
-FONT_FACE_SIZE = int(0.50*HEXA_SIDE)  # size for 'K', 'F' ...
-
-# Geometrical line widths
-CUBE_LINE_WIDTH = int(0.05*HEXA_SIDE)
-HEXA_LINE_WIDTH = int(0.02*HEXA_SIDE)
-
-# Origin of the orthonormal x-y frame and the oblic u-v frame
-ORIGIN = np.array((CANVAS_WIDTH/2, CANVAS_HEIGHT/2))
-
-# Unit vectors of the orthonormal x-y frame
-UNIT_X = np.array((1, 0))
-UNIT_Y = np.array((0, -1))
-
-# Unit vectors of the oblic u-v frame
-UNIT_U = UNIT_X
-UNIT_V = math.cos(HEXA_SIDE_ANGLE)*UNIT_X + math.sin(HEXA_SIDE_ANGLE)*UNIT_Y
+_script_home = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(_script_home)
+import jersi_certu
 
 
 def rgb_color_as_hexadecimal(rgb_triplet):
@@ -87,9 +41,56 @@ def rgb_color_as_hexadecimal(rgb_triplet):
     return '#%02x%02x%02x' % (red, green, blue)
 
 
-class CubeConfig(enum.Enum):
+class AppConfig:
+    # File path containing the icon to be displayed in the title bar of Jersi GUI
+    ICON_FILE = os.path.join(_script_home, 'jersi.ico')
+
+
+class CanvasConfig:
+    # Canvas x-y dimensions in pixels
+    RATIO = 1
+    HEIGHT = 600
+    WIDTH = int(HEIGHT*RATIO)
+
+    # Canvas x-y dimensions in hexagon units
+    NX = 9 + 2
+    NY = 9
+
+    # Hexagon geometrical data
+    HEXA_VERTEX_COUNT = 6
+    HEXA_SIDE_ANGLE = 2*math.pi/HEXA_VERTEX_COUNT
+    HEXA_WIDTH = min(HEIGHT, WIDTH) / max(NX, NY)
+    HEXA_SIDE = HEXA_WIDTH*math.tan(HEXA_SIDE_ANGLE/2)
+    HEXA_DELTA_Y = math.sqrt(HEXA_SIDE**2 -(HEXA_WIDTH/2)**2)
+
+    # Cube (square) geometrical data
+    CUBE_VERTEX_COUNT = 4
+    CUBE_SIDE_ANGLE = math.pi/2
+
+    # Font used for text in the canvas
+    FONT_FAMILY = 'Calibri'
+    FONT_LABEL_SIZE = int(0.30*HEXA_SIDE) # size for 'e5', 'f5' ...
+    FONT_FACE_SIZE = int(0.50*HEXA_SIDE)  # size for 'K', 'F' ...
+
+    # Geometrical line widths
+    CUBE_LINE_WIDTH = int(0.05*HEXA_SIDE)
+    HEXA_LINE_WIDTH = int(0.02*HEXA_SIDE)
+
+    # Origin of the orthonormal x-y frame and the oblic u-v frame
+    ORIGIN = np.array((WIDTH/2, HEIGHT/2))
+
+    # Unit vectors of the orthonormal x-y frame
+    UNIT_X = np.array((1, 0))
+    UNIT_Y = np.array((0, -1))
+
+    # Unit vectors of the oblic u-v frame
+    UNIT_U = UNIT_X
+    UNIT_V = math.cos(HEXA_SIDE_ANGLE)*UNIT_X + math.sin(HEXA_SIDE_ANGLE)*UNIT_Y
+
+
+class CubeLocation(enum.Enum):
     BOTTOM = enum.auto()
-    SINGLE = enum.auto()
+    MIDDLE = enum.auto()
     TOP = enum.auto()
 
 
@@ -137,7 +138,8 @@ class GraphicalHexagon:
 
         if relative_shift_xy is not None:
             (shift_x, shift_y) = relative_shift_xy
-            self.shift_xy = shift_x*HEXA_WIDTH*UNIT_X + shift_y*HEXA_DELTA_Y*UNIT_Y
+            self.shift_xy = (shift_x*CanvasConfig.HEXA_WIDTH*CanvasConfig.UNIT_X +
+                             shift_y*CanvasConfig.HEXA_DELTA_Y*CanvasConfig.UNIT_Y)
         else:
             self.shift_xy = None
 
@@ -229,317 +231,438 @@ class GraphicalHexagon:
             GraphicalHexagon(hexagon, color, relative_shift_xy)
 
 
-class GraphicalState:
-
-    def __init__(self, jersi_state=None):
-        self.hexagon_content = None
-        self.__make_empty_hexagons()
-
-        if jersi_state is not None:
-            self.update(jersi_state)
-
-
-    def __make_empty_hexagons(self):
-        if self.hexagon_content is None:
-            self.hexagon_content = dict()
-
-        for hexagon in GraphicalHexagon.all:
-            self.hexagon_content[hexagon.name] = [None, None]
-
-
-    def update(self, jersi_state):
-        self.__make_empty_hexagons()
-
-        for hexagon in jersi_certu.Hexagon.all:
-
-            hexagon_index = hexagon.index
-            hexagon_name = hexagon.name
-
-            if jersi_state.hexagon_bottom[hexagon_index] == jersi_certu.Null.CUBE:
-                # hexagon has zero cube
-                pass
-
-            elif jersi_state.hexagon_top[hexagon_index] == jersi_certu.Null.CUBE:
-                # hexagon has one cube
-                bottom_index = jersi_state.hexagon_bottom[hexagon_index]
-                bottom = jersi_certu.Cube.all[bottom_index]
-
-                self.hexagon_content[hexagon_name][0] = (bottom.sort, bottom.player, bottom.label)
-
-            elif jersi_state.hexagon_top[hexagon_index] != jersi_certu.Null.CUBE:
-                # hexagon has two cubes
-
-                bottom_index = jersi_state.hexagon_bottom[hexagon_index]
-                bottom = jersi_certu.Cube.all[bottom_index]
-
-                top_index = jersi_state.hexagon_top[hexagon_index]
-                top = jersi_certu.Cube.all[top_index]
-
-                self.hexagon_content[hexagon_name][0] = (bottom.sort, bottom.player, bottom.label)
-                self.hexagon_content[hexagon_name][1] = (top.sort, top.player, top.label)
-
-            else:
-                assert False
-
-
 class GameGui(tk.Frame):
 
 
     def __init__(self):
 
-        self.face_drawers = dict()
-        self.face_drawers[jersi_certu.CubeSort.FOUL] = self.draw_foul_face
-        self.face_drawers[jersi_certu.CubeSort.KING] = self.draw_king_face
-        self.face_drawers[jersi_certu.CubeSort.PAPER] = self.draw_paper_face
-        self.face_drawers[jersi_certu.CubeSort.ROCK] = self.draw_rock_face
-        self.face_drawers[jersi_certu.CubeSort.SCISSORS] = self.draw_scissors_face
-        self.face_drawers[jersi_certu.CubeSort.MOUNTAIN] = self.draw_mountain_face
-        self.face_drawers[jersi_certu.CubeSort.WISE] = self.draw_wise_face
+        self.__face_drawers = dict()
+        self.__face_drawers[jersi_certu.CubeSort.FOUL] = self.__draw_foul_face
+        self.__face_drawers[jersi_certu.CubeSort.KING] = self.__draw_king_face
+        self.__face_drawers[jersi_certu.CubeSort.PAPER] = self.__draw_paper_face
+        self.__face_drawers[jersi_certu.CubeSort.ROCK] = self.__draw_rock_face
+        self.__face_drawers[jersi_certu.CubeSort.SCISSORS] = self.__draw_scissors_face
+        self.__face_drawers[jersi_certu.CubeSort.MOUNTAIN] = self.__draw_mountain_face
+        self.__face_drawers[jersi_certu.CubeSort.WISE] = self.__draw_wise_face
 
 
         # Draw faces of cubes ?
         # If 'False' the just display letter representing the sort of the cube
-        self.draw_cube_faces = False
+        self.__draw_cube_faces = False
 
         # Draw reserve ?
-        self.draw_reserve = True
+        self.__draw_reserve = True
 
-        self.simulation_started = False
-        self.simulation = None
-        self.state = GraphicalState()
+        self.__simulation_started = False
+        self.__simulation = None
+        self.__jersi_state = jersi_certu.JersiState()
 
-        self.use_white_ia = True
-        self.use_black_ia = True
+        self.__use_white_ia = True
+        self.__use_black_ia = True
 
-        self.master = tk.Tk()
-        super().__init__(self.master)
+        self.__master = tk.Tk()
+        super().__init__(self.__master)
 
-        tk.Tk.iconbitmap(self.master, default=JERSI_ICON_FILE)
-        tk.Tk.wm_title(self.master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
+        tk.Tk.iconbitmap(self.__master, default=AppConfig.ICON_FILE)
+        tk.Tk.wm_title(self.__master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
 
-        self.create_widgets()
+        self.__create_widgets()
 
-        self.draw_state()
+        self.__draw_state()
 
-        if self.simulation_started:
-            self.variable_log.set("jersi started")
+        if self.__simulation_started:
+            self.__variable_log.set("jersi started")
         else:
-            self.variable_log.set("jersi stopped")
+            self.__variable_log.set("jersi stopped")
 
 
-    def create_widgets(self):
+    def __create_widgets(self):
 
         searcher_catalog_names = list(jersi_certu.searcher_catalog.keys())
         searcher_catalog_names.sort()
         searcher_catalog_names_width = max(map(len, searcher_catalog_names))
 
-        self.canvas = tk.Canvas(self.master,
-                                height=CANVAS_HEIGHT,
-                                width=CANVAS_WIDTH)
+        self.__canvas = tk.Canvas(self.__master,
+                                height=CanvasConfig.HEIGHT,
+                                width=CanvasConfig.WIDTH)
 
-        self.progressbar = ttk.Progressbar(self.master,
+        self.__progressbar = ttk.Progressbar(self.__master,
                                             orient=tk.HORIZONTAL,
                                             length=300,
                                             maximum=100,
                                             mode='determinate')
 
-        self.variable_log = tk.StringVar()
-        self.label_log = tk.Label(self.master,
-                                  textvariable=self.variable_log,
+        self.__variable_log = tk.StringVar()
+        self.__label_log = tk.Label(self.__master,
+                                  textvariable=self.__variable_log,
                                   width=90,
                                   foreground='red')
 
-        self.label_white_player = tk.Label(self.master, text='White')
+        self.__label_white_player = tk.Label(self.__master, text='White')
 
-        self.variable_white_ia = tk.BooleanVar()
-        self.variable_white_ia.set(self.use_white_ia)
-        self.button_white_ia = ttk.Checkbutton (self.master,
+        self.__variable_white_ia = tk.BooleanVar()
+        self.__variable_white_ia.set(self.__use_white_ia)
+        self.__button_white_ia = ttk.Checkbutton (self.__master,
                                        text='IA',
-                                       command=self.command_toggle_white_ia,
-                                       variable=self.variable_white_ia)
+                                       command=self.__command_toggle_white_ia,
+                                       variable=self.__variable_white_ia)
 
-        self.variable_white_player = tk.StringVar()
-        self.combobox_white_player = ttk.Combobox(self.master,
+        self.__variable_white_player = tk.StringVar()
+        self.__combobox_white_player = ttk.Combobox(self.__master,
                                                   width=searcher_catalog_names_width,
-                                                  textvariable=self.variable_white_player,
+                                                  textvariable=self.__variable_white_player,
                                                   values=searcher_catalog_names)
-        self.combobox_white_player.config(state="readonly")
-        self.variable_white_player.set(searcher_catalog_names[0])
+        self.__combobox_white_player.config(state="readonly")
+        self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.label_black_player = tk.Label(self.master, text='Black')
+        self.__label_black_player = tk.Label(self.__master, text='Black')
 
-        self.variable_black_ia = tk.BooleanVar()
-        self.variable_black_ia.set(self.use_black_ia)
-        self.button_black_ia = ttk.Checkbutton (self.master,
+        self.__variable_black_ia = tk.BooleanVar()
+        self.__variable_black_ia.set(self.__use_black_ia)
+        self.__button_black_ia = ttk.Checkbutton (self.__master,
                                        text='IA',
-                                       command=self.command_toggle_black_ia,
-                                       variable=self.variable_black_ia)
+                                       command=self.__command_toggle_black_ia,
+                                       variable=self.__variable_black_ia)
 
-        self.variable_black_player = tk.StringVar()
-        self.combobox_black_player = ttk.Combobox(self.master,
+        self.__variable_black_player = tk.StringVar()
+        self.__combobox_black_player = ttk.Combobox(self.__master,
                                                   width=searcher_catalog_names_width,
-                                                  textvariable=self.variable_black_player,
+                                                  textvariable=self.__variable_black_player,
                                                   values=searcher_catalog_names)
-        self.combobox_black_player.config(state="readonly")
-        self.variable_black_player.set(searcher_catalog_names[0])
+        self.__combobox_black_player.config(state="readonly")
+        self.__variable_black_player.set(searcher_catalog_names[0])
 
-        self.variable_face = tk.BooleanVar()
-        self.variable_face.set(self.draw_cube_faces)
-        self.button_face = ttk.Checkbutton (self.master,
+        self.__variable_face = tk.BooleanVar()
+        self.__variable_face.set(self.__draw_cube_faces)
+        self.__button_face = ttk.Checkbutton (self.__master,
                                        text='Icon faces',
-                                       command=self.command_toggle_face,
-                                       variable=self.variable_face)
+                                       command=self.__command_toggle_face,
+                                       variable=self.__variable_face)
 
-        self.variable_reserve = tk.BooleanVar()
-        self.variable_reserve.set(self.draw_reserve)
-        self.button_reserve = ttk.Checkbutton (self.master,
+        self.__variable_reserve = tk.BooleanVar()
+        self.__variable_reserve.set(self.__draw_reserve)
+        self.__button_reserve = ttk.Checkbutton (self.__master,
                                        text='Reserve',
-                                       command=self.command_toggle_reserve,
-                                       variable=self.variable_reserve)
+                                       command=self.__command_toggle_reserve,
+                                       variable=self.__variable_reserve)
 
-        self.button_quit = ttk.Button(self.master,
+        self.__button_quit = ttk.Button(self.__master,
                                  text='Quit',
-                                 command=self.master.destroy)
+                                 command=self.__master.destroy)
 
-        self.button_start_stop = ttk.Button(self.master,
+        self.__button_start_stop = ttk.Button(self.__master,
                                   text='Start',
-                                  command=self.command_start_stop)
+                                  command=self.__command_start_stop)
 
         # row 0
 
-        self.button_start_stop.grid(row=0, column=0, sticky=tk.W)
+        self.__button_start_stop.grid(row=0, column=0, sticky=tk.W)
 
-        self.label_white_player.grid(row=0, column=1)
-        self.button_white_ia.grid(row=0, column=2)
-        self.combobox_white_player.grid(row=0, column=3)
+        self.__label_white_player.grid(row=0, column=1)
+        self.__button_white_ia.grid(row=0, column=2)
+        self.__combobox_white_player.grid(row=0, column=3)
 
-        self.label_black_player.grid(row=0, column=4)
-        self.button_black_ia.grid(row=0, column=5)
-        self.combobox_black_player.grid(row=0, column=6)
+        self.__label_black_player.grid(row=0, column=4)
+        self.__button_black_ia.grid(row=0, column=5)
+        self.__combobox_black_player.grid(row=0, column=6)
 
-        self.button_face.grid(row=0, column=7)
-        self.button_reserve.grid(row=0, column=8)
+        self.__button_face.grid(row=0, column=7)
+        self.__button_reserve.grid(row=0, column=8)
 
-        self.button_quit.grid(row=0, column=9, sticky=tk.E)
+        self.__button_quit.grid(row=0, column=9, sticky=tk.E)
 
         # row 1
-        self.progressbar.grid(row=1, columnspan=10)
+        self.__progressbar.grid(row=1, columnspan=10)
 
         # row 2
-        self.label_log.grid(row=2, columnspan=10)
+        self.__label_log.grid(row=2, columnspan=10)
 
         # row 3
-        self.canvas.grid(row=3, columnspan=10)
+        self.__canvas.grid(row=3, columnspan=10)
 
 
-    def command_toggle_white_ia(self):
-        self.variable_log.set("toggle white IA ...")
+    def __command_toggle_white_ia(self):
+        self.__variable_log.set("toggle white IA ...")
 
-        self.use_white_ia = self.variable_white_ia.get()
+        self.__use_white_ia = self.__variable_white_ia.get()
 
-        if self.use_white_ia:
-           self.combobox_white_player.config(state="readonly")
+        if self.__use_white_ia:
+           self.__combobox_white_player.config(state="readonly")
         else:
-           self.combobox_white_player.config(state="disabled")
+           self.__combobox_white_player.config(state="disabled")
 
-        self.variable_log.set("toggle white IA done")
+        self.__variable_log.set("toggle white IA done")
 
 
-    def command_toggle_black_ia(self):
-        self.variable_log.set("toggle black IA ...")
+    def __command_toggle_black_ia(self):
+        self.__variable_log.set("toggle black IA ...")
 
-        self.use_black_ia = self.variable_black_ia.get()
+        self.__use_black_ia = self.__variable_black_ia.get()
 
-        if self.use_black_ia:
-           self.combobox_black_player.config(state="readonly")
+        if self.__use_black_ia:
+           self.__combobox_black_player.config(state="readonly")
         else:
-           self.combobox_black_player.config(state="disabled")
+           self.__combobox_black_player.config(state="disabled")
 
-        self.variable_log.set("toggle black IA done")
-
-
-    def command_toggle_face(self):
-        self.variable_log.set("toggle face ...")
-
-        self.draw_cube_faces = self.variable_face.get()
-        self.draw_state()
-
-        self.variable_log.set("toggle face done")
+        self.__variable_log.set("toggle black IA done")
 
 
-    def command_toggle_reserve(self):
-        self.variable_log.set("toggle reserve ...")
+    def __command_toggle_face(self):
+        self.__variable_log.set("toggle face ...")
 
-        self.draw_reserve = self.variable_reserve.get()
-        self.draw_state()
+        self.__draw_cube_faces = self.__variable_face.get()
+        self.__draw_state()
 
-        self.variable_log.set("toggle reserve done")
-
-
-    def command_start_stop(self):
-
-        self.simulation_started = not self.simulation_started
-
-        if self.simulation_started:
-
-           self.combobox_white_player.config(state="disabled")
-           self.combobox_black_player.config(state="disabled")
-
-           self.simulation = jersi_certu.Simulation()
-           self.simulation.set_white_player(self.variable_white_player.get())
-           self.simulation.set_black_player(self.variable_black_player.get())
-           self.simulation.start()
-
-           self.state = GraphicalState(self.simulation.js)
-           self.draw_state()
-
-           self.variable_log.set("jersi started")
-           self.button_start_stop.configure(text="Stop")
-
-           self.canvas.after(1000, self.next_step)
-
-        else:
-           self.combobox_white_player.config(state="readonly")
-           self.combobox_black_player.config(state="readonly")
-
-           self.variable_log.set("jersi stopped")
-           self.button_start_stop.configure(text="Start")
+        self.__variable_log.set("toggle face done")
 
 
-    def next_step(self):
+    def __command_toggle_reserve(self):
+        self.__variable_log.set("toggle reserve ...")
 
-        if self.simulation.has_next_turn():
+        self.__draw_reserve = self.__variable_reserve.get()
+        self.__draw_state()
 
-            self.simulation.next_turn()
-            self.state.update(self.simulation.js)
-            self.draw_state()
+        self.__variable_log.set("toggle reserve done")
 
-            if self.simulation_started:
-                self.canvas.after(1000, self.next_step)
-                self.variable_log.set(self.simulation.get_log())
+
+    def __command_start_stop(self):
+
+        self.__simulation_started = not self.__simulation_started
+
+        if self.__simulation_started:
+
+           self.__combobox_white_player.config(state="disabled")
+           self.__combobox_black_player.config(state="disabled")
+
+           self.__simulation = jersi_certu.Simulation()
+           self.__simulation.set_white_player(self.__variable_white_player.get())
+           self.__simulation.set_black_player(self.__variable_black_player.get())
+           self.__simulation.start()
+
+           self.__jersi_state = self.__simulation.js
+           self.__draw_state()
+
+           self.__variable_log.set("jersi started")
+           self.__button_start_stop.configure(text="Stop")
+
+           self.__canvas.after(1000, self.__next_step)
 
         else:
-           self.combobox_white_player.config(state="readonly")
-           self.combobox_black_player.config(state="readonly")
+           self.__combobox_white_player.config(state="readonly")
+           self.__combobox_black_player.config(state="readonly")
 
-           self.simulation_started = False
-           self.button_start_stop.configure(text="Start")
+           self.__variable_log.set("jersi stopped")
+           self.__button_start_stop.configure(text="Start")
 
 
-    def draw_king_face(self, cube_center, cube_vertices, face_color):
+    def __next_step(self):
+
+        if self.__simulation.has_next_turn():
+
+            self.__simulation.next_turn()
+            self.__jersi_state = self.__simulation.js
+            self.__draw_state()
+
+            if self.__simulation_started:
+                self.__canvas.after(1000, self.__next_step)
+                self.__variable_log.set(self.__simulation.get_log())
+
+        else:
+           self.__combobox_white_player.config(state="readonly")
+           self.__combobox_black_player.config(state="readonly")
+
+           self.__simulation_started = False
+           self.__button_start_stop.configure(text="Start")
+
+
+    ### Drawer iterators
+
+    def __draw_state(self):
+
+        self.__canvas.delete('all')
+        self.__draw_all_hexagons()
+        self.__draw_all_cubes()
+
+
+    def __draw_all_cubes(self):
+
+        hexagon_top =  self.__jersi_state.get_hexagon_top()
+        hexagon_bottom =  self.__jersi_state.get_hexagon_bottom()
+
+        for hexagon in jersi_certu.Hexagon.all:
+
+            top_index = hexagon_top[hexagon.index]
+            bottom_index = hexagon_bottom[hexagon.index]
+
+            if top_index != jersi_certu.Null.CUBE and bottom_index != jersi_certu.Null.CUBE:
+
+                top = jersi_certu.Cube.all[top_index]
+                bottom = jersi_certu.Cube.all[bottom_index]
+
+                self.__draw_cube(name=hexagon.name, config=CubeLocation.TOP,
+                               color=top.player, cube_sort=top.sort, cube_label=top.label)
+
+                self.__draw_cube(name=hexagon.name, config=CubeLocation.BOTTOM,
+                               color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
+
+            elif top_index != jersi_certu.Null.CUBE:
+
+                top = jersi_certu.Cube.all[top_index]
+
+                self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
+                               color=top.player, cube_sort=top.sort, cube_label=top.label)
+
+            elif bottom_index != jersi_certu.Null.CUBE:
+
+                bottom = jersi_certu.Cube.all[bottom_index]
+
+                self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
+                               color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
+
+            else:
+                pass
+
+
+    def __draw_all_hexagons(self):
+
+        for hexagon in GraphicalHexagon.all:
+
+            self.__draw_hexagon(position_uv=hexagon.position_uv,
+                         fill_color=hexagon.color.value,
+                         label=hexagon.name,
+                         reserve=hexagon.reserve,
+                         shift_xy=hexagon.shift_xy)
+
+    ### Drawer primitives
+
+    def __draw_hexagon(self, position_uv, fill_color='', label='', reserve=False, shift_xy=None):
+
+        if reserve and not self.__draw_reserve:
+            return
+
+        (u, v) = position_uv
+
+        hexagon_center = CanvasConfig.ORIGIN + CanvasConfig.HEXA_WIDTH*(u*CanvasConfig.UNIT_U + v*CanvasConfig.UNIT_V)
+
+        if shift_xy is not None:
+            hexagon_center = hexagon_center + shift_xy
+
+        hexagon_data = list()
+
+        for vertex_index in range(CanvasConfig.HEXA_VERTEX_COUNT):
+            vertex_angle = (1/2 + vertex_index)*CanvasConfig.HEXA_SIDE_ANGLE
+
+            hexagon_vertex = hexagon_center
+            hexagon_vertex = hexagon_vertex + CanvasConfig.HEXA_SIDE*math.cos(vertex_angle)*CanvasConfig.UNIT_X
+            hexagon_vertex = hexagon_vertex + CanvasConfig.HEXA_SIDE*math.sin(vertex_angle)*CanvasConfig.UNIT_Y
+
+            hexagon_data.append(hexagon_vertex[0])
+            hexagon_data.append(hexagon_vertex[1])
+
+            if vertex_index == 3:
+                label_position = (hexagon_vertex +
+                                  0.25*CanvasConfig.HEXA_SIDE*(CanvasConfig.UNIT_X + 0.75*CanvasConfig.UNIT_Y))
+
+
+        if reserve:
+            polygon_line_color = HexagonLineColor.RESERVE.value
+        else:
+            polygon_line_color = HexagonLineColor.NORMAL.value
+
+        self.__canvas.create_polygon(hexagon_data,
+                              fill=fill_color,
+                              outline=polygon_line_color,
+                              width=CanvasConfig.HEXA_LINE_WIDTH,
+                              joinstyle=tk.MITER)
+
+        if label and not reserve:
+            label_font = font.Font(family=CanvasConfig.FONT_FAMILY, size=CanvasConfig.FONT_LABEL_SIZE, weight='bold')
+
+            self.__canvas.create_text(*label_position, text=label, justify=tk.CENTER, font=label_font)
+
+
+    def __draw_cube(self, name, config, color, cube_sort, cube_label):
+
+        hexagon = GraphicalHexagon.get(name)
+
+        if hexagon.reserve and not self.__draw_reserve:
+            return
+
+        (u, v) = hexagon.position_uv
+
+        hexagon_center = CanvasConfig.ORIGIN + CanvasConfig.HEXA_WIDTH*(u*CanvasConfig.UNIT_U + v*CanvasConfig.UNIT_V)
+
+        if hexagon.shift_xy is not None:
+            hexagon_center = hexagon_center + hexagon.shift_xy
+
+        cube_vertices = list()
+
+        for vertex_index in range(CanvasConfig.CUBE_VERTEX_COUNT):
+            vertex_angle = (1/2 + vertex_index)*CanvasConfig.CUBE_SIDE_ANGLE
+
+            if config == CubeLocation.MIDDLE:
+                cube_center = hexagon_center
+
+            elif config == CubeLocation.BOTTOM:
+                cube_center = hexagon_center - 0.40*CanvasConfig.HEXA_SIDE*CanvasConfig.UNIT_Y
+
+            elif config == CubeLocation.TOP:
+                cube_center = hexagon_center + 0.40*CanvasConfig.HEXA_SIDE*CanvasConfig.UNIT_Y
+
+            cube_vertex = cube_center
+            cube_vertex = cube_vertex + 0.5*CanvasConfig.HEXA_SIDE*math.cos(vertex_angle)*CanvasConfig.UNIT_X
+            cube_vertex = cube_vertex + 0.5*CanvasConfig.HEXA_SIDE*math.sin(vertex_angle)*CanvasConfig.UNIT_Y
+
+            cube_vertices.append(cube_vertex)
+
+
+        if color == jersi_certu.Player.BLACK:
+            fill_color = CubeColor.BLACK.value
+            face_color = CubeColor.WHITE.value
+
+        elif color == jersi_certu.Player.WHITE:
+            fill_color = CubeColor.WHITE.value
+            face_color = CubeColor.BLACK.value
+
+        else:
+            assert False
+
+
+        line_color = ''
+
+        cube_vertex_NW = cube_vertices[1]
+        cube_vertex_SE = cube_vertices[3]
+
+        self.__canvas.create_rectangle(*cube_vertex_NW, *cube_vertex_SE,
+                                fill=fill_color,
+                                outline=line_color)
+
+        if self.__draw_cube_faces:
+            self.__face_drawers[cube_sort](cube_center, cube_vertices, face_color)
+
+        else:
+            face_font = font.Font(family=CanvasConfig.FONT_FAMILY, size=CanvasConfig.FONT_FACE_SIZE, weight='bold')
+
+            self.__canvas.create_text(*cube_center,
+                               text=cube_label,
+                               justify=tk.CENTER,
+                               font=face_font,
+                               fill=face_color)
+
+    def __draw_king_face(self, cube_center, cube_vertices, face_color):
         pass
 
 
-    def draw_foul_face(self, cube_center, cube_vertices, face_color):
+    def __draw_foul_face(self, cube_center, cube_vertices, face_color):
 
 
         def rotate_90_degrees(vector):
             """Rotate 90 degrees counter clock"""
-            projection_x = np.inner(vector, UNIT_X)
-            projection_y = np.inner(vector, UNIT_Y)
-            rotated_unit_x = UNIT_Y
-            rotated_unit_y = -UNIT_X
+            projection_x = np.inner(vector, CanvasConfig.UNIT_X)
+            projection_y = np.inner(vector, CanvasConfig.UNIT_Y)
+            rotated_unit_x = CanvasConfig.UNIT_Y
+            rotated_unit_y = -CanvasConfig.UNIT_X
             return projection_x*rotated_unit_x + projection_y*rotated_unit_y
 
 
@@ -568,108 +691,108 @@ class GameGui(tk.Frame):
         angle_epsilon = 0.01*180
 
         (p1, p2) = square_for_circle_by_two_points(cube_center, face_vertex_SC)
-        self.canvas.create_arc(*p1, *p2,
+        self.__canvas.create_arc(*p1, *p2,
                           start=90,
                           extent=180,
                           fill='',
                           outline=face_color,
                           style=tk.ARC,
-                          width=CUBE_LINE_WIDTH)
+                          width=CanvasConfig.CUBE_LINE_WIDTH)
 
         (p1, p2) = square_for_circle_by_two_points(face_vertex_NC, face_vertex_SC)
-        self.canvas.create_arc(*p1, *p2,
+        self.__canvas.create_arc(*p1, *p2,
                           start=-90 - angle_epsilon,
                           extent=180 + angle_epsilon,
                           fill='',
                           outline=face_color,
                           style=tk.ARC,
-                          width=CUBE_LINE_WIDTH)
+                          width=CanvasConfig.CUBE_LINE_WIDTH)
 
         (p1, p2) = square_for_circle_by_two_points(face_vertex_NC, face_vertex_S)
-        self.canvas.create_arc(*p1, *p2,
+        self.__canvas.create_arc(*p1, *p2,
                           start=90 - angle_epsilon,
                           extent=180 + angle_epsilon,
                           fill='',
                           outline=face_color,
                           style=tk.ARC,
-                          width=CUBE_LINE_WIDTH)
+                          width=CanvasConfig.CUBE_LINE_WIDTH)
 
         (p1, p2) = square_for_circle_by_two_points(face_vertex_N, face_vertex_S)
-        self.canvas.create_arc(*p1, *p2,
+        self.__canvas.create_arc(*p1, *p2,
                           start=-90 - angle_epsilon,
                           extent=180 + 45 + angle_epsilon,
                           fill='',
                           outline=face_color,
                           style=tk.ARC,
-                          width=CUBE_LINE_WIDTH)
+                          width=CanvasConfig.CUBE_LINE_WIDTH)
 
         # >> canvas doesn't provide rounded capstype for arc
         # >> so let add one small circle at each edge of the spiral
 
         # add small circle at the inner edge of the spiral
 
-        inner_edge_top = cube_center + CUBE_LINE_WIDTH*0.5*UNIT_Y
-        edge_edge_bottom = cube_center - CUBE_LINE_WIDTH*0.5*UNIT_Y
+        inner_edge_top = cube_center + CanvasConfig.CUBE_LINE_WIDTH*0.5*CanvasConfig.UNIT_Y
+        edge_edge_bottom = cube_center - CanvasConfig.CUBE_LINE_WIDTH*0.5*CanvasConfig.UNIT_Y
 
         (p1, p2) = square_for_circle_by_two_points(inner_edge_top, edge_edge_bottom)
-        self.canvas.create_oval(*p1, *p2,
+        self.__canvas.create_oval(*p1, *p2,
                            fill=face_color,
                            outline='')
 
         # add small circle at the outer edge of the spiral
 
-        outer_edge_middle = cube_center + cube_side/2*(UNIT_Y - UNIT_X)/math.sqrt(2)
+        outer_edge_middle = cube_center + cube_side/2*(CanvasConfig.UNIT_Y - CanvasConfig.UNIT_X)/math.sqrt(2)
 
-        outer_edge_top = outer_edge_middle + CUBE_LINE_WIDTH*0.5*UNIT_Y
-        outer_edge_bottom = outer_edge_middle - CUBE_LINE_WIDTH*0.5*UNIT_Y
+        outer_edge_top = outer_edge_middle + CanvasConfig.CUBE_LINE_WIDTH*0.5*CanvasConfig.UNIT_Y
+        outer_edge_bottom = outer_edge_middle - CanvasConfig.CUBE_LINE_WIDTH*0.5*CanvasConfig.UNIT_Y
 
         (p1, p2) = square_for_circle_by_two_points(outer_edge_top, outer_edge_bottom)
-        self.canvas.create_oval(*p1, *p2,
+        self.__canvas.create_oval(*p1, *p2,
                            fill=face_color,
                            outline='')
 
 
-    def draw_paper_face(self, cube_center, cube_vertices, face_color):
+    def __draw_paper_face(self, cube_center, cube_vertices, face_color):
 
         face_vertex_NW = 0.5*cube_center + 0.5*cube_vertices[1]
         face_vertex_SE = 0.5*cube_center + 0.5*cube_vertices[3]
 
-        self.canvas.create_rectangle(*face_vertex_NW, *face_vertex_SE,
+        self.__canvas.create_rectangle(*face_vertex_NW, *face_vertex_SE,
                                 fill='',
                                 outline=face_color,
-                                width=CUBE_LINE_WIDTH)
+                                width=CanvasConfig.CUBE_LINE_WIDTH)
 
 
-    def draw_rock_face(self, cube_center, cube_vertices, face_color):
+    def __draw_rock_face(self, cube_center, cube_vertices, face_color):
 
         face_vertex_NW = 0.5*cube_center + 0.5*cube_vertices[1]
         face_vertex_SE = 0.5*cube_center + 0.5*cube_vertices[3]
 
-        self.canvas.create_oval(*face_vertex_NW, *face_vertex_SE,
+        self.__canvas.create_oval(*face_vertex_NW, *face_vertex_SE,
                            fill='',
                            outline=face_color,
-                           width=CUBE_LINE_WIDTH)
+                           width=CanvasConfig.CUBE_LINE_WIDTH)
 
 
-    def draw_scissors_face(self, cube_center, cube_vertices, face_color):
+    def __draw_scissors_face(self, cube_center, cube_vertices, face_color):
 
         face_vertex_NE = 0.5*cube_center + 0.5*cube_vertices[0]
         face_vertex_NW = 0.5*cube_center + 0.5*cube_vertices[1]
         face_vertex_SW = 0.5*cube_center + 0.5*cube_vertices[2]
         face_vertex_SE = 0.5*cube_center + 0.5*cube_vertices[3]
 
-        self.canvas.create_line(*face_vertex_NE, *face_vertex_SW,
+        self.__canvas.create_line(*face_vertex_NE, *face_vertex_SW,
                            fill=face_color,
-                           width=CUBE_LINE_WIDTH,
+                           width=CanvasConfig.CUBE_LINE_WIDTH,
                            capstyle=tk.ROUND)
 
-        self.canvas.create_line(*face_vertex_NW, *face_vertex_SE,
+        self.__canvas.create_line(*face_vertex_NW, *face_vertex_SE,
                            fill=face_color,
-                           width=CUBE_LINE_WIDTH,
+                           width=CanvasConfig.CUBE_LINE_WIDTH,
                            capstyle=tk.ROUND)
 
 
-    def draw_mountain_face(self, cube_center, cube_vertices, face_color):
+    def __draw_mountain_face(self, cube_center, cube_vertices, face_color):
 
         face_vertex_NE = 0.5*cube_center + 0.5*cube_vertices[0]
         face_vertex_NW = 0.5*cube_center + 0.5*cube_vertices[1]
@@ -684,22 +807,22 @@ class GameGui(tk.Frame):
 
         face_data = [*face_N, *face_W, *face_E]
 
-        self.canvas.create_polygon(face_data,
+        self.__canvas.create_polygon(face_data,
                               fill='',
                               outline=face_color,
-                              width=CUBE_LINE_WIDTH,
+                              width=CanvasConfig.CUBE_LINE_WIDTH,
                               joinstyle=tk.ROUND)
 
         face_data = [*face_S, *face_W, *face_E]
 
-        self.canvas.create_polygon(face_data,
+        self.__canvas.create_polygon(face_data,
                               fill='',
                               outline=face_color,
-                              width=CUBE_LINE_WIDTH,
+                              width=CanvasConfig.CUBE_LINE_WIDTH,
                               joinstyle=tk.ROUND)
 
 
-    def draw_wise_face(self, cube_center, cube_vertices, face_color):
+    def __draw_wise_face(self, cube_center, cube_vertices, face_color):
 
         draw_lemniscate = True
 
@@ -742,168 +865,13 @@ class GameGui(tk.Frame):
             wise_data.extend(face_vertex_NE)
             wise_data.extend(face_vertex_SW)
 
-        self.canvas.create_polygon(wise_data,
+        self.__canvas.create_polygon(wise_data,
                               fill='',
                               outline=face_color,
-                              width=CUBE_LINE_WIDTH,
+                              width=CanvasConfig.CUBE_LINE_WIDTH,
                               joinstyle=tk.ROUND,
                               smooth=True)
 
-
-    def draw_all_hexagons(self):
-
-        for hexagon in GraphicalHexagon.all:
-
-            self.draw_hexagon(position_uv=hexagon.position_uv,
-                         fill_color=hexagon.color.value,
-                         label=hexagon.name,
-                         reserve=hexagon.reserve,
-                         shift_xy=hexagon.shift_xy)
-
-
-    def draw_hexagon(self, position_uv, fill_color='', label='', reserve=False, shift_xy=None):
-
-        if reserve and not self.draw_reserve:
-            return
-
-        (u, v) = position_uv
-
-        hexagon_center = ORIGIN + HEXA_WIDTH*(u*UNIT_U + v*UNIT_V)
-
-        if shift_xy is not None:
-            hexagon_center = hexagon_center + shift_xy
-
-        hexagon_data = list()
-
-        for vertex_index in range(HEXA_VERTEX_COUNT):
-            vertex_angle = (1/2 + vertex_index)*HEXA_SIDE_ANGLE
-
-            hexagon_vertex = hexagon_center
-            hexagon_vertex = hexagon_vertex + HEXA_SIDE*math.cos(vertex_angle)*UNIT_X
-            hexagon_vertex = hexagon_vertex + HEXA_SIDE*math.sin(vertex_angle)*UNIT_Y
-
-            hexagon_data.append(hexagon_vertex[0])
-            hexagon_data.append(hexagon_vertex[1])
-
-            if vertex_index == 3:
-                label_position = hexagon_vertex + 0.25*HEXA_SIDE*(UNIT_X + 0.75*UNIT_Y)
-
-
-        if reserve:
-            polygon_line_color = HexagonLineColor.RESERVE.value
-        else:
-            polygon_line_color = HexagonLineColor.NORMAL.value
-
-        self.canvas.create_polygon(hexagon_data,
-                              fill=fill_color,
-                              outline=polygon_line_color,
-                              width=HEXA_LINE_WIDTH,
-                              joinstyle=tk.MITER)
-
-        if label and not reserve:
-            label_font = font.Font(family=FONT_FAMILY, size=FONT_LABEL_SIZE, weight='bold')
-
-            self.canvas.create_text(*label_position, text=label, justify=tk.CENTER, font=label_font)
-
-
-    def draw_cube(self, name, config, color, cube_sort, cube_label):
-
-        hexagon = GraphicalHexagon.get(name)
-
-        if hexagon.reserve and not self.draw_reserve:
-            return
-
-        (u, v) = hexagon.position_uv
-
-        hexagon_center = ORIGIN + HEXA_WIDTH*(u*UNIT_U + v*UNIT_V)
-
-        if hexagon.shift_xy is not None:
-            hexagon_center = hexagon_center + hexagon.shift_xy
-
-        cube_vertices = list()
-
-        for vertex_index in range(CUBE_VERTEX_COUNT):
-            vertex_angle = (1/2 + vertex_index)*CUBE_SIDE_ANGLE
-
-            if config == CubeConfig.SINGLE:
-                cube_center = hexagon_center
-
-            elif config == CubeConfig.BOTTOM:
-                cube_center = hexagon_center - 0.40*HEXA_SIDE*UNIT_Y
-
-            elif config == CubeConfig.TOP:
-                cube_center = hexagon_center + 0.40*HEXA_SIDE*UNIT_Y
-
-            cube_vertex = cube_center
-            cube_vertex = cube_vertex + 0.5*HEXA_SIDE*math.cos(vertex_angle)*UNIT_X
-            cube_vertex = cube_vertex + 0.5*HEXA_SIDE*math.sin(vertex_angle)*UNIT_Y
-
-            cube_vertices.append(cube_vertex)
-
-
-        if color == jersi_certu.Player.BLACK:
-            fill_color = CubeColor.BLACK.value
-            face_color = CubeColor.WHITE.value
-
-        elif color == jersi_certu.Player.WHITE:
-            fill_color = CubeColor.WHITE.value
-            face_color = CubeColor.BLACK.value
-
-        else:
-            assert False
-
-
-        line_color = ''
-
-        cube_vertex_NW = cube_vertices[1]
-        cube_vertex_SE = cube_vertices[3]
-
-        self.canvas.create_rectangle(*cube_vertex_NW, *cube_vertex_SE,
-                                fill=fill_color,
-                                outline=line_color)
-
-        if self.draw_cube_faces:
-            self.face_drawers[cube_sort](cube_center, cube_vertices, face_color)
-
-        else:
-            face_font = font.Font(family=FONT_FAMILY, size=FONT_FACE_SIZE, weight='bold')
-
-            self.canvas.create_text(*cube_center,
-                               text=cube_label,
-                               justify=tk.CENTER,
-                               font=face_font,
-                               fill=face_color)
-
-
-    def draw_state(self):
-
-        self.canvas.delete('all')
-
-        self.draw_all_hexagons()
-
-        for (hexagon_name, hexagon_state) in self.state.hexagon_content.items():
-
-            if hexagon_state[1] is not None:
-
-                (cube_sort, cube_color, cube_label) = hexagon_state[1]
-
-                self.draw_cube(name=hexagon_name, config=CubeConfig.TOP,
-                               color=cube_color, cube_sort=cube_sort, cube_label=cube_label)
-
-                (cube_sort, cube_color, cube_label) = hexagon_state[0]
-
-                self.draw_cube(name=hexagon_name, config=CubeConfig.BOTTOM,
-                          color=cube_color, cube_sort=cube_sort, cube_label=cube_label)
-
-            elif hexagon_state[0] is not None:
-
-                (cube_sort, cube_color, cube_label) = hexagon_state[0]
-
-                self.draw_cube(name=hexagon_name, config=CubeConfig.SINGLE,
-                          color=cube_color, cube_sort=cube_sort, cube_label=cube_label)
-
-            else:
-                pass
 
 
 GraphicalHexagon.init()
@@ -911,7 +879,6 @@ GraphicalHexagon.init()
 
 def main():
     print("Hello")
-
     print(_COPYRIGHT_AND_LICENSE)
 
     game_gui = GameGui()
