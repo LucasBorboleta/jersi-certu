@@ -44,14 +44,6 @@ class CubeStatus(enum.IntEnum):
     RESERVED = -123
 
 
-# @enum.unique
-# class HexagonColor(enum.Enum):
-#     BORDER = rgb_color_as_hexadecimal((191, 89, 52))
-#     DARK = rgb_color_as_hexadecimal((166, 109, 60))
-#     LIGHT = rgb_color_as_hexadecimal((242, 202, 128))
-#     RESERVE = rgb_color_as_hexadecimal((191, 184, 180))
-
-
 @enum.unique
 class HexagonDirection(enum.IntEnum):
     PHI_090 = 0
@@ -759,8 +751,8 @@ class JersiState:
         self.terminated = None
         self.rewards = None
 
-        self.___init_cube_status()
         self.___init_hexagon_top_and_bottom()
+        self.___init_cube_status()
 
 
     def ___init_cube_status(self):
@@ -768,8 +760,12 @@ class JersiState:
         self.cube_status = array.array('b', [CubeStatus.ACTIVATED for _ in Cube.all])
 
         for (cube_index, cube) in enumerate(Cube.all):
+
             if cube.sort in (CubeSort.MOUNTAIN, CubeSort.WISE):
                 self.cube_status[cube_index] = CubeStatus.RESERVED
+
+            if not (cube_index in self.hexagon_bottom or cube_index in self.hexagon_top):
+                self.cube_status[cube_index] = CubeStatus.CAPTURED
 
 
     def ___init_hexagon_top_and_bottom(self):
@@ -1659,9 +1655,9 @@ class JersiState:
 class MctsState:
     """Adaptater to mcts.StateInterface for JersiState"""
 
-    def __init__(self, jersi_state, mcts_player):
+    def __init__(self, jersi_state, maximizer_player):
         self.__jersi_state = jersi_state
-        self.__mcts_player = mcts_player
+        self.__maximizer_player = maximizer_player
 
 
     def __getPreviousPlayer(self):
@@ -1671,10 +1667,7 @@ class MctsState:
     def getCurrentPlayer(self):
        """ Returns 1 if it is the maximizer player's turn to choose an action,
        or -1 for the minimiser player"""
-       if self.__jersi_state.player == self.__mcts_player:
-           return 1
-       else:
-           return -1
+       return 1 if self.__jersi_state.player == self.__maximizer_player else -1
 
 
     def isTerminal(self):
@@ -1682,11 +1675,22 @@ class MctsState:
 
 
     def getReward(self):
-        # >> reward for the previous player from the perspective of JersiState
-        # >> <mcts.StateInterface current player> == <JersiState previous player>
-        previous_player = self.__jersi_state.get_other_player()
-        previous_reward = self.__jersi_state.get_rewards()[previous_player]
-        return previous_reward*self.__getPreviousPlayer()
+        """Returns the reward for this state: 0 for a draw,
+        positive for a win by maximizer player or negative for a win by the minimizer player.
+        Only needed for terminal states."""
+
+        jersi_rewards = self.__jersi_state.get_rewards()
+
+        if jersi_rewards[self.__maximizer_player] == Reward.DRAW:
+            mcts_reward = 0
+
+        elif jersi_rewards[self.__maximizer_player] == Reward.WIN:
+            mcts_reward = 1
+
+        else:
+            mcts_reward = -1
+
+        return mcts_reward
 
 
     def getPossibleActions(self):
@@ -1694,7 +1698,7 @@ class MctsState:
 
 
     def takeAction(self, action):
-        return MctsState(self.__jersi_state.take_action(action), self.__mcts_player)
+        return MctsState(self.__jersi_state.take_action(action), self.__maximizer_player)
 
 
 def extractStatistics(mcts_searcher, action):
@@ -1709,8 +1713,9 @@ def extractStatistics(mcts_searcher, action):
 def run_game(do_print=True):
 
     #searcher = mcts.mcts(timeLimit=2*60_000) # 2 minutes
+    searcher = mcts.mcts(timeLimit=2_000) # 2 seconds
     #searcher = mcts.mcts(timeLimit=30_000) # 30 seconds
-    searcher = mcts.mcts(iterationLimit=10)
+    # searcher = mcts.mcts(iterationLimit=10)
 
     action_count_total = 0
 
@@ -1726,11 +1731,11 @@ def run_game(do_print=True):
         player = state.get_current_player()
 
         if player == Player.WHITE:
-            # action = searcher.search(initialState=MctsState(state, player))
-            # statistics = extractStatistics(searcher, action)
+            action = searcher.search(initialState=MctsState(state, player))
+            statistics = extractStatistics(searcher, action)
 
-            action = random.choice(actions)
-            statistics = None
+            # action = random.choice(actions)
+            # statistics = None
         else:
             action = random.choice(actions)
             statistics = None
@@ -1867,21 +1872,21 @@ searcher_catalog = dict()
 
 searcher_catalog["random"] = RandomSearcher()
 
-# searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
-# searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
-# searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
-# searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
-# searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
-# searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
-# searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
-# searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
+searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
+searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
+searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
+searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
+searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
+searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
+searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
+searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
 
 searcher_catalog["mcts-i-10"] = MctsSearcher(iteration_limit=10)
-# searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
-# searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
-# searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
-# searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
-# searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
+searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
+searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
+searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
+searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
+searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
 
 
 class Simulation:
