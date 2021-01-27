@@ -266,6 +266,10 @@ class GameGui(tk.Frame):
         tk.Tk.iconbitmap(self.__master, default=AppConfig.ICON_FILE)
         tk.Tk.wm_title(self.__master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
 
+        if False:
+            # an attempt for increasing the canvas rendering, ... that does not work !
+            self.__master.tk.call('tk', 'scaling', '-displayof', '.', 0.75)
+
         self.__create_widgets()
 
         self.__draw_state()
