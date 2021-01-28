@@ -253,8 +253,8 @@ class GameGui(tk.Frame):
         # Draw reserve ?
         self.__draw_reserve = True
 
-        self.__simulation_started = False
-        self.__simulation = None
+        self.__game_started = False
+        self.__game = None
         self.__jersi_state = jersi_certu.JersiState()
 
         self.__use_white_ia = True
@@ -274,7 +274,7 @@ class GameGui(tk.Frame):
 
         self.__draw_state()
 
-        if self.__simulation_started:
+        if self.__game_started:
             self.__variable_log.set("jersi started")
         else:
             self.__variable_log.set("jersi stopped")
@@ -432,19 +432,19 @@ class GameGui(tk.Frame):
 
     def __command_start_stop(self):
 
-        self.__simulation_started = not self.__simulation_started
+        self.__game_started = not self.__game_started
 
-        if self.__simulation_started:
+        if self.__game_started:
 
            self.__combobox_white_player.config(state="disabled")
            self.__combobox_black_player.config(state="disabled")
 
-           self.__simulation = jersi_certu.Simulation()
-           self.__simulation.set_white_player(self.__variable_white_player.get())
-           self.__simulation.set_black_player(self.__variable_black_player.get())
-           self.__simulation.start()
+           self.__game = jersi_certu.Game()
+           self.__game.set_white_player(self.__variable_white_player.get())
+           self.__game.set_black_player(self.__variable_black_player.get())
+           self.__game.start()
 
-           self.__jersi_state = self.__simulation.js
+           self.__jersi_state = self.__game.jersi_state
            self.__draw_state()
 
            self.__variable_log.set("jersi started")
@@ -462,21 +462,21 @@ class GameGui(tk.Frame):
 
     def __next_step(self):
 
-        if self.__simulation.has_next_turn():
+        if self.__game.has_next_turn():
 
-            self.__simulation.next_turn()
-            self.__jersi_state = self.__simulation.js
+            self.__game.next_turn()
+            self.__jersi_state = self.__game.jersi_state
             self.__draw_state()
 
-            if self.__simulation_started:
+            if self.__game_started:
                 self.__canvas.after(1000, self.__next_step)
-                self.__variable_log.set(self.__simulation.get_log())
+                self.__variable_log.set(self.__game.get_log())
 
         else:
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
 
-           self.__simulation_started = False
+           self.__game_started = False
            self.__button_start_stop.configure(text="Start")
 
 

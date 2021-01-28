@@ -715,11 +715,12 @@ class JersiAction:
 
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.notation == other.notation
+        return (self.__class__ == other.__class__ and
+                id(self.state) == id(other.state) and self.notation == other.notation)
 
 
     def __hash__(self):
-        return hash(self.notation)
+        return hash((id(self.state), self.notation))
 
 
     def __repr__(self):
@@ -727,7 +728,7 @@ class JersiAction:
 
 
     def __str__(self):
-        return str(self.notation)
+        return str((id(self.state), self.notation))
 
 
 
@@ -1094,6 +1095,8 @@ class JersiState:
     def get_actions(self):
         if self.__actions is None:
             self.__actions = self.__find_drops() + self.__find_moves()
+            # Better to shuffle actions here than by MCTS searcher for example
+            random.shuffle(self.__actions)
         return self.__actions
 
     ### Action finders
@@ -1752,7 +1755,180 @@ def extractStatistics(mcts_searcher, action):
     return statistics
 
 
-def run_game(do_print=True):
+class RandomSearcher():
+
+
+    def __init__(self):
+        pass
+
+
+    def search(self, state):
+        actions = state.get_actions()
+        action = random.choice(actions)
+        return action
+
+
+class MctsSearcher():
+
+
+    def __init__(self, time_limit=None, iteration_limit=None):
+
+        assert time_limit is None or iteration_limit is None
+
+        if time_limit is None and iteration_limit is None:
+            time_limit = 1_000
+
+        self.time_limit = time_limit
+        self.iteration_limit = iteration_limit
+
+
+        if self.time_limit is not None:
+            # time in milli-seconds
+            self.searcher = mcts.mcts(timeLimit=self.time_limit)
+
+        elif self.iteration_limit is not None:
+            # number of mcts rounds
+            self.searcher = mcts.mcts(iterationLimit=self.iteration_limit)
+
+
+    def search(self, state):
+
+        action = self.searcher.search(initialState=MctsState(state, state.get_current_player()))
+
+        if _do_debug:
+            statistics = extractStatistics(self.searcher, action)
+            print(f"    mcts statitics for the chosen action: {statistics['actionTotalReward']} total reward over {statistics['actionNumVisits']} visits")
+            print(f"    mcts statitics for all explored actions: {statistics['rootTotalReward']} total reward over {statistics['rootNumVisits']} visits")
+            for (child_action, child) in self.searcher.root.children.items():
+                print(f"    action {child_action} numVisits={child.numVisits} totalReward={child.totalReward}")
+
+        return action
+
+
+searcher_catalog = dict()
+
+searcher_catalog["random"] = RandomSearcher()
+
+searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
+searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
+searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
+searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
+searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
+searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
+searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
+searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
+
+searcher_catalog["mcts-i-10"] = MctsSearcher(iteration_limit=10)
+searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
+searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
+searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
+searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
+searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
+
+
+class Game:
+
+    def __init__(self):
+        self.selected_searcher_name = [None, None]
+        self.selected_searcher = [None, None]
+
+        self.jersi_state = None
+        self.iter_count = None
+        self.iter_index = None
+        self.log = None
+
+
+    def set_white_player(self, name):
+        self.selected_searcher_name[Player.WHITE] = name
+        self.selected_searcher[Player.WHITE] = searcher_catalog[name]
+
+
+    def set_black_player(self, name):
+        self.selected_searcher_name[Player.BLACK] = name
+        self.selected_searcher[Player.BLACK] = searcher_catalog[name]
+
+
+    def start(self):
+
+        assert self.selected_searcher_name[Player.WHITE] is not None
+        assert self.selected_searcher_name[Player.BLACK] is not None
+
+        assert self.selected_searcher[Player.WHITE] is not None
+        assert self.selected_searcher[Player.BLACK] is not None
+
+        self.jersi_state = JersiState()
+
+        self.jersi_state.show()
+
+        self.iter_count = 1_000
+        self.iter_index = 0
+
+        self.log = ""
+
+
+    def get_log(self):
+        return self.log
+
+
+    def has_next_turn(self):
+        return self.iter_index < self.iter_count and not self.jersi_state.is_terminal()
+
+
+    def next_turn(self):
+
+        self.log = ""
+
+        if self.has_next_turn():
+            player = self.jersi_state.get_current_player()
+            player_name = f"{Player.name(player)}-{self.selected_searcher_name[player]}"
+            action_count = len(self.jersi_state.get_actions())
+
+            print()
+            print(f"{player_name} is thinking ...")
+
+            action = self.selected_searcher[player].search(self.jersi_state)
+
+            print(f"{player_name} is done")
+
+            self.log = f"iteration {self.iter_index}: {player_name} selects {action.notation} amongst {action_count} actions"
+            print(self.log)
+            print("-"*40)
+
+            self.jersi_state = self.jersi_state.take_action(action)
+            self.jersi_state.show()
+
+            self.iter_index += 1
+
+        if self.jersi_state.is_terminal():
+
+            rewards = self.jersi_state.get_rewards()
+            player = self.jersi_state.get_current_player()
+
+            print()
+            print("-"*40)
+
+            white_player = f"{Player.name(Player.WHITE)}-{self.selected_searcher_name[Player.WHITE]}"
+            black_player = f"{Player.name(Player.BLACK)}-{self.selected_searcher_name[Player.BLACK]}"
+
+            if rewards[Player.WHITE] == rewards[Player.BLACK]:
+                self.log = f"nobody wins ; the game is a draw between {white_player} and {black_player}"
+                print(self.log)
+
+            elif rewards[Player.WHITE] > rewards[Player.BLACK]:
+                self.log = f"{white_player} wins against {black_player}"
+                print(self.log)
+
+            else:
+                self.log = f"{black_player} wins against {white_player}"
+                print(self.log)
+
+        else:
+            print()
+            print("-"*40)
+            print("not a terminal state")
+
+
+def run_one_full_game(do_print=True):
 
     #searcher = mcts.mcts(timeLimit=2*60_000) # 2 minutes
     searcher = mcts.mcts(timeLimit=2_000) # 2 seconds
@@ -1785,7 +1961,7 @@ def run_game(do_print=True):
 
         state = state.take_action(action)
         if do_print:
-            print(f"{Player.name(player)} takes action {action} amongst {len(actions)}")
+            print(f"{Player.name(player)} takes action {action.notation} amongst {len(actions)}")
 
             if statistics is not None:
                 print("mcts statitics:" +
@@ -1827,220 +2003,12 @@ def run_game(do_print=True):
     return state.get_terminal_case()
 
 
-class RandomSearcher():
-
-
-    def __init__(self):
-        pass
-
-
-    def search(self, state):
-        actions = state.get_actions()
-        action = random.choice(actions)
-        return action
-
-
-class MctsSearcher():
-
-
-    def __init__(self, time_limit=None, iteration_limit=None):
-
-        assert time_limit is None or iteration_limit is None
-
-        if time_limit is None and iteration_limit is None:
-            time_limit = 1_000
-
-        self.time_limit = time_limit
-        self.iteration_limit = iteration_limit
-
-
-    def search(self, state):
-
-        use_slices = True
-
-        self.searchInit(state)
-
-        if use_slices:
-            while not self.searchEnded():
-                progression = self.searchGetProgression()
-                print(f"progression:{progression:3.0f}")
-                self.searchRun()
-            progression = self.searchGetProgression()
-            print(f"progression:{progression:3.0f}")
-            action = self.searchGetAction()
-        else:
-            action = self.searcher.search(initialState=MctsState(state, state.get_current_player()))
-
-        if _do_debug:
-            statistics = self.searcher.getStatistics(action)
-            print(f"    mcts statitics for the chosen action: {statistics['actionTotalReward']} total reward over {statistics['actionNumVisits']} visits")
-            print(f"    mcts statitics for all explored actions: {statistics['rootTotalReward']} total reward over {statistics['rootNumVisits']} visits")
-            for (child_action, child) in self.searcher.root.children.items():
-                print(f"    action {child_action} numVisits={child.numVisits} totalReward={child.totalReward}")
-
-        return action
-
-
-    def searchInit(self, initialState):
-
-        if self.time_limit is not None:
-            # time in milli-seconds
-            self.searcher = mcts.mcts(timeLimit=self.time_limit)
-
-        elif self.iteration_limit is not None:
-            # number of mcts rounds
-            self.searcher = mcts.mcts(iterationLimit=self.iteration_limit)
-
-        self.searcher.searchInit(MctsState(initialState, initialState.get_current_player()))
-
-
-    def searchEnded(self):
-        return self.searcher.searchEnded()
-
-
-    def searchRun(self):
-        self.searcher.searchRun()
-
-
-    def searchGetProgression(self):
-        return self.searcher.searchGetProgression()
-
-
-    def searchGetAction(self):
-        return self.searcher.searchGetAction()
-
-
-
-searcher_catalog = dict()
-
-searcher_catalog["random"] = RandomSearcher()
-
-searcher_catalog["mcts-s-1"] = MctsSearcher(time_limit=1_000)
-searcher_catalog["mcts-s-2"] = MctsSearcher(time_limit=2_000)
-# searcher_catalog["mcts-s-5"] = MctsSearcher(time_limit=5_000)
-# searcher_catalog["mcts-s-10"] = MctsSearcher(time_limit=10_000)
-# searcher_catalog["mcts-s-20"] = MctsSearcher(time_limit=20_000)
-# searcher_catalog["mcts-s-30"] = MctsSearcher(time_limit=30_000)
-# searcher_catalog["mcts-s-60"] = MctsSearcher(time_limit=60_000)
-# searcher_catalog["mcts-m-5"] = MctsSearcher(time_limit=5*60_000)
-
-# searcher_catalog["mcts-i-10"] = MctsSearcher(iteration_limit=10)
-# searcher_catalog["mcts-i-50"] = MctsSearcher(iteration_limit=50)
-# searcher_catalog["mcts-i-100"] = MctsSearcher(iteration_limit=100)
-# searcher_catalog["mcts-i-500"] = MctsSearcher(iteration_limit=500)
-# searcher_catalog["mcts-i-1k"] = MctsSearcher(iteration_limit=1_000)
-# searcher_catalog["mcts-i-10k"] = MctsSearcher(iteration_limit=10_000)
-
-
-class Simulation:
-
-    def __init__(self):
-        self.selected_searcher_name = [None, None]
-        self.selected_searcher = [None, None]
-
-        self.js = None
-        self.iter_count = None
-        self.iter_index = None
-        self.log = None
-
-
-    def set_white_player(self, name):
-        self.selected_searcher_name[Player.WHITE] = name
-        self.selected_searcher[Player.WHITE] = searcher_catalog[name]
-
-
-    def set_black_player(self, name):
-        self.selected_searcher_name[Player.BLACK] = name
-        self.selected_searcher[Player.BLACK] = searcher_catalog[name]
-
-
-    def start(self):
-
-        assert self.selected_searcher_name[Player.WHITE] is not None
-        assert self.selected_searcher_name[Player.BLACK] is not None
-
-        assert self.selected_searcher[Player.WHITE] is not None
-        assert self.selected_searcher[Player.BLACK] is not None
-
-        self.js = JersiState()
-
-        self.js.show()
-
-        self.iter_count = 1_000
-        self.iter_index = 0
-
-        self.log = ""
-
-
-    def get_log(self):
-        return self.log
-
-
-    def has_next_turn(self):
-        return self.iter_index < self.iter_count and not self.js.is_terminal()
-
-
-    def next_turn(self):
-
-        self.log = ""
-
-        if self.has_next_turn():
-            player = self.js.get_current_player()
-            player_name = f"{Player.name(player)}-{self.selected_searcher_name[player]}"
-            action_count = len(self.js.get_actions())
-
-            print()
-            print(f"{player_name} is thinking ...")
-
-            action = self.selected_searcher[player].search(self.js)
-
-            print(f"{player_name} is done")
-
-            self.log = f"iteration {self.iter_index}: {player_name} selects {action} amongst {action_count} actions"
-            print(self.log)
-            print("-"*40)
-
-            self.js = self.js.take_action(action)
-            self.js.show()
-
-            self.iter_index += 1
-
-        if self.js.is_terminal():
-
-            rewards = self.js.get_rewards()
-            player = self.js.get_current_player()
-
-            print()
-            print("-"*40)
-
-            white_player = f"{Player.name(Player.WHITE)}-{self.selected_searcher_name[Player.WHITE]}"
-            black_player = f"{Player.name(Player.BLACK)}-{self.selected_searcher_name[Player.BLACK]}"
-
-            if rewards[Player.WHITE] == rewards[Player.BLACK]:
-                self.log = f"nobody wins ; the game is a draw between {white_player} and {black_player}"
-                print(self.log)
-
-            elif rewards[Player.WHITE] > rewards[Player.BLACK]:
-                self.log = f"{white_player} wins against {black_player}"
-                print(self.log)
-
-            else:
-                self.log = f"{black_player} wins against {white_player}"
-                print(self.log)
-
-        else:
-            print()
-            print("-"*40)
-            print("not a terminal state")
-
-
-
-def run_games():
+def run_many_full_games():
     terminal_cases = collections.Counter()
 
     game_count = 1
     for game_index in range(game_count):
-        terminal_case = run_game(do_print=True)
+        terminal_case = run_one_full_game(do_print=True)
         print(f"{game_index} {terminal_case}")
         terminal_cases[terminal_case] += 1
 
@@ -2049,17 +2017,17 @@ def run_games():
         print(f"{label}:{count}")
 
 
-def run_simulation():
+def test_one_game_object():
 
-    simulation = Simulation()
+    game = Game()
 
-    simulation.set_white_player(random.choice(list(searcher_catalog.keys())))
-    simulation.set_black_player(random.choice(list(searcher_catalog.keys())))
+    game.set_white_player(random.choice(list(searcher_catalog.keys())))
+    game.set_black_player(random.choice(list(searcher_catalog.keys())))
 
-    simulation.start()
+    game.start()
 
-    while simulation.has_next_turn():
-        simulation.next_turn()
+    while game.has_next_turn():
+        game.next_turn()
 
 
 def main():
@@ -2067,13 +2035,13 @@ def main():
     print(_COPYRIGHT_AND_LICENSE)
 
     if False:
-        run_games()
+        run_many_full_games()
 
     if True:
-        run_simulation()
+        test_one_game_object()
 
     if False:
-        cProfile.run("run_games()")
+        cProfile.run("run_many_full_games()")
         #print(timeit.timeit("main()", setup="from __main__ import main", number=1))
 
     print("Bye")
