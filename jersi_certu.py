@@ -716,7 +716,8 @@ class JersiAction:
 
     def __eq__(self, other):
         return (self.__class__ == other.__class__ and
-                id(self.state) == id(other.state) and self.notation == other.notation)
+                id(self.state) == id(other.state) and
+                self.notation == other.notation)
 
 
     def __hash__(self):
@@ -1800,7 +1801,7 @@ class MctsSearcher():
             print(f"    mcts statitics for the chosen action: {statistics['actionTotalReward']} total reward over {statistics['actionNumVisits']} visits")
             print(f"    mcts statitics for all explored actions: {statistics['rootTotalReward']} total reward over {statistics['rootNumVisits']} visits")
             for (child_action, child) in self.searcher.root.children.items():
-                print(f"    action {child_action} numVisits={child.numVisits} totalReward={child.totalReward}")
+                print(f"    action {child_action.notation} numVisits={child.numVisits} totalReward={child.totalReward}")
 
         return action
 

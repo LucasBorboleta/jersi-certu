@@ -75,12 +75,10 @@ class mcts():
 
     def expand(self, node):
         actions = node.state.getPossibleActions()
-        assert len(actions) > 0
         for action in actions:
             if action not in node.children:
                 newNode = treeNode(node.state.takeAction(action), node)
                 node.children[action] = newNode
-                assert len(actions) >= len(node.children)
                 if len(actions) == len(node.children):
                     node.isFullyExpanded = True
                 return newNode

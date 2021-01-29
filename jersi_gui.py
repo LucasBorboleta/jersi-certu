@@ -22,6 +22,9 @@ import math
 import os
 import sys
 
+from PIL import Image
+from PIL import ImageTk
+
 import tkinter as tk
 from tkinter import font
 from tkinter import ttk
@@ -45,12 +48,33 @@ class AppConfig:
     # File path containing the icon to be displayed in the title bar of Jersi GUI
     ICON_FILE = os.path.join(_script_home, 'jersi.ico')
 
+    CUBE_FILE_NAMES = {}
+
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
+
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
+
+    for (key, file) in CUBE_FILE_NAMES.items():
+        CUBE_FILE_NAMES[key] =os.path.join(_script_home, 'pictures', file)
+
 
 class CanvasConfig:
     # Canvas x-y dimensions in pixels
     RATIO = 1
-    HEIGHT = 600
-    WIDTH = int(HEIGHT*RATIO)
+    HEIGHT = float(600)
+    WIDTH = float(HEIGHT*RATIO)
 
     # Canvas x-y dimensions in hexagon units
     NX = 9 + 2
@@ -73,8 +97,8 @@ class CanvasConfig:
     FONT_FACE_SIZE = int(0.50*HEXA_SIDE)  # size for 'K', 'F' ...
 
     # Geometrical line widths
-    CUBE_LINE_WIDTH = int(0.05*HEXA_SIDE)
-    HEXA_LINE_WIDTH = int(0.02*HEXA_SIDE)
+    CUBE_LINE_WIDTH = float(0.02*HEXA_SIDE)
+    HEXA_LINE_WIDTH = float(0.01*HEXA_SIDE)
 
     # Origin of the orthonormal x-y frame and the oblic u-v frame
     ORIGIN = np.array((WIDTH/2, HEIGHT/2))
@@ -86,6 +110,13 @@ class CanvasConfig:
     # Unit vectors of the oblic u-v frame
     UNIT_U = UNIT_X
     UNIT_V = math.cos(HEXA_SIDE_ANGLE)*UNIT_X + math.sin(HEXA_SIDE_ANGLE)*UNIT_Y
+
+
+class CubeConfig:
+    # File path containing the icon to be displayed in the title bar of Jersi GUI
+
+    CUBE_PHOTOS = None
+
 
 
 class CubeLocation(enum.Enum):
@@ -261,7 +292,6 @@ class GameGui(tk.Frame):
         self.__use_black_ia = True
 
         self.__master = tk.Tk()
-        super().__init__(self.__master)
 
         tk.Tk.iconbitmap(self.__master, default=AppConfig.ICON_FILE)
         tk.Tk.wm_title(self.__master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
@@ -271,13 +301,14 @@ class GameGui(tk.Frame):
             self.__master.tk.call('tk', 'scaling', '-displayof', '.', 0.75)
 
         self.__create_widgets()
-
         self.__draw_state()
 
         if self.__game_started:
             self.__variable_log.set("jersi started")
         else:
             self.__variable_log.set("jersi stopped")
+
+        self.__master.mainloop()
 
 
     def __create_widgets(self):
@@ -505,24 +536,24 @@ class GameGui(tk.Frame):
                 bottom = jersi_certu.Cube.all[bottom_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.TOP,
-                               color=top.player, cube_sort=top.sort, cube_label=top.label)
+                               cube_color=top.player, cube_sort=top.sort, cube_label=top.label)
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.BOTTOM,
-                               color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
+                               cube_color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
 
             elif top_index != jersi_certu.Null.CUBE:
 
                 top = jersi_certu.Cube.all[top_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
-                               color=top.player, cube_sort=top.sort, cube_label=top.label)
+                               cube_color=top.player, cube_sort=top.sort, cube_label=top.label)
 
             elif bottom_index != jersi_certu.Null.CUBE:
 
                 bottom = jersi_certu.Cube.all[bottom_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
-                               color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
+                               cube_color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
 
             else:
                 pass
@@ -537,6 +568,7 @@ class GameGui(tk.Frame):
                          label=hexagon.name,
                          reserve=hexagon.reserve,
                          shift_xy=hexagon.shift_xy)
+
 
     ### Drawer primitives
 
@@ -586,7 +618,17 @@ class GameGui(tk.Frame):
             self.__canvas.create_text(*label_position, text=label, justify=tk.CENTER, font=label_font)
 
 
-    def __draw_cube(self, name, config, color, cube_sort, cube_label):
+    def __draw_cube(self, name, config, cube_color, cube_sort, cube_label):
+
+        if CubeConfig.CUBE_PHOTOS is None:
+
+            CubeConfig.CUBE_PHOTOS = {}
+
+            for (key, file) in AppConfig.CUBE_FILE_NAMES.items():
+                cube_photo = Image.open(AppConfig.CUBE_FILE_NAMES[key])
+                cube_photo = cube_photo.resize((int(0.70*CanvasConfig.HEXA_SIDE), int(0.70*CanvasConfig.HEXA_SIDE)))
+                cube_tk_photo = ImageTk.PhotoImage(cube_photo)
+                CubeConfig.CUBE_PHOTOS[key] = cube_tk_photo
 
         hexagon = GraphicalHexagon.get(name)
 
@@ -621,11 +663,11 @@ class GameGui(tk.Frame):
             cube_vertices.append(cube_vertex)
 
 
-        if color == jersi_certu.Player.BLACK:
+        if cube_color == jersi_certu.Player.BLACK:
             fill_color = CubeColor.BLACK.value
             face_color = CubeColor.WHITE.value
 
-        elif color == jersi_certu.Player.WHITE:
+        elif cube_color == jersi_certu.Player.WHITE:
             fill_color = CubeColor.WHITE.value
             face_color = CubeColor.BLACK.value
 
@@ -642,7 +684,12 @@ class GameGui(tk.Frame):
                                 fill=fill_color,
                                 outline=line_color)
 
-        if self.__draw_cube_faces:
+
+        if True:
+            cube_tk_photo = CubeConfig.CUBE_PHOTOS[(cube_color, cube_sort)]
+            self.__canvas.create_image(cube_center[0], cube_center[1], image=cube_tk_photo, anchor=tk.CENTER)
+
+        elif self.__draw_cube_faces:
             self.__face_drawers[cube_sort](cube_center, cube_vertices, face_color)
 
         else:
@@ -886,7 +933,9 @@ def main():
     print(_COPYRIGHT_AND_LICENSE)
 
     game_gui = GameGui()
-    game_gui.mainloop()
+    print("Before mainloop")
+    #game_gui.mainloop()
+    print("After mainloop")
 
     print("Bye")
 
