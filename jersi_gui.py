@@ -50,14 +50,15 @@ class AppConfig:
 
 
 class CanvasConfig:
-    # Canvas x-y dimensions in pixels
-    RATIO = 1
-    HEIGHT = float(600)
-    WIDTH = float(HEIGHT*RATIO)
 
     # Canvas x-y dimensions in hexagon units
-    NX = 9 + 2
+    NX = 9 + 0.75
     NY = 9
+
+    # Canvas x-y dimensions in pixels
+    RATIO = NX/NY
+    HEIGHT = 640
+    WIDTH = HEIGHT*RATIO
 
     # Hexagon geometrical data
     HEXA_VERTEX_COUNT = 6
@@ -94,28 +95,28 @@ class CanvasConfig:
 class CubeConfig:
     # File path containing the icon to be displayed in the title bar of Jersi GUI
 
-    CUBE_FILE_NAMES = {}
+    __cube_file_name = {}
 
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
+    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
 
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
+    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
 
-    for (key, file) in CUBE_FILE_NAMES.items():
-        CUBE_FILE_NAMES[key] =os.path.join(_script_home, 'pictures', file)
+    CUBE_FILE_PATH = {}
 
-    CUBE_PHOTOS = None
+    for (file_key, file_name) in __cube_file_name.items():
+        CUBE_FILE_PATH[file_key] =os.path.join(_script_home, 'pictures', file_name)
 
 
 class CubeLocation(enum.Enum):
@@ -275,6 +276,8 @@ class GameGui(tk.Frame):
         self.__face_drawers[jersi_certu.CubeSort.MOUNTAIN] = self.__draw_mountain_face
         self.__face_drawers[jersi_certu.CubeSort.WISE] = self.__draw_wise_face
 
+        self.__cube_photos = None
+
 
         self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
         self.__cube_faces = self.__cube_faces_options[2]
@@ -288,10 +291,10 @@ class GameGui(tk.Frame):
         self.__use_white_ia = True
         self.__use_black_ia = True
 
-        self.__master = tk.Tk()
+        self.__root = tk.Tk()
 
-        tk.Tk.iconbitmap(self.__master, default=AppConfig.ICON_FILE)
-        tk.Tk.wm_title(self.__master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
+        tk.Tk.iconbitmap(self.__root, default=AppConfig.ICON_FILE)
+        tk.Tk.wm_title(self.__root, "jersi-certu : for playing the jersi boardgame and testing IA agents")
 
         self.__create_widgets()
         self.__draw_state()
@@ -301,7 +304,7 @@ class GameGui(tk.Frame):
         else:
             self.__variable_log.set("jersi stopped")
 
-        self.__master.mainloop()
+        self.__root.mainloop()
 
 
     def __create_widgets(self):
@@ -310,33 +313,77 @@ class GameGui(tk.Frame):
         searcher_catalog_names.sort()
         searcher_catalog_names_width = max(map(len, searcher_catalog_names))
 
-        self.__canvas = tk.Canvas(self.__master,
-                                height=CanvasConfig.HEIGHT,
-                                width=CanvasConfig.WIDTH)
+        # Frames
 
-        self.__progressbar = ttk.Progressbar(self.__master,
-                                            orient=tk.HORIZONTAL,
-                                            length=300,
-                                            maximum=100,
-                                            mode='determinate')
+        self.__frame_left = tk.Frame(self.__root, highlightbackground='black', highlightthickness=1)
+        self.__frame_right = tk.Frame(self.__root)
 
-        self.__variable_log = tk.StringVar()
-        self.__label_log = tk.Label(self.__master,
-                                  textvariable=self.__variable_log,
-                                  width=90,
-                                  foreground='red')
+        self.__frame_left.pack(side=tk.LEFT)
+        self.__frame_right.pack(side=tk.TOP)
 
-        self.__label_white_player = tk.Label(self.__master, text='White')
+        self.__frame_commands_and_players = tk.Frame(self.__frame_right)
+        self.__frame_move = tk.Frame(self.__frame_right, highlightbackground='black', highlightthickness=1)
+
+        self.__frame_commands_and_players.pack(side=tk.TOP)
+
+        self.__frame_board = tk.Frame(self.__frame_left)
+
+        self.__frame_move.pack(side=tk.TOP)
+        self.__frame_board.pack(side=tk.TOP)
+
+        self.__frame_commands = tk.Frame(self.__frame_commands_and_players, padx=20)
+        self.__frame_players = tk.Frame(self.__frame_commands_and_players, padx=20)
+
+        self.__frame_commands.pack(side=tk.LEFT)
+        self.__frame_players.pack(side=tk.LEFT)
+
+        # In __frame_commands
+
+        self.__button_quit = ttk.Button(self.__frame_commands,
+                                 text='Quit',
+                                 command=self.__root.destroy)
+
+        self.__button_start_stop = ttk.Button(self.__frame_commands,
+                                  text='Start',
+                                  command=self.__command_start_stop)
+
+
+        self.__variable_reserve = tk.BooleanVar()
+        self.__variable_reserve.set(self.__draw_reserve)
+        self.__button_reserve = ttk.Checkbutton (self.__frame_commands,
+                                       text='Reserve',
+                                       command=self.__command_toggle_reserve,
+                                       variable=self.__variable_reserve)
+
+        self.__variable_faces = tk.StringVar()
+        self.__combobox_button_faces = ttk.Combobox(self.__frame_commands,
+                                                  width=max(map(len, self.__cube_faces_options)),
+                                                  textvariable=self.__variable_faces,
+                                                  values=self.__cube_faces_options)
+        self.__combobox_button_faces.set(self.__cube_faces_options[2])
+        self.__variable_faces.trace_add('write', self.__command_change_faces)
+
+        self.__button_start_stop.grid(row=0, column=0)
+        self.__button_quit.grid(row=0, column=1)
+
+        self.__button_reserve.grid(row=1, column=0)
+        self.__combobox_button_faces.grid(row=1, column=1)
+
+
+        # In __frame_players
+
+        self.__label_white_player = tk.Label(self.__frame_players, text='White IA')
+
 
         self.__variable_white_ia = tk.BooleanVar()
         self.__variable_white_ia.set(self.__use_white_ia)
-        self.__button_white_ia = ttk.Checkbutton (self.__master,
-                                       text='IA',
+        self.__button_white_ia = ttk.Checkbutton (self.__frame_players,
+                                       text=':',
                                        command=self.__command_toggle_white_ia,
                                        variable=self.__variable_white_ia)
 
         self.__variable_white_player = tk.StringVar()
-        self.__combobox_white_player = ttk.Combobox(self.__master,
+        self.__combobox_white_player = ttk.Combobox(self.__frame_players,
                                                   width=searcher_catalog_names_width,
                                                   textvariable=self.__variable_white_player,
                                                   values=searcher_catalog_names)
@@ -344,51 +391,29 @@ class GameGui(tk.Frame):
         self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.__label_black_player = tk.Label(self.__master, text='Black')
+        self.__label_black_player = tk.Label(self.__frame_players, text='Black IA')
 
         self.__variable_black_ia = tk.BooleanVar()
         self.__variable_black_ia.set(self.__use_black_ia)
-        self.__button_black_ia = ttk.Checkbutton (self.__master,
-                                       text='IA',
+        self.__button_black_ia = ttk.Checkbutton (self.__frame_players,
+                                       text=':',
                                        command=self.__command_toggle_black_ia,
                                        variable=self.__variable_black_ia)
 
         self.__variable_black_player = tk.StringVar()
-        self.__combobox_black_player = ttk.Combobox(self.__master,
+        self.__combobox_black_player = ttk.Combobox(self.__frame_players,
                                                   width=searcher_catalog_names_width,
                                                   textvariable=self.__variable_black_player,
                                                   values=searcher_catalog_names)
         self.__combobox_black_player.config(state="readonly")
         self.__variable_black_player.set(searcher_catalog_names[0])
 
-        self.__variable_reserve = tk.BooleanVar()
-        self.__variable_reserve.set(self.__draw_reserve)
-        self.__button_reserve = ttk.Checkbutton (self.__master,
-                                       text='Reserve',
-                                       command=self.__command_toggle_reserve,
-                                       variable=self.__variable_reserve)
 
-
-        self.__variable_faces = tk.StringVar()
-        self.__variable_faces.trace_add('write', self.__command_change_faces)
-        self.__combobox_button_faces = ttk.Combobox(self.__master,
-                                                  width=max(map(len, self.__cube_faces_options)),
-                                                  textvariable=self.__variable_faces,
-                                                  values=self.__cube_faces_options)
-        self.__combobox_button_faces.set(self.__cube_faces_options[2])
-
-
-        self.__button_quit = ttk.Button(self.__master,
-                                 text='Quit',
-                                 command=self.__master.destroy)
-
-        self.__button_start_stop = ttk.Button(self.__master,
-                                  text='Start',
-                                  command=self.__command_start_stop)
-
-        # row 0
-
-        self.__button_start_stop.grid(row=0, column=0, sticky=tk.W)
+        self.__progressbar = ttk.Progressbar(self.__frame_players,
+                                            orient=tk.HORIZONTAL,
+                                            length=300,
+                                            maximum=100,
+                                            mode='determinate')
 
         self.__label_white_player.grid(row=0, column=1)
         self.__button_white_ia.grid(row=0, column=2)
@@ -398,19 +423,50 @@ class GameGui(tk.Frame):
         self.__button_black_ia.grid(row=0, column=5)
         self.__combobox_black_player.grid(row=0, column=6)
 
-        self.__button_reserve.grid(row=0, column=7)
-        self.__combobox_button_faces.grid(row=0, column=8)
+        self.__progressbar.grid(row=1, columnspan=7)
 
-        self.__button_quit.grid(row=0, column=9, sticky=tk.E)
+        # In __frame_board
 
-        # row 1
-        self.__progressbar.grid(row=1, columnspan=10)
+        self.__canvas = tk.Canvas(self.__frame_board,
+                                height=CanvasConfig.HEIGHT,
+                                width=CanvasConfig.WIDTH)
+        self.__canvas.pack(side=tk.TOP)
 
-        # row 2
-        self.__label_log.grid(row=2, columnspan=10)
+       # In __frame_move
 
-        # row 3
-        self.__canvas.grid(row=3, columnspan=10)
+        self.__variable_log = tk.StringVar()
+
+        self.__label_log = tk.Label(self.__frame_move,
+                                  textvariable=self.__variable_log,
+                                  width=90,
+                                  foreground='red')
+        self.__label_log.pack(side=tk.TOP)
+
+        # # row 0
+
+        # self.__button_start_stop.grid(row=0, column=0, sticky=tk.W)
+
+        # self.__label_white_player.grid(row=0, column=1)
+        # self.__button_white_ia.grid(row=0, column=2)
+        # self.__combobox_white_player.grid(row=0, column=3)
+
+        # self.__label_black_player.grid(row=0, column=4)
+        # self.__button_black_ia.grid(row=0, column=5)
+        # self.__combobox_black_player.grid(row=0, column=6)
+
+        # self.__button_reserve.grid(row=0, column=7)
+        # self.__combobox_button_faces.grid(row=0, column=8)
+
+        # self.__button_quit.grid(row=0, column=9, sticky=tk.E)
+
+        # # row 1
+        # self.__progressbar.grid(row=1, columnspan=10)
+
+        # # row 2
+        # self.__label_log.grid(row=2, columnspan=10)
+
+        # # row 3
+        # self.__canvas.grid(row=3, columnspan=10)
 
 
     def __command_toggle_white_ia(self):
@@ -616,17 +672,17 @@ class GameGui(tk.Frame):
 
     def __draw_cube(self, name, config, cube_color, cube_sort, cube_label):
 
-        if CubeConfig.CUBE_PHOTOS is None:
+        if self.__cube_photos is None:
 
             cube_photo_width = int(CanvasConfig.HEXA_SIDE*math.cos(math.pi/4))
 
-            CubeConfig.CUBE_PHOTOS = {}
+            self.__cube_photos = {}
 
-            for (key, file) in CubeConfig.CUBE_FILE_NAMES.items():
-                cube_photo = Image.open(CubeConfig.CUBE_FILE_NAMES[key])
+            for (key, file) in CubeConfig.CUBE_FILE_PATH.items():
+                cube_photo = Image.open(CubeConfig.CUBE_FILE_PATH[key])
                 cube_photo = cube_photo.resize((cube_photo_width, cube_photo_width))
                 cube_tk_photo = ImageTk.PhotoImage(cube_photo)
-                CubeConfig.CUBE_PHOTOS[key] = cube_tk_photo
+                self.__cube_photos[key] = cube_tk_photo
 
         hexagon = GraphicalHexagon.get(name)
 
@@ -679,7 +735,7 @@ class GameGui(tk.Frame):
         cube_vertex_SE = cube_vertices[3]
 
         if self.__cube_faces == 'faces=pictures':
-            cube_tk_photo = CubeConfig.CUBE_PHOTOS[(cube_color, cube_sort)]
+            cube_tk_photo = self.__cube_photos[(cube_color, cube_sort)]
             self.__canvas.create_image(cube_center[0], cube_center[1], image=cube_tk_photo, anchor=tk.CENTER)
 
         elif self.__cube_faces == 'faces=drawings':
@@ -937,9 +993,6 @@ def main():
     print(_COPYRIGHT_AND_LICENSE)
 
     _ = GameGui()
-    print("Before mainloop")
-    #game_gui.mainloop()
-    print("After mainloop")
 
     print("Bye")
 
