@@ -1657,7 +1657,7 @@ class JersiState:
                 state.__hexagon_bottom[dst_hexagon_index] = src_bottom_index
                 state.__hexagon_top[dst_hexagon_index] = src_top_index
 
-                notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
+                notation = Notation.move_stack(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
 
             else:
@@ -1701,7 +1701,7 @@ class JersiState:
                 state.__hexagon_bottom[dst_hexagon_index] = src_bottom_index
                 state.__hexagon_top[dst_hexagon_index] = src_top_index
 
-                notation = Notation.move_cube(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
+                notation = Notation.move_stack(src_hexagon_name, dst_hexagon_name, capture=capture, previous_action=previous_action)
                 action = JersiAction(notation, state, capture=capture, previous_action=previous_action)
 
             else:
@@ -1764,6 +1764,41 @@ def extractStatistics(mcts_searcher, action):
     return statistics
 
 
+class HumanSearcher():
+
+
+    def __init__(self):
+        pass
+
+
+    def search(self, state):
+        actions = state.get_actions()
+
+        action_dict = {}
+        for x in actions:
+            action_dict[x.notation] = x
+
+        valid_notations = list(action_dict.keys())
+        valid_notations.sort()
+
+        with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
+            for x in valid_notations:
+                stream.write(x + "\n")
+
+        human_notation_validated = False
+        while not human_notation_validated:
+            human_notation = input("HumanSearcher: action? ").strip()
+            if human_notation in valid_notations:
+                human_notation_validated = True
+            else:
+                print(f"action {human_notation} is not valid ..." )
+
+        action = action_dict[human_notation]
+        print(f"HumanSearcher: action {action} has been selected")
+
+        return action
+
+
 class RandomSearcher():
 
 
@@ -1821,6 +1856,8 @@ class MctsSearcher():
 
 
 searcher_catalog = dict()
+
+searcher_catalog["human"] = HumanSearcher()
 
 searcher_catalog["random"] = RandomSearcher()
 
@@ -1984,15 +2021,44 @@ def test_game_between_mcts_players():
     print("===================================")
 
 
+def test_game_between_random_and_human_players():
+
+    print("==============================================")
+    print("test_game_between_random_and_human_players ...")
+    print("==============================================")
+
+    default_max_credit = JersiState.get_max_credit()
+    JersiState.set_max_credit(10)
+
+    game = Game()
+
+    game.set_white_player("human")
+    game.set_black_player("random")
+
+    game.start()
+
+    while game.has_next_turn():
+        game.next_turn()
+
+    JersiState.set_max_credit(default_max_credit)
+
+    print("===============================================")
+    print("test_game_between_random_and_human_players done")
+    print("===============================================")
+
+
 def main():
     print("Hello")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if True:
+    if False:
         test_game_between_random_players()
 
-    if True:
+    if False:
         test_game_between_mcts_players()
+
+    if True:
+        test_game_between_random_and_human_players()
 
     print("Bye")
 
