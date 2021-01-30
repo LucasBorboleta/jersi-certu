@@ -48,27 +48,6 @@ class AppConfig:
     # File path containing the icon to be displayed in the title bar of Jersi GUI
     ICON_FILE = os.path.join(_script_home, 'jersi.ico')
 
-    CUBE_FILE_NAMES = {}
-
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
-
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
-    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
-
-    for (key, file) in CUBE_FILE_NAMES.items():
-        CUBE_FILE_NAMES[key] =os.path.join(_script_home, 'pictures', file)
-
 
 class CanvasConfig:
     # Canvas x-y dimensions in pixels
@@ -97,8 +76,8 @@ class CanvasConfig:
     FONT_FACE_SIZE = int(0.50*HEXA_SIDE)  # size for 'K', 'F' ...
 
     # Geometrical line widths
-    CUBE_LINE_WIDTH = float(0.02*HEXA_SIDE)
-    HEXA_LINE_WIDTH = float(0.01*HEXA_SIDE)
+    CUBE_LINE_WIDTH = 1
+    HEXA_LINE_WIDTH = 1
 
     # Origin of the orthonormal x-y frame and the oblic u-v frame
     ORIGIN = np.array((WIDTH/2, HEIGHT/2))
@@ -115,8 +94,28 @@ class CanvasConfig:
 class CubeConfig:
     # File path containing the icon to be displayed in the title bar of Jersi GUI
 
-    CUBE_PHOTOS = None
+    CUBE_FILE_NAMES = {}
 
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
+
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
+    CUBE_FILE_NAMES[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
+
+    for (key, file) in CUBE_FILE_NAMES.items():
+        CUBE_FILE_NAMES[key] =os.path.join(_script_home, 'pictures', file)
+
+    CUBE_PHOTOS = None
 
 
 class CubeLocation(enum.Enum):
@@ -277,15 +276,13 @@ class GameGui(tk.Frame):
         self.__face_drawers[jersi_certu.CubeSort.WISE] = self.__draw_wise_face
 
 
-        # Draw faces of cubes ?
-        # If 'False' the just display letter representing the sort of the cube
-        self.__draw_cube_faces = False
+        self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
+        self.__cube_faces = self.__cube_faces_options[2]
 
-        # Draw reserve ?
         self.__draw_reserve = True
 
-        self.__game_started = False
         self.__game = None
+        self.__game_started = False
         self.__jersi_state = jersi_certu.JersiState()
 
         self.__use_white_ia = True
@@ -295,10 +292,6 @@ class GameGui(tk.Frame):
 
         tk.Tk.iconbitmap(self.__master, default=AppConfig.ICON_FILE)
         tk.Tk.wm_title(self.__master, "jersi-certu : for evaluating AI agents and the jersi rules engine")
-
-        if False:
-            # an attempt for increasing the canvas rendering, ... that does not work !
-            self.__master.tk.call('tk', 'scaling', '-displayof', '.', 0.75)
 
         self.__create_widgets()
         self.__draw_state()
@@ -368,19 +361,22 @@ class GameGui(tk.Frame):
         self.__combobox_black_player.config(state="readonly")
         self.__variable_black_player.set(searcher_catalog_names[0])
 
-        self.__variable_face = tk.BooleanVar()
-        self.__variable_face.set(self.__draw_cube_faces)
-        self.__button_face = ttk.Checkbutton (self.__master,
-                                       text='Icon faces',
-                                       command=self.__command_toggle_face,
-                                       variable=self.__variable_face)
-
         self.__variable_reserve = tk.BooleanVar()
         self.__variable_reserve.set(self.__draw_reserve)
         self.__button_reserve = ttk.Checkbutton (self.__master,
                                        text='Reserve',
                                        command=self.__command_toggle_reserve,
                                        variable=self.__variable_reserve)
+
+
+        self.__variable_faces = tk.StringVar()
+        self.__variable_faces.trace_add('write', self.__command_change_faces)
+        self.__combobox_button_faces = ttk.Combobox(self.__master,
+                                                  width=max(map(len, self.__cube_faces_options)),
+                                                  textvariable=self.__variable_faces,
+                                                  values=self.__cube_faces_options)
+        self.__combobox_button_faces.set(self.__cube_faces_options[2])
+
 
         self.__button_quit = ttk.Button(self.__master,
                                  text='Quit',
@@ -402,8 +398,8 @@ class GameGui(tk.Frame):
         self.__button_black_ia.grid(row=0, column=5)
         self.__combobox_black_player.grid(row=0, column=6)
 
-        self.__button_face.grid(row=0, column=7)
-        self.__button_reserve.grid(row=0, column=8)
+        self.__button_reserve.grid(row=0, column=7)
+        self.__combobox_button_faces.grid(row=0, column=8)
 
         self.__button_quit.grid(row=0, column=9, sticky=tk.E)
 
@@ -443,10 +439,10 @@ class GameGui(tk.Frame):
         self.__variable_log.set("toggle black IA done")
 
 
-    def __command_toggle_face(self):
+    def __command_change_faces(self, *_):
         self.__variable_log.set("toggle face ...")
 
-        self.__draw_cube_faces = self.__variable_face.get()
+        self.__cube_faces = self.__variable_faces.get()
         self.__draw_state()
 
         self.__variable_log.set("toggle face done")
@@ -622,11 +618,13 @@ class GameGui(tk.Frame):
 
         if CubeConfig.CUBE_PHOTOS is None:
 
+            cube_photo_width = int(CanvasConfig.HEXA_SIDE*math.cos(math.pi/4))
+
             CubeConfig.CUBE_PHOTOS = {}
 
-            for (key, file) in AppConfig.CUBE_FILE_NAMES.items():
-                cube_photo = Image.open(AppConfig.CUBE_FILE_NAMES[key])
-                cube_photo = cube_photo.resize((int(0.70*CanvasConfig.HEXA_SIDE), int(0.70*CanvasConfig.HEXA_SIDE)))
+            for (key, file) in CubeConfig.CUBE_FILE_NAMES.items():
+                cube_photo = Image.open(CubeConfig.CUBE_FILE_NAMES[key])
+                cube_photo = cube_photo.resize((cube_photo_width, cube_photo_width))
                 cube_tk_photo = ImageTk.PhotoImage(cube_photo)
                 CubeConfig.CUBE_PHOTOS[key] = cube_tk_photo
 
@@ -680,19 +678,23 @@ class GameGui(tk.Frame):
         cube_vertex_NW = cube_vertices[1]
         cube_vertex_SE = cube_vertices[3]
 
-        self.__canvas.create_rectangle(*cube_vertex_NW, *cube_vertex_SE,
-                                fill=fill_color,
-                                outline=line_color)
-
-
-        if True:
+        if self.__cube_faces == 'faces=pictures':
             cube_tk_photo = CubeConfig.CUBE_PHOTOS[(cube_color, cube_sort)]
             self.__canvas.create_image(cube_center[0], cube_center[1], image=cube_tk_photo, anchor=tk.CENTER)
 
-        elif self.__draw_cube_faces:
+        elif self.__cube_faces == 'faces=drawings':
+
+            self.__canvas.create_rectangle(*cube_vertex_NW, *cube_vertex_SE,
+                                fill=fill_color,
+                                outline=line_color)
             self.__face_drawers[cube_sort](cube_center, cube_vertices, face_color)
 
-        else:
+        elif self.__cube_faces == 'faces=letters':
+
+            self.__canvas.create_rectangle(*cube_vertex_NW, *cube_vertex_SE,
+                                fill=fill_color,
+                                outline=line_color)
+
             face_font = font.Font(family=CanvasConfig.FONT_FAMILY, size=CanvasConfig.FONT_FACE_SIZE, weight='bold')
 
             self.__canvas.create_text(*cube_center,
@@ -700,6 +702,8 @@ class GameGui(tk.Frame):
                                justify=tk.CENTER,
                                font=face_font,
                                fill=face_color)
+        else:
+            assert False
 
     def __draw_king_face(self, cube_center, cube_vertices, face_color):
         pass
@@ -932,7 +936,7 @@ def main():
     print("Hello")
     print(_COPYRIGHT_AND_LICENSE)
 
-    game_gui = GameGui()
+    _ = GameGui()
     print("Before mainloop")
     #game_gui.mainloop()
     print("After mainloop")
