@@ -291,6 +291,9 @@ class GameGui(tk.Frame):
         self.__use_white_ia = True
         self.__use_black_ia = True
 
+        self.__white_searcher = None
+        self.__black_searcher = None
+
         self.__root = tk.Tk()
 
         tk.Tk.iconbitmap(self.__root, default=AppConfig.ICON_FILE)
@@ -298,6 +301,10 @@ class GameGui(tk.Frame):
 
         self.__create_widgets()
         self.__draw_state()
+
+        self.__command_update_faces()
+        self.__command_update_reserve()
+        self.__command_update_players()
 
         if self.__game_started:
             self.__variable_log.set("jersi started")
@@ -309,20 +316,19 @@ class GameGui(tk.Frame):
 
     def __create_widgets(self):
 
-        searcher_catalog_names = list(jersi_certu.searcher_catalog.keys())
-        searcher_catalog_names.sort()
+        searcher_catalog_names = jersi_certu.SEARCHER_CATALOG.get_names()
         searcher_catalog_names_width = max(map(len, searcher_catalog_names))
 
         # Frames
 
-        self.__frame_left = tk.Frame(self.__root, highlightbackground='black', highlightthickness=1)
+        self.__frame_left = tk.Frame(self.__root)
         self.__frame_right = tk.Frame(self.__root)
 
         self.__frame_left.pack(side=tk.LEFT)
         self.__frame_right.pack(side=tk.TOP)
 
         self.__frame_commands_and_players = tk.Frame(self.__frame_right)
-        self.__frame_move = tk.Frame(self.__frame_right, highlightbackground='black', highlightthickness=1)
+        self.__frame_move = tk.Frame(self.__frame_right)
 
         self.__frame_commands_and_players.pack(side=tk.TOP)
 
@@ -351,8 +357,8 @@ class GameGui(tk.Frame):
         self.__variable_reserve = tk.BooleanVar()
         self.__variable_reserve.set(self.__draw_reserve)
         self.__button_reserve = ttk.Checkbutton (self.__frame_commands,
-                                       text='Reserve',
-                                       command=self.__command_toggle_reserve,
+                                       text='Show reserve',
+                                       command=self.__command_update_reserve,
                                        variable=self.__variable_reserve)
 
         self.__variable_faces = tk.StringVar()
@@ -361,7 +367,7 @@ class GameGui(tk.Frame):
                                                   textvariable=self.__variable_faces,
                                                   values=self.__cube_faces_options)
         self.__combobox_button_faces.set(self.__cube_faces_options[2])
-        self.__variable_faces.trace_add('write', self.__command_change_faces)
+        self.__variable_faces.trace_add('write', self.__command_update_faces)
 
         self.__button_start_stop.grid(row=0, column=0)
         self.__button_quit.grid(row=0, column=1)
@@ -371,18 +377,12 @@ class GameGui(tk.Frame):
 
         self.__frame_commands.rowconfigure(0, pad=5)
         self.__frame_commands.rowconfigure(1, pad=5)
+        self.__frame_commands.columnconfigure(0, pad=5)
+        self.__frame_commands.columnconfigure(1, pad=5)
 
         # In __frame_players
 
-        self.__label_white_player = tk.Label(self.__frame_players, text='White IA')
-
-
-        self.__variable_white_ia = tk.BooleanVar()
-        self.__variable_white_ia.set(self.__use_white_ia)
-        self.__button_white_ia = ttk.Checkbutton (self.__frame_players,
-                                       text=':',
-                                       command=self.__command_toggle_white_ia,
-                                       variable=self.__variable_white_ia)
+        self.__label_white_player = tk.Label(self.__frame_players, text='White :')
 
         self.__variable_white_player = tk.StringVar()
         self.__combobox_white_player = ttk.Combobox(self.__frame_players,
@@ -393,14 +393,7 @@ class GameGui(tk.Frame):
         self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.__label_black_player = tk.Label(self.__frame_players, text='Black IA')
-
-        self.__variable_black_ia = tk.BooleanVar()
-        self.__variable_black_ia.set(self.__use_black_ia)
-        self.__button_black_ia = ttk.Checkbutton (self.__frame_players,
-                                       text=':',
-                                       command=self.__command_toggle_black_ia,
-                                       variable=self.__variable_black_ia)
+        self.__label_black_player = tk.Label(self.__frame_players, text='Black :')
 
         self.__variable_black_player = tk.StringVar()
         self.__combobox_black_player = ttk.Combobox(self.__frame_players,
@@ -417,18 +410,22 @@ class GameGui(tk.Frame):
                                             maximum=100,
                                             mode='determinate')
 
-        self.__label_white_player.grid(row=0, column=1)
-        self.__button_white_ia.grid(row=0, column=2)
-        self.__combobox_white_player.grid(row=0, column=3)
+        self.__label_white_player.grid(row=0, column=0)
+        self.__combobox_white_player.grid(row=0, column=1)
 
-        self.__label_black_player.grid(row=0, column=4)
-        self.__button_black_ia.grid(row=0, column=5)
-        self.__combobox_black_player.grid(row=0, column=6)
+        self.__label_black_player.grid(row=0, column=2)
+        self.__combobox_black_player.grid(row=0, column=3)
 
-        self.__progressbar.grid(row=1, columnspan=7)
+        self.__progressbar.grid(row=1, columnspan=4)
 
         self.__frame_players.rowconfigure(0, pad=5)
         self.__frame_players.rowconfigure(1, pad=5)
+
+        self.__use_white_ia = self.__variable_white_player.get() != "human"
+        self.__use_black_ia = self.__variable_black_player.get() != "human"
+
+        self.__variable_white_player.trace_add('write', self.__command_update_players)
+        self.__variable_black_player.trace_add('write', self.__command_update_players)
 
         # In __frame_board
 
@@ -440,82 +437,63 @@ class GameGui(tk.Frame):
        # In __frame_move
 
         self.__variable_log = tk.StringVar()
-
         self.__label_log = tk.Label(self.__frame_move,
                                   textvariable=self.__variable_log,
                                   width=90,
-                                  foreground='red')
+                                  foreground='red',
+                                  borderwidth=2, relief="groove")
+
+        self.__label_move = tk.Label(self.__frame_move, text='Move :')
+
+        self.__variable_move = tk.StringVar()
+        self.__entry_move = ttk.Entry(self.__frame_move, textvariable=self.__variable_move)
+
+        self.__button_move_confirm = ttk.Button(self.__frame_move,
+                                  text='OK',
+                                  command=self.__command_move_confirm)
+
         self.__label_log.pack(side=tk.TOP)
 
-        # # row 0
+        self.__label_move.pack(side=tk.LEFT)
+        self.__entry_move.pack(side=tk.LEFT, padx=5)
+        self.__button_move_confirm.pack(side=tk.LEFT)
 
-        # self.__button_start_stop.grid(row=0, column=0, sticky=tk.W)
-
-        # self.__label_white_player.grid(row=0, column=1)
-        # self.__button_white_ia.grid(row=0, column=2)
-        # self.__combobox_white_player.grid(row=0, column=3)
-
-        # self.__label_black_player.grid(row=0, column=4)
-        # self.__button_black_ia.grid(row=0, column=5)
-        # self.__combobox_black_player.grid(row=0, column=6)
-
-        # self.__button_reserve.grid(row=0, column=7)
-        # self.__combobox_button_faces.grid(row=0, column=8)
-
-        # self.__button_quit.grid(row=0, column=9, sticky=tk.E)
-
-        # # row 1
-        # self.__progressbar.grid(row=1, columnspan=10)
-
-        # # row 2
-        # self.__label_log.grid(row=2, columnspan=10)
-
-        # # row 3
-        # self.__canvas.grid(row=3, columnspan=10)
+        self.__entry_move.config(state="disabled")
+        self.__button_move_confirm.config(state="disabled")
 
 
-    def __command_toggle_white_ia(self):
-        self.__variable_log.set("toggle white IA ...")
-
-        self.__use_white_ia = self.__variable_white_ia.get()
-
-        if self.__use_white_ia:
-           self.__combobox_white_player.config(state="readonly")
-        else:
-           self.__combobox_white_player.config(state="disabled")
-
-        self.__variable_log.set("toggle white IA done")
-
-
-    def __command_toggle_black_ia(self):
-        self.__variable_log.set("toggle black IA ...")
-
-        self.__use_black_ia = self.__variable_black_ia.get()
-
-        if self.__use_black_ia:
-           self.__combobox_black_player.config(state="readonly")
-        else:
-           self.__combobox_black_player.config(state="disabled")
-
-        self.__variable_log.set("toggle black IA done")
-
-
-    def __command_change_faces(self, *_):
-        self.__variable_log.set("toggle face ...")
+    def __command_update_faces(self, *_):
+        self.__variable_log.set("__command_update_faces ...")
 
         self.__cube_faces = self.__variable_faces.get()
         self.__draw_state()
 
-        self.__variable_log.set("toggle face done")
+        self.__variable_log.set("__command_update_faces done")
 
 
-    def __command_toggle_reserve(self):
-        self.__variable_log.set("toggle reserve ...")
+    def __command_update_reserve(self):
+        self.__variable_log.set("__command_update_reserve ...")
 
         self.__draw_reserve = self.__variable_reserve.get()
         self.__draw_state()
 
-        self.__variable_log.set("toggle reserve done")
+        self.__variable_log.set("__command_update_reserve done")
+
+
+    def __command_update_players(self, *_):
+        self.__variable_log.set("__command_update_players ...")
+
+        self.__use_white_ia = self.__variable_white_player.get() != "human"
+        self.__use_black_ia = self.__variable_black_player.get() != "human"
+
+        self.__white_searcher = jersi_certu.SEARCHER_CATALOG.get(self.__variable_white_player.get())
+        self.__black_searcher = jersi_certu.SEARCHER_CATALOG.get(self.__variable_black_player.get())
+
+        self.__variable_log.set("__command_update_players done")
+
+
+    def __command_move_confirm(self):
+        self.__variable_log.set("__command_move_confirm done")
 
 
     def __command_start_stop(self):
@@ -528,17 +506,17 @@ class GameGui(tk.Frame):
            self.__combobox_black_player.config(state="disabled")
 
            self.__game = jersi_certu.Game()
-           self.__game.set_white_player(self.__variable_white_player.get())
-           self.__game.set_black_player(self.__variable_black_player.get())
+           self.__game.set_white_searcher(self.__white_searcher)
+           self.__game.set_black_searcher(self.__black_searcher)
            self.__game.start()
 
-           self.__jersi_state = self.__game.jersi_state
+           self.__jersi_state = self.__game.get_state()
            self.__draw_state()
 
            self.__variable_log.set("jersi started")
            self.__button_start_stop.configure(text="Stop")
 
-           self.__canvas.after(1000, self.__next_step)
+           self.__canvas.after(1_000, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")
@@ -548,16 +526,16 @@ class GameGui(tk.Frame):
            self.__button_start_stop.configure(text="Start")
 
 
-    def __next_step(self):
+    def __command_next_turn(self):
 
         if self.__game.has_next_turn():
 
             self.__game.next_turn()
-            self.__jersi_state = self.__game.jersi_state
+            self.__jersi_state = self.__game.get_state()
             self.__draw_state()
 
             if self.__game_started:
-                self.__canvas.after(1000, self.__next_step)
+                self.__canvas.after(1_000, self.__command_next_turn)
                 self.__variable_log.set(self.__game.get_log())
 
         else:
