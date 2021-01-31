@@ -166,7 +166,10 @@ class Cube:
 
     def beats(self, other):
 
-        if self.player != other.player:
+        if self.player == other.player:
+            does_beat = False
+
+        else:
 
             if self.sort in (CubeSort.KING, CubeSort.WISE, CubeSort.MOUNTAIN):
                 does_beat = False
@@ -184,9 +187,10 @@ class Cube:
                 does_beat = other.sort in (CubeSort.PAPER, CubeSort.FOUL, CubeSort.KING, CubeSort.WISE)
 
             elif self.sort == CubeSort.FOUL:
-                does_beat = other.sort in (CubeSort.ROCK, CubeSort.PAPER, CubeSort.SCISSORS, CubeSort.FOUL, CubeSort.KING, CubeSort.WISE)
-        else:
-            does_beat = False
+                does_beat = other.sort in (CubeSort.ROCK, CubeSort.PAPER, CubeSort.SCISSORS, CubeSort.FOUL, CubeSort.KING)
+
+            else:
+                assert False
 
         return does_beat
 
@@ -2141,13 +2145,13 @@ def main():
     print("Hello")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if False:
+    if True:
         test_game_between_random_players()
 
-    if False:
+    if True:
         test_game_between_mcts_players()
 
-    if True:
+    if False:
         test_game_between_random_and_human_players()
 
     print("Bye")

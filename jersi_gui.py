@@ -287,12 +287,10 @@ class GameGui(tk.Frame):
         self.__game = None
         self.__game_started = False
         self.__jersi_state = jersi_certu.JersiState()
+        self.__searcher = [None, None]
 
-        self.__use_white_ia = True
-        self.__use_black_ia = True
-
-        self.__white_searcher = None
-        self.__black_searcher = None
+        self.__move_input = None
+        self.__move_validated = False
 
         self.__root = tk.Tk()
 
@@ -306,10 +304,7 @@ class GameGui(tk.Frame):
         self.__command_update_reserve()
         self.__command_update_players()
 
-        if self.__game_started:
-            self.__variable_log.set("jersi started")
-        else:
-            self.__variable_log.set("jersi stopped")
+        self.__variable_log.set("jersi-certu GUI is ready !")
 
         self.__root.mainloop()
 
@@ -421,9 +416,6 @@ class GameGui(tk.Frame):
         self.__frame_players.rowconfigure(0, pad=5)
         self.__frame_players.rowconfigure(1, pad=5)
 
-        self.__use_white_ia = self.__variable_white_player.get() != "human"
-        self.__use_black_ia = self.__variable_black_player.get() != "human"
-
         self.__variable_white_player.trace_add('write', self.__command_update_players)
         self.__variable_black_player.trace_add('write', self.__command_update_players)
 
@@ -463,37 +455,30 @@ class GameGui(tk.Frame):
 
 
     def __command_update_faces(self, *_):
-        self.__variable_log.set("__command_update_faces ...")
-
         self.__cube_faces = self.__variable_faces.get()
         self.__draw_state()
 
-        self.__variable_log.set("__command_update_faces done")
-
 
     def __command_update_reserve(self):
-        self.__variable_log.set("__command_update_reserve ...")
-
         self.__draw_reserve = self.__variable_reserve.get()
         self.__draw_state()
 
-        self.__variable_log.set("__command_update_reserve done")
-
 
     def __command_update_players(self, *_):
-        self.__variable_log.set("__command_update_players ...")
-
-        self.__use_white_ia = self.__variable_white_player.get() != "human"
-        self.__use_black_ia = self.__variable_black_player.get() != "human"
-
-        self.__white_searcher = jersi_certu.SEARCHER_CATALOG.get(self.__variable_white_player.get())
-        self.__black_searcher = jersi_certu.SEARCHER_CATALOG.get(self.__variable_black_player.get())
-
-        self.__variable_log.set("__command_update_players done")
+        self.__searcher[jersi_certu.Player.WHITE] = jersi_certu.SEARCHER_CATALOG.get(self.__variable_white_player.get())
+        self.__searcher[jersi_certu.Player.BLACK] = jersi_certu.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
     def __command_move_confirm(self):
-        self.__variable_log.set("__command_move_confirm done")
+        self.__move_input = self.__variable_move.get()
+        self.__move_validated = self.__move_input in self.__jersi_state.get_action_names()
+
+        if self.__move_validated:
+            self.__variable_log.set("move is valid")
+            self.__variable_move.set("")
+
+        else:
+            self.__variable_log.set("move is not valid !")
 
 
     def __command_start_stop(self):
@@ -506,8 +491,8 @@ class GameGui(tk.Frame):
            self.__combobox_black_player.config(state="disabled")
 
            self.__game = jersi_certu.Game()
-           self.__game.set_white_searcher(self.__white_searcher)
-           self.__game.set_black_searcher(self.__black_searcher)
+           self.__game.set_white_searcher(self.__searcher[jersi_certu.Player.WHITE])
+           self.__game.set_black_searcher(self.__searcher[jersi_certu.Player.BLACK])
            self.__game.start()
 
            self.__jersi_state = self.__game.get_state()
@@ -516,7 +501,7 @@ class GameGui(tk.Frame):
            self.__variable_log.set("jersi started")
            self.__button_start_stop.configure(text="Stop")
 
-           self.__canvas.after(1_000, self.__command_next_turn)
+           self.__canvas.after(500, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")
@@ -530,13 +515,35 @@ class GameGui(tk.Frame):
 
         if self.__game.has_next_turn():
 
-            self.__game.next_turn()
             self.__jersi_state = self.__game.get_state()
-            self.__draw_state()
+            player = self.__jersi_state.get_current_player()
+            searcher = self.__searcher[player]
+
+            if searcher.is_interactive():
+                self.__entry_move.config(state="enabled")
+                self.__button_move_confirm.config(state="enabled")
+
+                if self.__move_validated and self.__move_input is not None:
+                    searcher.set_action_name(self.__move_input)
+
+                    self.__move_input = None
+                    self.__move_validated = False
+                    self.__entry_move.config(state="disabled")
+                    self.__button_move_confirm.config(state="disabled")
+
+                    self.__game.next_turn()
+                    self.__jersi_state = self.__game.get_state()
+                    self.__draw_state()
+                    self.__variable_log.set(self.__game.get_log())
+
+            else:
+                self.__game.next_turn()
+                self.__jersi_state = self.__game.get_state()
+                self.__draw_state()
+                self.__variable_log.set(self.__game.get_log())
 
             if self.__game_started:
-                self.__canvas.after(1_000, self.__command_next_turn)
-                self.__variable_log.set(self.__game.get_log())
+                self.__canvas.after(500, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")
