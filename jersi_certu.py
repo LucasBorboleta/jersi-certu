@@ -771,6 +771,7 @@ class JersiState:
         self.__turn = 1
 
         self.__actions = None
+        self.__actions_by_names = None
         self.__taken = False
         self.__terminal_case = None
         self.__terminated = None
@@ -789,6 +790,7 @@ class JersiState:
         state.__hexagon_top = copy.deepcopy(state.__hexagon_top)
 
         state.__actions = None
+        state.__actions_by_names = None
         state.__taken = False
         state.__terminal_case = None
         state.__terminated = None
@@ -1014,6 +1016,12 @@ class JersiState:
         return state
 
 
+    def take_action_by_name(self, action_name):
+       assert action_name in self.get_action_names()
+       action = self.__actions_by_names[action_name]
+       self.take_action(action)
+
+
     def is_terminal(self):
 
         if self.__terminated is None:
@@ -1107,6 +1115,23 @@ class JersiState:
             # Better to shuffle actions here than by MCTS searcher for example
             random.shuffle(self.__actions)
         return self.__actions
+
+
+    def get_action_names(self):
+        if self.__actions_by_names is None:
+            self.__actions_by_names = {}
+            for action in self.get_actions():
+                action_name = action.notation.replace('!', '')
+                self.__actions_by_names[action_name] = action
+
+        return list(sorted(self.__actions_by_names.keys()))
+
+
+    def get_action_by_name(self, action_name):
+       assert action_name in self.get_action_names()
+       action = self.__actions_by_names[action_name]
+       return action
+
 
     ### Action finders
 
@@ -1769,35 +1794,58 @@ class HumanSearcher():
 
     def __init__(self, name):
         self.__name = name
+        self.__action_name = None
+        self.__use_command_line = False
 
 
     def get_name(self):
         return self.__name
 
 
+    def is_interactive(self):
+        return True
+
+
+    def use_command_line(self, condition):
+        assert condition in (True, False)
+        self.__use_command_line = condition
+
+
+    def set_action_name(self, action_name):
+        assert not self.__use_command_line
+        self.__action_name = action_name
+
+
     def search(self, state):
-        actions = state.get_actions()
 
-        action_dict = {}
-        for x in actions:
-            action_dict[x.notation] = x
+        if self.__use_command_line:
+            return self.__search_using_command_line(state)
 
-        valid_notations = list(action_dict.keys())
-        valid_notations.sort()
+        else:
+            action = state.get_action_by_name(self.__action_name)
+            self.__action_name = None
+            return action
+
+
+    def __search_using_command_line(self, state):
+        assert self.__use_command_line
+
+        action_names = state.get_action_names()
 
         with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
-            for x in valid_notations:
+            for x in action_names:
                 stream.write(x + "\n")
 
-        human_notation_validated = False
-        while not human_notation_validated:
-            human_notation = input("HumanSearcher: action? ").strip()
-            if human_notation in valid_notations:
-                human_notation_validated = True
+        input_name_validated = False
+        while not input_name_validated:
+            input_name = input("HumanSearcher: action? ").strip()
+            if input_name in action_names:
+                input_name_validated = True
             else:
-                print(f"action {human_notation} is not valid ..." )
+                print(f"action {input_name} is not valid ..." )
 
-        action = action_dict[human_notation]
+        action = state.get_action_by_name(input_name)
+
         print(f"HumanSearcher: action {action} has been selected")
 
         return action
@@ -1812,6 +1860,10 @@ class RandomSearcher():
 
     def get_name(self):
         return self.__name
+
+
+    def is_interactive(self):
+        return False
 
 
     def search(self, state):
@@ -1848,6 +1900,10 @@ class MctsSearcher():
 
     def get_name(self):
         return self.__name
+
+
+    def is_interactive(self):
+        return False
 
 
     def search(self, state):
@@ -2066,6 +2122,7 @@ def test_game_between_random_and_human_players():
 
     game.set_white_searcher(SEARCHER_CATALOG.get("human"))
     game.set_black_searcher(SEARCHER_CATALOG.get("random"))
+    SEARCHER_CATALOG.get("human").use_command_line(True)
 
     game.start()
 
@@ -2073,6 +2130,7 @@ def test_game_between_random_and_human_players():
         game.next_turn()
 
     JersiState.set_max_credit(default_max_credit)
+    SEARCHER_CATALOG.get("human").use_command_line(False)
 
     print("===============================================")
     print("test_game_between_random_and_human_players done")
@@ -2083,13 +2141,13 @@ def main():
     print("Hello")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if True:
+    if False:
         test_game_between_random_players()
 
-    if True:
+    if False:
         test_game_between_mcts_players()
 
-    if False:
+    if True:
         test_game_between_random_and_human_players()
 
     print("Bye")
