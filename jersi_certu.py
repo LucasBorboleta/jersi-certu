@@ -1836,9 +1836,10 @@ class HumanSearcher():
 
         action_names = state.get_action_names()
 
-        with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
-            for x in action_names:
-                stream.write(x + "\n")
+        if False:
+            with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
+                for x in action_names:
+                    stream.write(x + "\n")
 
         input_name_validated = False
         while not input_name_validated:
