@@ -369,6 +369,8 @@ class GameGui(tk.Frame):
         self.__button_reserve.grid(row=1, column=0)
         self.__combobox_button_faces.grid(row=1, column=1)
 
+        self.__frame_commands.rowconfigure(0, pad=5)
+        self.__frame_commands.rowconfigure(1, pad=5)
 
         # In __frame_players
 
@@ -424,6 +426,9 @@ class GameGui(tk.Frame):
         self.__combobox_black_player.grid(row=0, column=6)
 
         self.__progressbar.grid(row=1, columnspan=7)
+
+        self.__frame_players.rowconfigure(0, pad=5)
+        self.__frame_players.rowconfigure(1, pad=5)
 
         # In __frame_board
 
