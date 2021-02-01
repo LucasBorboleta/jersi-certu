@@ -75,6 +75,7 @@ class mcts():
 
     def expand(self, node):
         actions = node.state.getPossibleActions()
+        random.shuffle(actions)
         for action in actions:
             if action not in node.children:
                 newNode = treeNode(node.state.takeAction(action), node)

@@ -29,11 +29,6 @@ from PIL import ImageTk
 import tkinter as tk
 from tkinter import font
 from tkinter import ttk
-##TODO: consider more ttk equivalent, but better widgets
-##TODO: consider using Style
-
-import numpy as np
-##TODO: consider replacing numpy by tinynumpy (a pure and light Python equivalent)
 
 _script_home = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(_script_home)
@@ -46,6 +41,107 @@ def rgb_color_as_hexadecimal(rgb_triplet):
     assert 0 <= green <= 255
     assert 0 <= red <= 255
     return '#%02x%02x%02x' % (red, green, blue)
+
+
+class TinyVector:
+    """Algebra on 2D vector, as a lightweight, pure Python, replacement of numpy ndarray."""
+
+    def __init__(self, xy_pair=None):
+        if xy_pair is not None:
+            (x, y) = (float(xy_pair[0]), float(xy_pair[1]))
+        else:
+            (x, y) = (0., 0.)
+        self.__x = x
+        self.__y = y
+
+
+    def __getitem__(self, key):
+        if key == 0:
+            return self.__x
+
+        elif key == 1:
+            return self.__y
+
+        else:
+            raise IndexError()
+
+
+    def __neg__(self):
+        return TinyVector((-self.__x , -self.__y))
+
+
+    def __pos__(self):
+        return TinyVector((self.__x , self.__y))
+
+
+    def __add__(self, other):
+        if isinstance(other, (int, float)):
+            return TinyVector((self.__x + other, self.__y + other))
+
+        elif isinstance(other, TinyVector):
+            return TinyVector((self.__x + other.__x, self.__y + other.__y))
+
+        else:
+            raise NotImplementedError()
+
+
+    def __sub__(self, other):
+        if isinstance(other, (int, float)):
+            return TinyVector((self.__x - other, self.__y - other))
+
+        elif isinstance(other, TinyVector):
+            return TinyVector((self.__x - other.__x, self.__y - other.__y))
+
+        else:
+            raise NotImplementedError()
+
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return TinyVector((self.__x*other, self.__y*other))
+
+        else:
+            raise NotImplementedError()
+
+
+    def __div__(self, other):
+        return self.__mul__(1./other)
+
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+
+    def __rsub__(self, other):
+        if isinstance(other, (int, float)):
+            return TinyVector((-self.__x + other, -self.__y + other))
+
+        elif isinstance(other, TinyVector):
+            return TinyVector((-self.__x + other.__x, -self.__y + other.__y))
+
+        else:
+            raise NotImplementedError()
+
+    @staticmethod
+    def inner(that, other):
+        if isinstance(that, TinyVector) and isinstance(other, TinyVector):
+            return (that.__x*other.__x + that.__y*other.__y)
+
+        else:
+            assert False
+
+
+    @staticmethod
+    def norm(that):
+        if isinstance(that, TinyVector):
+            return math.sqrt(that.__x*that.__x + that.__y*that.__y)
+
+        else:
+            assert False
 
 
 class AppConfig:
@@ -85,11 +181,11 @@ class CanvasConfig:
     HEXA_LINE_WIDTH = 1
 
     # Origin of the orthonormal x-y frame and the oblic u-v frame
-    ORIGIN = np.array((WIDTH/2, HEIGHT/2))
+    ORIGIN = TinyVector((WIDTH/2, HEIGHT/2))
 
     # Unit vectors of the orthonormal x-y frame
-    UNIT_X = np.array((1, 0))
-    UNIT_Y = np.array((0, -1))
+    UNIT_X = TinyVector((1, 0))
+    UNIT_Y = TinyVector((0, -1))
 
     # Unit vectors of the oblic u-v frame
     UNIT_U = UNIT_X
@@ -266,7 +362,7 @@ class GraphicalHexagon:
             GraphicalHexagon(hexagon, color, relative_shift_xy)
 
 
-class GameGui(tk.Frame):
+class GameGui(ttk.Frame):
 
 
     def __init__(self):
@@ -320,24 +416,24 @@ class GameGui(tk.Frame):
 
         # Frames
 
-        self.__frame_left = tk.Frame(self.__root)
-        self.__frame_right = tk.Frame(self.__root)
+        self.__frame_left = ttk.Frame(self.__root)
+        self.__frame_right = ttk.Frame(self.__root)
 
         self.__frame_left.pack(side=tk.LEFT)
         self.__frame_right.pack(side=tk.TOP)
 
-        self.__frame_commands_and_players = tk.Frame(self.__frame_right)
-        self.__frame_move = tk.Frame(self.__frame_right)
+        self.__frame_commands_and_players = ttk.Frame(self.__frame_right)
+        self.__frame_move = ttk.Frame(self.__frame_right)
 
         self.__frame_commands_and_players.pack(side=tk.TOP)
 
-        self.__frame_board = tk.Frame(self.__frame_left)
+        self.__frame_board = ttk.Frame(self.__frame_left)
 
         self.__frame_move.pack(side=tk.TOP)
         self.__frame_board.pack(side=tk.TOP)
 
-        self.__frame_commands = tk.Frame(self.__frame_commands_and_players, padx=20)
-        self.__frame_players = tk.Frame(self.__frame_commands_and_players, padx=20)
+        self.__frame_commands = ttk.Frame(self.__frame_commands_and_players, padding=20)
+        self.__frame_players = ttk.Frame(self.__frame_commands_and_players, padding=20)
 
         self.__frame_commands.pack(side=tk.LEFT)
         self.__frame_players.pack(side=tk.LEFT)
@@ -381,7 +477,7 @@ class GameGui(tk.Frame):
 
         # In __frame_players
 
-        self.__label_white_player = tk.Label(self.__frame_players, text='White :')
+        self.__label_white_player = ttk.Label(self.__frame_players, text='White :')
 
         self.__variable_white_player = tk.StringVar()
         self.__combobox_white_player = ttk.Combobox(self.__frame_players,
@@ -392,7 +488,7 @@ class GameGui(tk.Frame):
         self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.__label_black_player = tk.Label(self.__frame_players, text='Black :')
+        self.__label_black_player = ttk.Label(self.__frame_players, text='Black :')
 
         self.__variable_black_player = tk.StringVar()
         self.__combobox_black_player = ttk.Combobox(self.__frame_players,
@@ -433,13 +529,13 @@ class GameGui(tk.Frame):
        # In __frame_move
 
         self.__variable_log = tk.StringVar()
-        self.__label_log = tk.Label(self.__frame_move,
+        self.__label_log = ttk.Label(self.__frame_move,
                                   textvariable=self.__variable_log,
                                   width=90,
                                   foreground='red',
                                   borderwidth=2, relief="groove")
 
-        self.__label_move = tk.Label(self.__frame_move, text='Move :')
+        self.__label_move = ttk.Label(self.__frame_move, text='Move :')
 
         self.__variable_move = tk.StringVar()
         self.__entry_move = ttk.Entry(self.__frame_move, textvariable=self.__variable_move)
@@ -770,8 +866,8 @@ class GameGui(tk.Frame):
 
         def rotate_90_degrees(vector):
             """Rotate 90 degrees counter clock"""
-            projection_x = np.inner(vector, CanvasConfig.UNIT_X)
-            projection_y = np.inner(vector, CanvasConfig.UNIT_Y)
+            projection_x = TinyVector.inner(vector, CanvasConfig.UNIT_X)
+            projection_y = TinyVector.inner(vector, CanvasConfig.UNIT_Y)
             rotated_unit_x = CanvasConfig.UNIT_Y
             rotated_unit_y = -CanvasConfig.UNIT_X
             return projection_x*rotated_unit_x + projection_y*rotated_unit_y
@@ -796,7 +892,7 @@ class GameGui(tk.Frame):
         face_vertex_NC = 0.5*(face_vertex_N + cube_center)
         face_vertex_SC = 0.5*(face_vertex_S + cube_center)
 
-        cube_side = np.linalg.norm(face_vertex_NW - face_vertex_NE)
+        cube_side = TinyVector.norm(face_vertex_NW - face_vertex_NE)
 
         # little angular overlap to ensure coninuity bewteen arcs
         angle_epsilon = 0.01*180

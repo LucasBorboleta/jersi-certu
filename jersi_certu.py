@@ -28,7 +28,7 @@ import sys
 _do_debug = False
 
 _script_home = os.path.abspath(os.path.dirname(__file__))
-_mcts_home = os.path.join(_script_home, "packages", "MCTS-lucasborboleta-4e62716-changed")
+_mcts_home = os.path.join(_script_home, "packages", "MCTS", "commit-4e62716afdc1691784e33998297067cc4413dc6f")
 sys.path.append(_mcts_home)
 import mcts
 
