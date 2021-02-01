@@ -24,12 +24,16 @@ import sys
 
 from PIL import Image
 from PIL import ImageTk
+##TODO: consider removing such PIL dependency
 
 import tkinter as tk
 from tkinter import font
 from tkinter import ttk
+##TODO: consider more ttk equivalent, but better widgets
+##TODO: consider using Style
 
 import numpy as np
+##TODO: consider replacing numpy by tinynumpy (a pure and light Python equivalent)
 
 _script_home = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(_script_home)
@@ -294,8 +298,8 @@ class GameGui(tk.Frame):
 
         self.__root = tk.Tk()
 
-        tk.Tk.iconbitmap(self.__root, default=AppConfig.ICON_FILE)
-        tk.Tk.wm_title(self.__root, "jersi-certu : for playing the jersi boardgame and testing IA agents")
+        self.__root.title("jersi-certu : for playing the jersi boardgame and testing IA agents")
+        self.__root.iconbitmap(AppConfig.ICON_FILE)
 
         self.__create_widgets()
         self.__draw_state()
@@ -452,6 +456,20 @@ class GameGui(tk.Frame):
 
         self.__entry_move.config(state="disabled")
         self.__button_move_confirm.config(state="disabled")
+
+
+    def __create_cube_photos(self):
+        if self.__cube_photos is None:
+
+            cube_photo_width = int(CanvasConfig.HEXA_SIDE*math.cos(math.pi/4))
+
+            self.__cube_photos = {}
+
+            for (key, file) in CubeConfig.CUBE_FILE_PATH.items():
+                cube_photo = Image.open(CubeConfig.CUBE_FILE_PATH[key])
+                cube_photo = cube_photo.resize((cube_photo_width, cube_photo_width))
+                cube_tk_photo = ImageTk.PhotoImage(cube_photo)
+                self.__cube_photos[key] = cube_tk_photo
 
 
     def __command_update_faces(self, *_):
@@ -662,18 +680,6 @@ class GameGui(tk.Frame):
 
     def __draw_cube(self, name, config, cube_color, cube_sort, cube_label):
 
-        if self.__cube_photos is None:
-
-            cube_photo_width = int(CanvasConfig.HEXA_SIDE*math.cos(math.pi/4))
-
-            self.__cube_photos = {}
-
-            for (key, file) in CubeConfig.CUBE_FILE_PATH.items():
-                cube_photo = Image.open(CubeConfig.CUBE_FILE_PATH[key])
-                cube_photo = cube_photo.resize((cube_photo_width, cube_photo_width))
-                cube_tk_photo = ImageTk.PhotoImage(cube_photo)
-                self.__cube_photos[key] = cube_tk_photo
-
         hexagon = GraphicalHexagon.get(name)
 
         if hexagon.reserve and not self.__draw_reserve:
@@ -725,6 +731,10 @@ class GameGui(tk.Frame):
         cube_vertex_SE = cube_vertices[3]
 
         if self.__cube_faces == 'faces=pictures':
+
+            if self.__cube_photos is None:
+                self.__create_cube_photos()
+
             cube_tk_photo = self.__cube_photos[(cube_color, cube_sort)]
             self.__canvas.create_image(cube_center[0], cube_center[1], image=cube_tk_photo, anchor=tk.CENTER)
 
