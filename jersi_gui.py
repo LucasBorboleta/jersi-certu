@@ -44,15 +44,27 @@ def rgb_color_as_hexadecimal(rgb_triplet):
 
 
 class TinyVector:
-    """Algebra on 2D vector, as a lightweight, pure Python, replacement of numpy ndarray."""
+    """Lightweight algebra on 2D vectors, inspired by numpy ndarray."""
+
+    __slots__ = ("__x", "__y")
+
 
     def __init__(self, xy_pair=None):
-        if xy_pair is not None:
-            (x, y) = (float(xy_pair[0]), float(xy_pair[1]))
+        if xy_pair is None:
+            self.__x = 0.
+            self.__y = 0.
+
         else:
-            (x, y) = (0., 0.)
-        self.__x = x
-        self.__y = y
+            self.__x = float(xy_pair[0])
+            self.__y = float(xy_pair[1])
+
+
+    def __repr__(self):
+        return str(self)
+
+
+    def __str__(self):
+        return str((self.__x, self.__y))
 
 
     def __getitem__(self, key):
@@ -75,22 +87,22 @@ class TinyVector:
 
 
     def __add__(self, other):
-        if isinstance(other, (int, float)):
-            return TinyVector((self.__x + other, self.__y + other))
-
-        elif isinstance(other, TinyVector):
+        if isinstance(other, TinyVector):
             return TinyVector((self.__x + other.__x, self.__y + other.__y))
+
+        elif isinstance(other, (int, float)):
+            return TinyVector((self.__x + other, self.__y + other))
 
         else:
             raise NotImplementedError()
 
 
     def __sub__(self, other):
-        if isinstance(other, (int, float)):
-            return TinyVector((self.__x - other, self.__y - other))
-
-        elif isinstance(other, TinyVector):
+        if isinstance(other, TinyVector):
             return TinyVector((self.__x - other.__x, self.__y - other.__y))
+
+        elif isinstance(other, (int, float)):
+            return TinyVector((self.__x - other, self.__y - other))
 
         else:
             raise NotImplementedError()
@@ -117,14 +129,15 @@ class TinyVector:
 
 
     def __rsub__(self, other):
-        if isinstance(other, (int, float)):
-            return TinyVector((-self.__x + other, -self.__y + other))
-
-        elif isinstance(other, TinyVector):
+        if isinstance(other, TinyVector):
             return TinyVector((-self.__x + other.__x, -self.__y + other.__y))
+
+        elif isinstance(other, (int, float)):
+            return TinyVector((-self.__x + other, -self.__y + other))
 
         else:
             raise NotImplementedError()
+
 
     @staticmethod
     def inner(that, other):
@@ -132,7 +145,7 @@ class TinyVector:
             return (that.__x*other.__x + that.__y*other.__y)
 
         else:
-            assert False
+            raise NotImplementedError()
 
 
     @staticmethod
@@ -141,7 +154,7 @@ class TinyVector:
             return math.sqrt(that.__x*that.__x + that.__y*that.__y)
 
         else:
-            assert False
+            raise NotImplementedError()
 
 
 class AppConfig:
