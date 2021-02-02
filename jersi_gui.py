@@ -48,7 +48,6 @@ class TinyVector:
 
     __slots__ = ("__x", "__y")
 
-
     def __init__(self, xy_pair=None):
         if xy_pair is None:
             self.__x = 0.
@@ -402,8 +401,8 @@ class GameGui(ttk.Frame):
         self.__jersi_state = jersi_certu.JersiState()
         self.__searcher = [None, None]
 
-        self.__move_input = None
-        self.__move_validated = False
+        self.__action_input = None
+        self.__action_validated = False
 
         self.__root = tk.Tk()
 
@@ -436,13 +435,13 @@ class GameGui(ttk.Frame):
         self.__frame_right.pack(side=tk.TOP)
 
         self.__frame_commands_and_players = ttk.Frame(self.__frame_right)
-        self.__frame_move = ttk.Frame(self.__frame_right)
+        self.__frame_actions = ttk.Frame(self.__frame_right)
 
         self.__frame_commands_and_players.pack(side=tk.TOP)
 
         self.__frame_board = ttk.Frame(self.__frame_left)
 
-        self.__frame_move.pack(side=tk.TOP)
+        self.__frame_actions.pack(side=tk.TOP)
         self.__frame_board.pack(side=tk.TOP)
 
         self.__frame_commands = ttk.Frame(self.__frame_commands_and_players, padding=20)
@@ -539,32 +538,32 @@ class GameGui(ttk.Frame):
                                 width=CanvasConfig.WIDTH)
         self.__canvas.pack(side=tk.TOP)
 
-       # In __frame_move
+       # In __frame_actions
 
         self.__variable_log = tk.StringVar()
-        self.__label_log = ttk.Label(self.__frame_move,
+        self.__label_log = ttk.Label(self.__frame_actions,
                                   textvariable=self.__variable_log,
                                   width=90,
                                   foreground='red',
                                   borderwidth=2, relief="groove")
 
-        self.__label_move = ttk.Label(self.__frame_move, text='Move :')
+        self.__label_action = ttk.Label(self.__frame_actions, text='Action :')
 
-        self.__variable_move = tk.StringVar()
-        self.__entry_move = ttk.Entry(self.__frame_move, textvariable=self.__variable_move)
+        self.__variable_action = tk.StringVar()
+        self.__entry_action = ttk.Entry(self.__frame_actions, textvariable=self.__variable_action)
 
-        self.__button_move_confirm = ttk.Button(self.__frame_move,
+        self.__button_action_confirm = ttk.Button(self.__frame_actions,
                                   text='OK',
-                                  command=self.__command_move_confirm)
+                                  command=self.__command_action_confirm)
 
         self.__label_log.pack(side=tk.TOP)
 
-        self.__label_move.pack(side=tk.LEFT)
-        self.__entry_move.pack(side=tk.LEFT, padx=5)
-        self.__button_move_confirm.pack(side=tk.LEFT)
+        self.__label_action.pack(side=tk.LEFT)
+        self.__entry_action.pack(side=tk.LEFT, padx=5)
+        self.__button_action_confirm.pack(side=tk.LEFT)
 
-        self.__entry_move.config(state="disabled")
-        self.__button_move_confirm.config(state="disabled")
+        self.__entry_action.config(state="disabled")
+        self.__button_action_confirm.config(state="disabled")
 
 
     def __create_cube_photos(self):
@@ -596,16 +595,18 @@ class GameGui(ttk.Frame):
         self.__searcher[jersi_certu.Player.BLACK] = jersi_certu.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
-    def __command_move_confirm(self):
-        self.__move_input = self.__variable_move.get()
-        self.__move_validated = self.__move_input in self.__jersi_state.get_action_names()
+    def __command_action_confirm(self):
+        self.__action_input = self.__variable_action.get()
 
-        if self.__move_validated:
-            self.__variable_log.set("move is valid")
-            self.__variable_move.set("")
+        (self.__action_validated,
+         message) = jersi_certu.Notation.validate_simple_notation(self.__action_input,
+                                                                  self.__jersi_state.get_action_simple_names())
+        if self.__action_validated:
+            self.__variable_log.set(message)
+            self.__variable_action.set("")
 
         else:
-            self.__variable_log.set("move is not valid !")
+            self.__variable_log.set(message)
 
 
     def __command_start_stop(self):
@@ -647,16 +648,16 @@ class GameGui(ttk.Frame):
             searcher = self.__searcher[player]
 
             if searcher.is_interactive():
-                self.__entry_move.config(state="enabled")
-                self.__button_move_confirm.config(state="enabled")
+                self.__entry_action.config(state="enabled")
+                self.__button_action_confirm.config(state="enabled")
 
-                if self.__move_validated and self.__move_input is not None:
-                    searcher.set_action_name(self.__move_input)
+                if self.__action_validated and self.__action_input is not None:
+                    searcher.set_action_simple_name(self.__action_input)
 
-                    self.__move_input = None
-                    self.__move_validated = False
-                    self.__entry_move.config(state="disabled")
-                    self.__button_move_confirm.config(state="disabled")
+                    self.__action_input = None
+                    self.__action_validated = False
+                    self.__entry_action.config(state="disabled")
+                    self.__button_action_confirm.config(state="disabled")
 
                     self.__game.next_turn()
                     self.__jersi_state = self.__game.get_state()

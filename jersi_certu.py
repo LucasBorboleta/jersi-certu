@@ -22,6 +22,7 @@ import copy
 import enum
 import os
 import random
+import re
 import sys
 
 
@@ -610,6 +611,27 @@ class Hexagon:
         Hexagon('i7', (1, 4))
 
 
+@enum.unique
+class NotationCase(enum.Enum):
+
+    INVALID = 'invalid'
+
+    DROP_ONE_CUBE = 'x:xx'
+    DROP_TWO_CUBES = 'x:xx/x:xx'
+
+    MOVE_CUBE = 'xx-xx'
+    MOVE_STACK = 'xx=xx'
+
+    MOVE_CUBE_MOVE_STACK = 'xx-xx=xx'
+    MOVE_STACK_MOVE_CUBE = 'xx=xx-xx'
+
+    MOVE_CUBE_RELOCATE_KING = 'xx-xx/x:xx'
+    MOVE_STACK_RELOCATE_KING = 'xx=xx/x:xx'
+
+    MOVE_CUBE_MOVE_STACK_RELOCATE_KING = 'xx-xx=xx/x:xx'
+    MOVE_STACK_MOVE_CUBE_RELOCATE_KING = 'xx=xx-xx/x:xx'
+
+
 class Notation:
 
     def __init__(self):
@@ -698,6 +720,105 @@ class Notation:
         return notation
 
 
+    @staticmethod
+    def simplify_notation(notation):
+        return notation.strip().replace(' ', '').replace('!', '')
+
+
+    @staticmethod
+    def classify_simple_notation(notation):
+        if re.match(r'^([KFRPSMW]|[kfrpsmw]):[a-i][1-9]$', notation):
+            # drop one cube
+            return NotationCase.DROP_ONE_CUBE
+
+        elif re.match(r'^([KFRPSMW]|[kfrpsmw]):[a-i][1-9]/([KFRPSMW]|[kfrpsmw]):[a-i][1-9]$', notation):
+            # drop two cubes
+            return NotationCase.DROP_TWO_CUBES
+
+        elif re.match(r'^[a-i][1-9]-[a-i][1-9]$', notation):
+            # move cube
+            return NotationCase.MOVE_CUBE
+
+        elif re.match(r'^[a-i][1-9]=[a-i][1-9]$', notation):
+            # move stack
+            return NotationCase.MOVE_STACK
+
+        elif re.match(r'^[a-i][1-9]-[a-i][1-9]=[a-i][1-9]$', notation):
+            # move cube move stack
+            return NotationCase.MOVE_CUBE_MOVE_STACK
+
+        elif re.match(r'^[a-i][1-9]=[a-i][1-9]-[a-i][1-9]$', notation):
+            # move stack move cube
+            return NotationCase.MOVE_STACK_MOVE_CUBE
+
+        elif re.match(r'^[a-i][1-9]-[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
+            # move cube relocate king
+            return NotationCase.MOVE_CUBE_RELOCATE_KING
+
+        elif re.match(r'^[a-i][1-9]=[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
+            # move stack relocate king
+            return NotationCase.MOVE_STACK_RELOCATE_KING
+
+        elif re.match(r'^[a-i][1-9]-[a-i][1-9]=[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
+            # move cube move stack relocate king
+            return NotationCase.MOVE_CUBE_MOVE_STACK_RELOCATE_KING
+
+        elif re.match(r'^[a-i][1-9]=[a-i][1-9]-[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
+            # move stack move cube relocate king
+            return NotationCase.MOVE_STACK_MOVE_CUBE_RELOCATE_KING
+
+        else:
+            return NotationCase.INVALID
+
+
+    @staticmethod
+    def validate_simple_notation(action_input, action_names):
+
+        def split_actions(action_names):
+            action_cases = {}
+
+            for action_name in action_names:
+                action_case = Notation.classify_simple_notation(action_name)
+                if action_case not in action_cases:
+                    action_cases[action_case] = set()
+                action_cases[action_case].add(action_name)
+
+            return action_cases
+
+
+        action_simplified = Notation.simplify_notation(action_input)
+        action_validated = action_input in action_names or action_simplified in action_names
+
+        if action_validated:
+            message = "validated action"
+
+        else:
+            if  NotationCase.INVALID == Notation.classify_simple_notation(action_simplified):
+                message = "invalid action syntax !"
+
+            else:
+                action_cases = split_actions(action_names)
+
+                action_case = Notation.classify_simple_notation(action_simplified)
+
+                if action_case not in action_cases:
+                    message = f"{action_case.value} : impossible action !"
+                else:
+                    # find the longest match from the start
+                    match_length = 0
+                    for action_possible in action_cases[action_case]:
+                        for end in range(match_length, len(action_simplified)):
+                            if action_simplified[:end] == action_possible[:end]:
+                                match_length = max(match_length, end)
+                            else:
+                                break
+
+                    action_template = action_simplified[:match_length] + action_case.value[match_length:]
+                    message = f"{action_template} : possible action if corrected !"
+
+        return (action_validated, message)
+
+
 class JersiAction:
 
 
@@ -775,7 +896,7 @@ class JersiState:
         self.__turn = 1
 
         self.__actions = None
-        self.__actions_by_names = None
+        self.__actions_by_simple_names = None
         self.__taken = False
         self.__terminal_case = None
         self.__terminated = None
@@ -794,7 +915,7 @@ class JersiState:
         state.__hexagon_top = copy.deepcopy(state.__hexagon_top)
 
         state.__actions = None
-        state.__actions_by_names = None
+        state.__actions_by_simple_names = None
         state.__taken = False
         state.__terminal_case = None
         state.__terminated = None
@@ -1020,9 +1141,9 @@ class JersiState:
         return state
 
 
-    def take_action_by_name(self, action_name):
-       assert action_name in self.get_action_names()
-       action = self.__actions_by_names[action_name]
+    def take_action_by_simple_name(self, action_name):
+       assert action_name in self.get_action_simple_names()
+       action = self.__actions_by_simple_names[action_name]
        self.take_action(action)
 
 
@@ -1121,19 +1242,19 @@ class JersiState:
         return self.__actions
 
 
-    def get_action_names(self):
-        if self.__actions_by_names is None:
-            self.__actions_by_names = {}
+    def get_action_simple_names(self):
+        if self.__actions_by_simple_names is None:
+            self.__actions_by_simple_names = {}
             for action in self.get_actions():
-                action_name = action.notation.replace('!', '')
-                self.__actions_by_names[action_name] = action
+                action_name = Notation.simplify_notation(action.notation)
+                self.__actions_by_simple_names[action_name] = action
 
-        return list(sorted(self.__actions_by_names.keys()))
+        return list(sorted(self.__actions_by_simple_names.keys()))
 
 
-    def get_action_by_name(self, action_name):
-       assert action_name in self.get_action_names()
-       action = self.__actions_by_names[action_name]
+    def get_action_by_simple_name(self, action_name):
+       assert action_name in self.get_action_simple_names()
+       action = self.__actions_by_simple_names[action_name]
        return action
 
 
@@ -1798,7 +1919,7 @@ class HumanSearcher():
 
     def __init__(self, name):
         self.__name = name
-        self.__action_name = None
+        self.__action_simple_name = None
         self.__use_command_line = False
 
 
@@ -1815,9 +1936,9 @@ class HumanSearcher():
         self.__use_command_line = condition
 
 
-    def set_action_name(self, action_name):
+    def set_action_simple_name(self, action_name):
         assert not self.__use_command_line
-        self.__action_name = action_name
+        self.__action_simple_name = action_name
 
 
     def search(self, state):
@@ -1826,30 +1947,30 @@ class HumanSearcher():
             return self.__search_using_command_line(state)
 
         else:
-            action = state.get_action_by_name(self.__action_name)
-            self.__action_name = None
+            action = state.get_action_by_simple_name(self.__action_simple_name)
+            self.__action_simple_name = None
             return action
 
 
     def __search_using_command_line(self, state):
         assert self.__use_command_line
 
-        action_names = state.get_action_names()
+        action_names = state.get_action_simple_names()
 
         if False:
             with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
                 for x in action_names:
                     stream.write(x + "\n")
 
-        input_name_validated = False
-        while not input_name_validated:
-            input_name = input("HumanSearcher: action? ").strip()
-            if input_name in action_names:
-                input_name_validated = True
-            else:
-                print(f"action {input_name} is not valid ..." )
+        action_validated = False
+        while not action_validated:
+            action_input = Notation.simplify_notation(input("HumanSearcher: action? "))
+            (action_validated, validation_message) = Notation.validate_simple_notation(action_input, action_names)
 
-        action = state.get_action_by_name(input_name)
+            if not action_validated:
+                print(validation_message)
+
+        action = state.get_action_by_simple_name(action_input)
 
         print(f"HumanSearcher: action {action} has been selected")
 
