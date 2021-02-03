@@ -777,46 +777,56 @@ class Notation:
         def split_actions(action_names):
             action_cases = {}
 
-            for action_name in action_names:
-                action_case = Notation.classify_simple_notation(action_name)
-                if action_case not in action_cases:
-                    action_cases[action_case] = set()
-                action_cases[action_case].add(action_name)
+            for some_action_name in action_names:
+                some_action_case = Notation.classify_simple_notation(some_action_name)
+                if some_action_case not in action_cases:
+                    action_cases[some_action_case] = set()
+                action_cases[some_action_case].add(some_action_name)
 
             return action_cases
 
 
-        action_simplified = Notation.simplify_notation(action_input)
-        action_validated = action_input in action_names or action_simplified in action_names
+        action_input_simplified = Notation.simplify_notation(action_input)
 
-        if action_validated:
+        validated = action_input in action_names or action_input_simplified in action_names
+
+        if validated:
             message = "validated action"
 
         else:
-            if  NotationCase.INVALID == Notation.classify_simple_notation(action_simplified):
+            action_cases = split_actions(action_names)
+            action_input_case = Notation.classify_simple_notation(action_input_simplified)
+
+            if action_input_case == NotationCase.INVALID:
                 message = "invalid action syntax !"
 
+            elif action_input_case not in action_cases:
+                message = f"{action_input_case.value} : impossible action !"
+
             else:
-                action_cases = split_actions(action_names)
+                message = "invalid action !"
 
-                action_case = Notation.classify_simple_notation(action_simplified)
+            # guess hints from each case of action
+            action_hints = []
+            for some_action_case in action_cases:
+                # find the longest match from the start
+                upper_length = min(len(action_input_simplified), len(some_action_case.value))
+                match_length = 0
+                for some_action_name in action_cases[some_action_case]:
+                    for end in range(match_length, upper_length + 1):
+                        if action_input_simplified[:end] == some_action_name[:end]:
+                            match_length = max(match_length, end)
+                        else:
+                            break
 
-                if action_case not in action_cases:
-                    message = f"{action_case.value} : impossible action !"
-                else:
-                    # find the longest match from the start
-                    match_length = 0
-                    for action_possible in action_cases[action_case]:
-                        for end in range(match_length, len(action_simplified)):
-                            if action_simplified[:end] == action_possible[:end]:
-                                match_length = max(match_length, end)
-                            else:
-                                break
+                action_hints.append(action_input_simplified[:match_length] + some_action_case.value[match_length:])
 
-                    action_template = action_simplified[:match_length] + action_case.value[match_length:]
-                    message = f"{action_template} : possible action if corrected !"
+            if len(action_hints) == 1:
+                message += " hint : " + action_hints[0]
+            else:
+                message += " hints : " + "  ".join(action_hints)
 
-        return (action_validated, message)
+        return (validated, message)
 
 
 class JersiAction:
@@ -1957,18 +1967,11 @@ class HumanSearcher():
 
         action_names = state.get_action_simple_names()
 
-        if False:
-            with open(os.path.join(_script_home, "actions.txt"), 'w') as stream:
-                for x in action_names:
-                    stream.write(x + "\n")
-
         action_validated = False
         while not action_validated:
             action_input = Notation.simplify_notation(input("HumanSearcher: action? "))
             (action_validated, validation_message) = Notation.validate_simple_notation(action_input, action_names)
-
-            if not action_validated:
-                print(validation_message)
+            print(validation_message)
 
         action = state.get_action_by_simple_name(action_input)
 
