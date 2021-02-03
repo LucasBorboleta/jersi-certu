@@ -612,7 +612,7 @@ class Hexagon:
 
 
 @enum.unique
-class NotationCase(enum.Enum):
+class SimpleNotationCase(enum.Enum):
 
     INVALID = 'invalid'
 
@@ -726,49 +726,64 @@ class Notation:
 
 
     @staticmethod
+    def classify_notation(notation):
+        notation_simplified = Notation.simplify_notation(notation)
+        notation_case = Notation.classify_simple_notation(notation_simplified)
+
+        # guess number of capture
+        capture = 0
+        if re.match(r"^.*!.*$ ", notation):
+            capture += 1
+            if re.match(r"^.*![^!]+!.*$ ", notation):
+                capture += 1
+
+        return (notation_case, capture)
+
+
+    @staticmethod
     def classify_simple_notation(notation):
         if re.match(r'^([KFRPSMW]|[kfrpsmw]):[a-i][1-9]$', notation):
             # drop one cube
-            return NotationCase.DROP_ONE_CUBE
+            return SimpleNotationCase.DROP_ONE_CUBE
 
         elif re.match(r'^([KFRPSMW]|[kfrpsmw]):[a-i][1-9]/([KFRPSMW]|[kfrpsmw]):[a-i][1-9]$', notation):
             # drop two cubes
-            return NotationCase.DROP_TWO_CUBES
+            return SimpleNotationCase.DROP_TWO_CUBES
 
         elif re.match(r'^[a-i][1-9]-[a-i][1-9]$', notation):
             # move cube
-            return NotationCase.MOVE_CUBE
+            return SimpleNotationCase.MOVE_CUBE
 
         elif re.match(r'^[a-i][1-9]=[a-i][1-9]$', notation):
             # move stack
-            return NotationCase.MOVE_STACK
+            return SimpleNotationCase.MOVE_STACK
 
         elif re.match(r'^[a-i][1-9]-[a-i][1-9]=[a-i][1-9]$', notation):
             # move cube move stack
-            return NotationCase.MOVE_CUBE_MOVE_STACK
+            return SimpleNotationCase.MOVE_CUBE_MOVE_STACK
 
         elif re.match(r'^[a-i][1-9]=[a-i][1-9]-[a-i][1-9]$', notation):
             # move stack move cube
-            return NotationCase.MOVE_STACK_MOVE_CUBE
+            return SimpleNotationCase.MOVE_STACK_MOVE_CUBE
 
         elif re.match(r'^[a-i][1-9]-[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
             # move cube relocate king
-            return NotationCase.MOVE_CUBE_RELOCATE_KING
+            return SimpleNotationCase.MOVE_CUBE_RELOCATE_KING
 
         elif re.match(r'^[a-i][1-9]=[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
             # move stack relocate king
-            return NotationCase.MOVE_STACK_RELOCATE_KING
+            return SimpleNotationCase.MOVE_STACK_RELOCATE_KING
 
         elif re.match(r'^[a-i][1-9]-[a-i][1-9]=[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
             # move cube move stack relocate king
-            return NotationCase.MOVE_CUBE_MOVE_STACK_RELOCATE_KING
+            return SimpleNotationCase.MOVE_CUBE_MOVE_STACK_RELOCATE_KING
 
         elif re.match(r'^[a-i][1-9]=[a-i][1-9]-[a-i][1-9]/[Kk]:[a-i][1-9]$', notation):
             # move stack move cube relocate king
-            return NotationCase.MOVE_STACK_MOVE_CUBE_RELOCATE_KING
+            return SimpleNotationCase.MOVE_STACK_MOVE_CUBE_RELOCATE_KING
 
         else:
-            return NotationCase.INVALID
+            return SimpleNotationCase.INVALID
 
 
     @staticmethod
@@ -777,11 +792,11 @@ class Notation:
         def split_actions(action_names):
             action_cases = {}
 
-            for some_action_name in action_names:
-                some_action_case = Notation.classify_simple_notation(some_action_name)
-                if some_action_case not in action_cases:
-                    action_cases[some_action_case] = set()
-                action_cases[some_action_case].add(some_action_name)
+            for this_name in action_names:
+                this_case = Notation.classify_simple_notation(this_name)
+                if this_case not in action_cases:
+                    action_cases[this_case] = set()
+                action_cases[this_case].add(this_name)
 
             return action_cases
 
@@ -797,7 +812,7 @@ class Notation:
             action_cases = split_actions(action_names)
             action_input_case = Notation.classify_simple_notation(action_input_simplified)
 
-            if action_input_case == NotationCase.INVALID:
+            if action_input_case == SimpleNotationCase.INVALID:
                 message = "invalid action syntax !"
 
             elif action_input_case not in action_cases:
@@ -808,18 +823,18 @@ class Notation:
 
             # guess hints from each case of action
             action_hints = []
-            for some_action_case in action_cases:
+            for this_case in action_cases:
                 # find the longest match from the start
-                upper_length = min(len(action_input_simplified), len(some_action_case.value))
+                upper_length = min(len(action_input_simplified), len(this_case.value))
                 match_length = 0
-                for some_action_name in action_cases[some_action_case]:
+                for this_name in action_cases[this_case]:
                     for end in range(match_length, upper_length + 1):
-                        if action_input_simplified[:end] == some_action_name[:end]:
+                        if action_input_simplified[:end] == this_name[:end]:
                             match_length = max(match_length, end)
                         else:
                             break
 
-                action_hints.append(action_input_simplified[:match_length] + some_action_case.value[match_length:])
+                action_hints.append(action_input_simplified[:match_length] + this_case.value[match_length:])
 
             if len(action_hints) == 1:
                 message += " hint : " + action_hints[0]
@@ -907,6 +922,7 @@ class JersiState:
 
         self.__actions = None
         self.__actions_by_simple_names = None
+        self.__actions_by_names = None
         self.__taken = False
         self.__terminal_case = None
         self.__terminated = None
@@ -926,6 +942,7 @@ class JersiState:
 
         state.__actions = None
         state.__actions_by_simple_names = None
+        state.__actions_by_names = None
         state.__taken = False
         state.__terminal_case = None
         state.__terminated = None
@@ -1157,6 +1174,12 @@ class JersiState:
        self.take_action(action)
 
 
+    def take_action_by_name(self, action_name):
+       assert action_name in self.get_action_names()
+       action = self.__actions_by_names[action_name]
+       self.take_action(action)
+
+
     def is_terminal(self):
 
         if self.__terminated is None:
@@ -1252,14 +1275,33 @@ class JersiState:
         return self.__actions
 
 
+    def __create_action_by_names(self):
+        self.__actions_by_names = {}
+        self.__actions_by_simple_names = {}
+
+        for action in self.get_actions():
+            self.__actions_by_names[action.notation] = action
+
+            action_name = Notation.simplify_notation(action.notation)
+            self.__actions_by_simple_names[action_name] = action
+
+
+    def get_action_names(self):
+        if self.__actions_by_names is None:
+            self.__create_action_by_names()
+        return list(sorted(self.__actions_by_names.keys()))
+
+
     def get_action_simple_names(self):
         if self.__actions_by_simple_names is None:
-            self.__actions_by_simple_names = {}
-            for action in self.get_actions():
-                action_name = Notation.simplify_notation(action.notation)
-                self.__actions_by_simple_names[action_name] = action
-
+            self.__create_action_by_names()
         return list(sorted(self.__actions_by_simple_names.keys()))
+
+
+    def get_action_by_name(self, action_name):
+       assert action_name in self.get_action_names()
+       action = self.__actions_by_names[action_name]
+       return action
 
 
     def get_action_by_simple_name(self, action_name):
@@ -1878,6 +1920,10 @@ class MctsState:
         self.__maximizer_player = maximizer_player
 
 
+    def get_jersi_state(self):
+        return self.__jersi_state
+
+
     def getCurrentPlayer(self):
        """ Returns 1 if it is the maximizer player's turn to choose an action,
        or -1 for the minimiser player"""
@@ -1922,6 +1968,50 @@ def extractStatistics(mcts_searcher, action):
     statistics['actionNumVisits'] = mcts_searcher.root.children[action].numVisits
     statistics['actionTotalReward'] = mcts_searcher.root.children[action].totalReward
     return statistics
+
+
+def jersiSelectAction(action_names):
+
+    actions_by_capture_by_case = [{}, {}, {}]
+
+    for this_name in action_names:
+        (this_case, this_capture) = Notation.classify_notation(this_name)
+
+        if this_case not in actions_by_capture_by_case[this_capture]:
+            actions_by_capture_by_case[this_capture][this_case] = []
+
+        actions_by_capture_by_case[this_capture][this_case].append(this_name)
+
+    capture_list = [i for i in range(len(actions_by_capture_by_case))]
+    capture_weights = [2**i for i in capture_list]
+    for (this_capture, this_case_dict) in enumerate(actions_by_capture_by_case):
+        if len(this_case_dict) == 0:
+            capture_weights[this_capture] = 0
+
+    the_capture = random.choices(capture_list, weights=capture_weights)[0]
+    the_case_dict = actions_by_capture_by_case[the_capture]
+
+    the_case_list = list(the_case_dict.keys())
+    case_weights = [1 for _ in the_case_list]
+    the_case = random.choices(the_case_list, weights=case_weights)[0]
+
+    action_name = random.choice(the_case_dict[the_case])
+    return action_name
+
+
+def jersiRandomPolicy(state):
+    while not state.isTerminal():
+        try:
+            jersi_state = state.get_jersi_state()
+
+            action_names = jersi_state.get_action_names()
+            action_name = jersiSelectAction(action_names)
+            action = jersi_state.get_action_by_name(action_name)
+
+        except IndexError:
+            raise Exception("Non-terminal state has no possible actions: " + str(state))
+        state = state.takeAction(action)
+    return state.getReward()
 
 
 class HumanSearcher():
@@ -2004,7 +2094,7 @@ class RandomSearcher():
 class MctsSearcher():
 
 
-    def __init__(self, name, time_limit=None, iteration_limit=None):
+    def __init__(self, name, time_limit=None, iteration_limit=None, rolloutPolicy=mcts.randomPolicy):
         self.__name = name
 
         default_time_limit = 1_000
@@ -2020,11 +2110,11 @@ class MctsSearcher():
 
         if self.__time_limit is not None:
             # time in milli-seconds
-            self.__searcher = mcts.mcts(timeLimit=self.__time_limit)
+            self.__searcher = mcts.mcts(timeLimit=self.__time_limit, rolloutPolicy=rolloutPolicy)
 
         elif self.__iteration_limit is not None:
             # number of mcts rounds
-            self.__searcher = mcts.mcts(iterationLimit=self.__iteration_limit)
+            self.__searcher = mcts.mcts(iterationLimit=self.__iteration_limit, rolloutPolicy=rolloutPolicy)
 
 
     def get_name(self):
@@ -2082,6 +2172,7 @@ SEARCHER_CATALOG.add( RandomSearcher("random") )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-1", time_limit=1_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-2", time_limit=2_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-j-s-2", time_limit=2_000, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-10", time_limit=10_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-20", time_limit=20_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-30", time_limit=30_000) )
