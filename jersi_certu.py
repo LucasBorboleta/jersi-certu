@@ -1993,6 +1993,27 @@ def jersiSelectAction(action_names):
 
     the_case_list = list(the_case_dict.keys())
     case_weights = [1 for _ in the_case_list]
+
+    for (this_index, this_case) in enumerate(the_case_list):
+
+        if this_case in (SimpleNotationCase.MOVE_CUBE_MOVE_STACK_RELOCATE_KING,
+                         SimpleNotationCase.MOVE_STACK_MOVE_CUBE_RELOCATE_KING):
+            case_weights[this_index] = 16
+
+        elif this_case in (SimpleNotationCase.MOVE_CUBE_RELOCATE_KING,
+                           SimpleNotationCase.MOVE_STACK_RELOCATE_KING):
+            case_weights[this_index] = 8
+
+        elif this_case in (SimpleNotationCase.MOVE_CUBE_MOVE_STACK,
+                           SimpleNotationCase.MOVE_STACK_MOVE_CUBE):
+            case_weights[this_index] = 4
+
+        elif this_case in (SimpleNotationCase.MOVE_STACK,):
+            case_weights[this_index] = 3
+
+        elif this_case in (SimpleNotationCase.MOVE_CUBE,):
+            case_weights[this_index] = 2
+
     the_case = random.choices(the_case_list, weights=case_weights)[0]
 
     action_name = random.choice(the_case_dict[the_case])
@@ -2176,6 +2197,7 @@ SEARCHER_CATALOG.add( MctsSearcher("mcts-j-s-2", time_limit=2_000, rolloutPolicy
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-10", time_limit=10_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-20", time_limit=20_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-30", time_limit=30_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-j-s-30", time_limit=30_000, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-s-60", time_limit=60_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-m-5", time_limit=5*60_000) )
 
