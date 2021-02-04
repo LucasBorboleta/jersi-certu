@@ -115,8 +115,12 @@ class TinyVector:
             raise NotImplementedError()
 
 
-    def __div__(self, other):
-        return self.__mul__(1./other)
+    def __truediv__(self, other):
+        if isinstance(other, (int, float)):
+            return TinyVector((self.__x/other, self.__y/other))
+
+        else:
+            raise NotImplementedError()
 
 
     def __radd__(self, other):
@@ -125,6 +129,10 @@ class TinyVector:
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
+
+    def __rtruediv__(self, other):
+        return self.__div__(other)
 
 
     def __rsub__(self, other):
