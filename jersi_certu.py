@@ -1099,9 +1099,29 @@ class JersiState:
                 captured_labels[cube.label] += 1
 
         print()
-        print(f"turn {self.__turn} / player {self.__player} / credit {self.__credit} / " +
-              "reserved %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(reserved_labels.items())]) + " / " +
-              "captured %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(captured_labels.items())]))
+        print(self.get_summary())
+
+
+    def get_summary(self):
+
+        reserved_labels = collections.Counter()
+        captured_labels = collections.Counter()
+
+        for (cube_index, cube_status) in enumerate(self.__cube_status):
+            cube = Cube.all[cube_index]
+
+            if cube_status == CubeStatus.RESERVED:
+                reserved_labels[cube.label] += 1
+
+            elif cube_status == CubeStatus.CAPTURED:
+                captured_labels[cube.label] += 1
+
+        summary = (
+            f"turn {self.__turn} / player {Player.name(self.__player)} / credit {self.__credit} / " +
+             "reserved %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(reserved_labels.items())]) + " / " +
+             "captured %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(captured_labels.items())]))
+
+        return summary
 
 
     @staticmethod
@@ -2216,6 +2236,8 @@ class Game:
 
         self.__jersi_state = None
         self.__log = None
+        self.__turn = None
+        self.__last_action = None
 
 
     def set_white_searcher(self, searcher):
@@ -2242,6 +2264,20 @@ class Game:
         return self.__log
 
 
+    def get_turn(self):
+        assert self.__turn is not None
+        return self.__turn
+
+
+    def get_last_action(self):
+        assert self.__last_action is not None
+        return self.__last_action
+
+
+    def get_summary(self):
+        return self.__jersi_state.get_summary()
+
+
     def get_state(self):
         return self.__jersi_state
 
@@ -2263,12 +2299,13 @@ class Game:
             print(f"{player_name} is thinking ...")
 
             action = self.__searcher[player].search(self.__jersi_state)
+            self.__last_action = str(action)
 
             print(f"{player_name} is done")
 
-            turn = self.__jersi_state.get_turn()
+            self.__turn = self.__jersi_state.get_turn()
 
-            self.__log = f"turn {turn} : {player_name} selects {action} amongst {action_count} actions"
+            self.__log = f"turn {self.__turn} : {player_name} selects {action} amongst {action_count} actions"
             print(self.__log)
             print("-"*40)
 

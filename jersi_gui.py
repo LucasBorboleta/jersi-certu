@@ -555,23 +555,49 @@ class GameGui(ttk.Frame):
                                   foreground='red',
                                   borderwidth=2, relief="groove")
 
-        self.__label_action = ttk.Label(self.__frame_actions, text='Action :')
+        self.__variable_summary = tk.StringVar()
+        self.__label_summary = ttk.Label(self.__frame_actions,
+                                  textvariable=self.__variable_summary,
+                                  width=90,
+                                  foreground='black',
+                                  borderwidth=2, relief="groove")
+
+        self.__frame_human_actions = ttk.Frame(self.__frame_actions, padding=10)
+
+        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action :')
 
         self.__variable_action = tk.StringVar()
-        self.__entry_action = ttk.Entry(self.__frame_actions, textvariable=self.__variable_action)
+        self.__entry_action = ttk.Entry(self.__frame_human_actions, textvariable=self.__variable_action)
 
-        self.__button_action_confirm = ttk.Button(self.__frame_actions,
+        self.__button_action_confirm = ttk.Button(self.__frame_human_actions,
                                   text='OK',
                                   command=self.__command_action_confirm)
 
-        self.__label_log.pack(side=tk.TOP)
+        self.__frame_text_actions = ttk.Frame(self.__frame_actions)
 
+        self.__text_actions = tk.Text(self.__frame_text_actions,
+                                  width=60,
+                                  background='lightgrey',
+                                  borderwidth=2, relief="groove")
+
+        self.__scrollbar_actions = ttk.Scrollbar(self.__frame_text_actions, orient = 'vertical',
+                                                 command = self.__text_actions.yview)
+
+        self.__label_log.pack(side=tk.TOP)
+        self.__label_summary.pack(side=tk.TOP, pady=10)
+
+        self.__frame_human_actions.pack(side=tk.TOP)
         self.__label_action.pack(side=tk.LEFT)
-        self.__entry_action.pack(side=tk.LEFT, padx=5)
+        self.__entry_action.pack(side=tk.LEFT)
         self.__button_action_confirm.pack(side=tk.LEFT)
+
+        self.__frame_text_actions.pack(side=tk.TOP)
+        self.__scrollbar_actions.pack(side=tk.LEFT, fill=tk.Y)
+        self.__text_actions.pack(side=tk.LEFT)
 
         self.__entry_action.config(state="disabled")
         self.__button_action_confirm.config(state="disabled")
+        self.__text_actions.config(state="disabled")
 
 
     def __create_cube_photos(self):
@@ -637,6 +663,10 @@ class GameGui(ttk.Frame):
            self.__variable_log.set("jersi started")
            self.__button_start_stop.configure(text="Stop")
 
+           self.__text_actions.config(state="normal")
+           self.__text_actions.delete('1.0', tk.END)
+           self.__text_actions.config(state="disabled")
+
            self.__canvas.after(500, self.__command_next_turn)
 
         else:
@@ -670,13 +700,27 @@ class GameGui(ttk.Frame):
                     self.__game.next_turn()
                     self.__jersi_state = self.__game.get_state()
                     self.__draw_state()
+                    self.__variable_summary.set(self.__game.get_summary())
                     self.__variable_log.set(self.__game.get_log())
+
+                    self.__text_actions.config(state="normal")
+                    self.__text_actions.insert(tk.END, str(self.__game.get_turn()) + " " +
+                                               self.__game.get_last_action() + "\n")
+                    self.__text_actions.see(tk.END)
+                    self.__text_actions.config(state="disabled")
 
             else:
                 self.__game.next_turn()
                 self.__jersi_state = self.__game.get_state()
                 self.__draw_state()
+                self.__variable_summary.set(self.__game.get_summary())
                 self.__variable_log.set(self.__game.get_log())
+
+                self.__text_actions.config(state="normal")
+                self.__text_actions.insert(tk.END, str(self.__game.get_turn()) + " " +
+                                           self.__game.get_last_action() + "\n")
+                self.__text_actions.see(tk.END)
+                self.__text_actions.config(state="disabled")
 
             if self.__game_started:
                 self.__canvas.after(500, self.__command_next_turn)
