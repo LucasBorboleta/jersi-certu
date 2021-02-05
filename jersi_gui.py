@@ -447,7 +447,7 @@ class GameGui(ttk.Frame):
 
         self.__frame_commands_and_players.pack(side=tk.TOP)
 
-        self.__frame_board = ttk.Frame(self.__frame_left)
+        self.__frame_board = ttk.Frame(self.__frame_left, padding=10)
 
         self.__frame_actions.pack(side=tk.TOP)
         self.__frame_board.pack(side=tk.TOP)
@@ -457,6 +457,9 @@ class GameGui(ttk.Frame):
 
         self.__frame_commands.pack(side=tk.LEFT)
         self.__frame_players.pack(side=tk.LEFT)
+
+        self.__frame_human_actions = ttk.Frame(self.__frame_actions, padding=10)
+        self.__frame_text_actions = ttk.Frame(self.__frame_actions)
 
         # In __frame_commands
 
@@ -552,6 +555,7 @@ class GameGui(ttk.Frame):
         self.__label_log = ttk.Label(self.__frame_actions,
                                   textvariable=self.__variable_log,
                                   width=90,
+                                  padding=5,
                                   foreground='red',
                                   borderwidth=2, relief="groove")
 
@@ -559,10 +563,11 @@ class GameGui(ttk.Frame):
         self.__label_summary = ttk.Label(self.__frame_actions,
                                   textvariable=self.__variable_summary,
                                   width=90,
+                                  padding=5,
                                   foreground='black',
                                   borderwidth=2, relief="groove")
 
-        self.__frame_human_actions = ttk.Frame(self.__frame_actions, padding=10)
+       # In __frame_human_actions
 
         self.__label_action = ttk.Label(self.__frame_human_actions, text='Action :')
 
@@ -572,8 +577,7 @@ class GameGui(ttk.Frame):
         self.__button_action_confirm = ttk.Button(self.__frame_human_actions,
                                   text='OK',
                                   command=self.__command_action_confirm)
-
-        self.__frame_text_actions = ttk.Frame(self.__frame_actions)
+       # In __frame_text_actions
 
         self.__text_actions = tk.Text(self.__frame_text_actions,
                                   width=60,
@@ -647,12 +651,12 @@ class GameGui(ttk.Frame):
 
     def __command_start_stop(self):
 
+        self.__entry_action.config(state="disabled")
+        self.__button_action_confirm.config(state="disabled")
+
         self.__game_started = not self.__game_started
 
         if self.__game_started:
-
-           self.__combobox_white_player.config(state="disabled")
-           self.__combobox_black_player.config(state="disabled")
 
            self.__game = jersi_certu.Game()
            self.__game.set_white_searcher(self.__searcher[jersi_certu.Player.WHITE])
@@ -675,6 +679,9 @@ class GameGui(ttk.Frame):
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
 
+           self.__entry_action.config(state="disabled")
+           self.__button_action_confirm.config(state="disabled")
+
            self.__variable_log.set("jersi stopped")
            self.__button_start_stop.configure(text="Start")
 
@@ -687,11 +694,15 @@ class GameGui(ttk.Frame):
             player = self.__jersi_state.get_current_player()
             searcher = self.__searcher[player]
 
+            ready_for_next_turn = False
+
             if searcher.is_interactive():
                 self.__entry_action.config(state="enabled")
                 self.__button_action_confirm.config(state="enabled")
 
                 if self.__action_validated and self.__action_input is not None:
+                    ready_for_next_turn = True
+
                     searcher.set_action_simple_name(self.__action_input)
 
                     self.__action_input = None
@@ -699,30 +710,28 @@ class GameGui(ttk.Frame):
                     self.__entry_action.config(state="disabled")
                     self.__button_action_confirm.config(state="disabled")
 
-                    self.__game.next_turn()
-                    self.__jersi_state = self.__game.get_state()
-                    self.__draw_state()
-                    self.__variable_summary.set(self.__game.get_summary())
-                    self.__variable_log.set(self.__game.get_log())
-
-                    self.__text_actions.config(state="normal")
-                    self.__text_actions.insert(tk.END, str(self.__game.get_turn()) + " " +
-                                               self.__game.get_last_action() + "\n")
-                    self.__text_actions.see(tk.END)
-                    self.__text_actions.config(state="disabled")
-
             else:
+                ready_for_next_turn = True
+
+            if ready_for_next_turn:
                 self.__game.next_turn()
                 self.__jersi_state = self.__game.get_state()
                 self.__draw_state()
+
                 self.__variable_summary.set(self.__game.get_summary())
                 self.__variable_log.set(self.__game.get_log())
 
                 self.__text_actions.config(state="normal")
-                self.__text_actions.insert(tk.END, str(self.__game.get_turn()) + " " +
-                                           self.__game.get_last_action() + "\n")
+
+                turn = self.__game.get_turn()
+                notation = str(turn).rjust(4) + " " + self.__game.get_last_action().ljust(16)
+                if turn % 2 == 0:
+                    notation = ' '*2 + notation + "\n"
+
+                self.__text_actions.insert(tk.END, notation)
                 self.__text_actions.see(tk.END)
                 self.__text_actions.config(state="disabled")
+
 
             if self.__game_started:
                 self.__canvas.after(500, self.__command_next_turn)
