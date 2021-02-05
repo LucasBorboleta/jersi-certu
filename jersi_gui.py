@@ -414,7 +414,7 @@ class GameGui(ttk.Frame):
 
         self.__root = tk.Tk()
 
-        self.__root.title("jersi-certu : for playing the jersi boardgame and testing IA agents")
+        self.__root.title("jersi-certu : for playing the jersi 4.x boardgame and testing AI agents")
         self.__root.iconbitmap(AppConfig.ICON_FILE)
 
         self.__create_widgets()
@@ -669,6 +669,9 @@ class GameGui(ttk.Frame):
            self.__variable_log.set("jersi started")
            self.__button_start_stop.configure(text="Stop")
 
+           self.__combobox_white_player.config(state="disabled")
+           self.__combobox_black_player.config(state="disabled")
+
            self.__text_actions.config(state="normal")
            self.__text_actions.delete('1.0', tk.END)
            self.__text_actions.config(state="disabled")
@@ -679,6 +682,8 @@ class GameGui(ttk.Frame):
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
 
+           self.__entry_action.config(state="enabled")
+           self.__variable_action.set("")
            self.__entry_action.config(state="disabled")
            self.__button_action_confirm.config(state="disabled")
 
@@ -688,7 +693,7 @@ class GameGui(ttk.Frame):
 
     def __command_next_turn(self):
 
-        if self.__game.has_next_turn():
+        if self.__game_started and self.__game.has_next_turn():
 
             self.__jersi_state = self.__game.get_state()
             player = self.__jersi_state.get_current_player()
@@ -732,8 +737,6 @@ class GameGui(ttk.Frame):
                 self.__text_actions.see(tk.END)
                 self.__text_actions.config(state="disabled")
 
-
-            if self.__game_started:
                 self.__canvas.after(500, self.__command_next_turn)
 
         else:
