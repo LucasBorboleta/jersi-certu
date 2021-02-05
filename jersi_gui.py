@@ -580,8 +580,10 @@ class GameGui(ttk.Frame):
                                   background='lightgrey',
                                   borderwidth=2, relief="groove")
 
-        self.__scrollbar_actions = ttk.Scrollbar(self.__frame_text_actions, orient = 'vertical',
-                                                 command = self.__text_actions.yview)
+        self.__scrollbar_actions = ttk.Scrollbar(self.__frame_text_actions, orient = 'vertical')
+
+        self.__text_actions.config(yscrollcommand=self.__scrollbar_actions.set)
+        self.__scrollbar_actions.config(command=self.__text_actions.yview)
 
         self.__label_log.pack(side=tk.TOP)
         self.__label_summary.pack(side=tk.TOP, pady=10)
