@@ -6,7 +6,7 @@
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
 
-Copyright (C) 2020 Lucas Borboleta (lucas.borboleta@free.fr).
+Copyright (C) 2019 Lucas Borboleta (lucas.borboleta@free.fr).
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -28,8 +28,8 @@ import sys
 
 _do_debug = False
 
-_script_home = os.path.abspath(os.path.dirname(__file__))
-_mcts_home = os.path.join(_script_home, "packages", "MCTS", "commit-4e62716afdc1691784e33998297067cc4413dc6f")
+_package_home = os.path.abspath(os.path.dirname(__file__))
+_mcts_home = os.path.join(os.path.dirname(_package_home), "packages", "MCTS", "commit-4e62716afdc1691784e33998297067cc4413dc6f")
 sys.path.append(_mcts_home)
 import mcts
 

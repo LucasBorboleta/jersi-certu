@@ -7,7 +7,7 @@
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rule engine for the JERSI boardgame.
 
-Copyright (C) 2020 Lucas Borboleta (lucas.borboleta@free.fr).
+Copyright (C) 2019 Lucas Borboleta (lucas.borboleta@free.fr).
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -30,8 +30,8 @@ import tkinter as tk
 from tkinter import font
 from tkinter import ttk
 
-_script_home = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(_script_home)
+_package_home = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(_package_home)
 import jersi_rules as rules
 
 
@@ -41,6 +41,11 @@ def rgb_color_as_hexadecimal(rgb_triplet):
     assert 0 <= green <= 255
     assert 0 <= red <= 255
     return '#%02x%02x%02x' % (red, green, blue)
+
+
+class AppConfig:
+    # File path containing the icon to be displayed in the title bar of Jersi GUI
+    ICON_FILE = os.path.join(_package_home, 'pictures', 'jersi.ico')
 
 
 class TinyVector:
@@ -164,11 +169,6 @@ class TinyVector:
             raise NotImplementedError()
 
 
-class AppConfig:
-    # File path containing the icon to be displayed in the title bar of Jersi GUI
-    ICON_FILE = os.path.join(_script_home, 'pictures', 'jersi.ico')
-
-
 class CanvasConfig:
 
     # Canvas x-y dimensions in hexagon units
@@ -236,7 +236,7 @@ class CubeConfig:
     CUBE_FILE_PATH = {}
 
     for (file_key, file_name) in __cube_file_name.items():
-        CUBE_FILE_PATH[file_key] =os.path.join(_script_home, 'pictures', file_name)
+        CUBE_FILE_PATH[file_key] =os.path.join(_package_home, 'pictures', file_name)
 
 
 class CubeLocation(enum.Enum):
