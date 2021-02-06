@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""jersi_certu.py implements a rule engine for the JERSI boardgame."""
+"""jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
 _COPYRIGHT_AND_LICENSE = """
-JERSI-CERTU implements a GUI and a rule engine for the JERSI boardgame.
+JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
 
 Copyright (C) 2020 Lucas Borboleta (lucas.borboleta@free.fr).
 
@@ -2217,16 +2217,16 @@ SEARCHER_CATALOG = SearcherCatalog()
 SEARCHER_CATALOG.add( HumanSearcher("human") )
 SEARCHER_CATALOG.add( RandomSearcher("random") )
 
-SEARCHER_CATALOG.add( MctsSearcher("mcts-s-2", time_limit=2_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-s-10", time_limit=10_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-s-30", time_limit=30_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-s-30-j", time_limit=30_000, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-s-60", time_limit=60_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-10s", time_limit=10_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-30s", time_limit=30_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-30s-jrp", time_limit=30_000, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-60s", time_limit=60_000) )
 
-SEARCHER_CATALOG.add( MctsSearcher("mcts-i-10", iteration_limit=10) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-i-100", iteration_limit=100) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-i-1k", iteration_limit=1_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-i-10k", iteration_limit=10_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-10i", iteration_limit=10) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-100i", iteration_limit=100) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-1ki", iteration_limit=1_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-10ki", iteration_limit=10_000) )
 
 
 class Game:
@@ -2373,8 +2373,8 @@ def test_game_between_mcts_players():
 
     game = Game()
 
-    game.set_white_searcher(SEARCHER_CATALOG.get("mcts-s-10"))
-    game.set_black_searcher(SEARCHER_CATALOG.get("mcts-i-10"))
+    game.set_white_searcher(SEARCHER_CATALOG.get("mcts-10s"))
+    game.set_black_searcher(SEARCHER_CATALOG.get("mcts-10i"))
 
     game.start()
 

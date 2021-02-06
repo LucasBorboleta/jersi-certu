@@ -32,7 +32,7 @@ from tkinter import ttk
 
 _script_home = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(_script_home)
-import jersi_certu
+import jersi_rules as rules
 
 
 def rgb_color_as_hexadecimal(rgb_triplet):
@@ -217,21 +217,21 @@ class CubeConfig:
 
     __cube_file_name = {}
 
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.KING)] = 'king-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.WISE)] = 'wise-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.FOUL)] = 'foul-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.ROCK)] = 'rock-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.PAPER)] = 'paper-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.SCISSORS)] = 'scissors-black.png'
-    __cube_file_name[(jersi_certu.Player.BLACK, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.KING)] = 'king-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.WISE)] = 'wise-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.FOUL)] = 'foul-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.ROCK)] = 'rock-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.PAPER)] = 'paper-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.SCISSORS)] = 'scissors-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.MOUNTAIN)] = 'mountain-black.png'
 
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.KING)] = 'king-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.WISE)] = 'wise-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.FOUL)] = 'foul-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.ROCK)] = 'rock-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.PAPER)] = 'paper-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.SCISSORS)] = 'scissors-white.png'
-    __cube_file_name[(jersi_certu.Player.WHITE, jersi_certu.CubeSort.MOUNTAIN)] = 'mountain-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.KING)] = 'king-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.WISE)] = 'wise-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.FOUL)] = 'foul-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.ROCK)] = 'rock-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.PAPER)] = 'paper-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.SCISSORS)] = 'scissors-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.MOUNTAIN)] = 'mountain-white.png'
 
     CUBE_FILE_PATH = {}
 
@@ -342,7 +342,7 @@ class GraphicalHexagon:
         darks += ['d6', 'e7', 'f6']
         darks += ['e5']
 
-        for hexagon in jersi_certu.Hexagon.all:
+        for hexagon in rules.Hexagon.all:
 
             if hexagon.reserve:
                 color = HexagonColor.RESERVE
@@ -388,13 +388,13 @@ class GameGui(ttk.Frame):
     def __init__(self):
 
         self.__face_drawers = dict()
-        self.__face_drawers[jersi_certu.CubeSort.FOUL] = self.__draw_foul_face
-        self.__face_drawers[jersi_certu.CubeSort.KING] = self.__draw_king_face
-        self.__face_drawers[jersi_certu.CubeSort.PAPER] = self.__draw_paper_face
-        self.__face_drawers[jersi_certu.CubeSort.ROCK] = self.__draw_rock_face
-        self.__face_drawers[jersi_certu.CubeSort.SCISSORS] = self.__draw_scissors_face
-        self.__face_drawers[jersi_certu.CubeSort.MOUNTAIN] = self.__draw_mountain_face
-        self.__face_drawers[jersi_certu.CubeSort.WISE] = self.__draw_wise_face
+        self.__face_drawers[rules.CubeSort.FOUL] = self.__draw_foul_face
+        self.__face_drawers[rules.CubeSort.KING] = self.__draw_king_face
+        self.__face_drawers[rules.CubeSort.PAPER] = self.__draw_paper_face
+        self.__face_drawers[rules.CubeSort.ROCK] = self.__draw_rock_face
+        self.__face_drawers[rules.CubeSort.SCISSORS] = self.__draw_scissors_face
+        self.__face_drawers[rules.CubeSort.MOUNTAIN] = self.__draw_mountain_face
+        self.__face_drawers[rules.CubeSort.WISE] = self.__draw_wise_face
 
         self.__cube_photos = None
 
@@ -406,7 +406,7 @@ class GameGui(ttk.Frame):
 
         self.__game = None
         self.__game_started = False
-        self.__jersi_state = jersi_certu.JersiState()
+        self.__jersi_state = rules.JersiState()
         self.__searcher = [None, None]
 
         self.__action_input = None
@@ -434,7 +434,7 @@ class GameGui(ttk.Frame):
 
     def __create_widgets(self):
 
-        searcher_catalog_names = jersi_certu.SEARCHER_CATALOG.get_names()
+        searcher_catalog_names = rules.SEARCHER_CATALOG.get_names()
         searcher_catalog_names_width = max(map(len, searcher_catalog_names))
 
         # Frames
@@ -634,15 +634,15 @@ class GameGui(ttk.Frame):
 
 
     def __command_update_players(self, *_):
-        self.__searcher[jersi_certu.Player.WHITE] = jersi_certu.SEARCHER_CATALOG.get(self.__variable_white_player.get())
-        self.__searcher[jersi_certu.Player.BLACK] = jersi_certu.SEARCHER_CATALOG.get(self.__variable_black_player.get())
+        self.__searcher[rules.Player.WHITE] = rules.SEARCHER_CATALOG.get(self.__variable_white_player.get())
+        self.__searcher[rules.Player.BLACK] = rules.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
     def __command_action_confirm(self):
         self.__action_input = self.__variable_action.get()
 
         (self.__action_validated,
-         message) = jersi_certu.Notation.validate_simple_notation(self.__action_input,
+         message) = rules.Notation.validate_simple_notation(self.__action_input,
                                                                   self.__jersi_state.get_action_simple_names())
 
         if self.__action_validated:
@@ -662,9 +662,9 @@ class GameGui(ttk.Frame):
 
         if self.__game_started:
 
-           self.__game = jersi_certu.Game()
-           self.__game.set_white_searcher(self.__searcher[jersi_certu.Player.WHITE])
-           self.__game.set_black_searcher(self.__searcher[jersi_certu.Player.BLACK])
+           self.__game = rules.Game()
+           self.__game.set_white_searcher(self.__searcher[rules.Player.WHITE])
+           self.__game.set_black_searcher(self.__searcher[rules.Player.BLACK])
            self.__game.start()
 
            self.__jersi_state = self.__game.get_state()
@@ -706,6 +706,7 @@ class GameGui(ttk.Frame):
             self.__jersi_state = self.__game.get_state()
             player = self.__jersi_state.get_current_player()
             searcher = self.__searcher[player]
+
             self.__progressbar['value'] = 50.
 
             ready_for_next_turn = False
@@ -754,6 +755,8 @@ class GameGui(ttk.Frame):
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
 
+           self.__progressbar['value'] = 0.
+
            self.__game_started = False
            self.__button_start_stop.configure(text="Start")
 
@@ -772,15 +775,15 @@ class GameGui(ttk.Frame):
         hexagon_top =  self.__jersi_state.get_hexagon_top()
         hexagon_bottom =  self.__jersi_state.get_hexagon_bottom()
 
-        for hexagon in jersi_certu.Hexagon.all:
+        for hexagon in rules.Hexagon.all:
 
             top_index = hexagon_top[hexagon.index]
             bottom_index = hexagon_bottom[hexagon.index]
 
-            if top_index != jersi_certu.Null.CUBE and bottom_index != jersi_certu.Null.CUBE:
+            if top_index != rules.Null.CUBE and bottom_index != rules.Null.CUBE:
 
-                top = jersi_certu.Cube.all[top_index]
-                bottom = jersi_certu.Cube.all[bottom_index]
+                top = rules.Cube.all[top_index]
+                bottom = rules.Cube.all[bottom_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.TOP,
                                cube_color=top.player, cube_sort=top.sort, cube_label=top.label)
@@ -788,16 +791,16 @@ class GameGui(ttk.Frame):
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.BOTTOM,
                                cube_color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
 
-            elif top_index != jersi_certu.Null.CUBE:
+            elif top_index != rules.Null.CUBE:
 
-                top = jersi_certu.Cube.all[top_index]
+                top = rules.Cube.all[top_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
                                cube_color=top.player, cube_sort=top.sort, cube_label=top.label)
 
-            elif bottom_index != jersi_certu.Null.CUBE:
+            elif bottom_index != rules.Null.CUBE:
 
-                bottom = jersi_certu.Cube.all[bottom_index]
+                bottom = rules.Cube.all[bottom_index]
 
                 self.__draw_cube(name=hexagon.name, config=CubeLocation.MIDDLE,
                                cube_color=bottom.player, cube_sort=bottom.sort, cube_label=bottom.label)
@@ -900,11 +903,11 @@ class GameGui(ttk.Frame):
             cube_vertices.append(cube_vertex)
 
 
-        if cube_color == jersi_certu.Player.BLACK:
+        if cube_color == rules.Player.BLACK:
             fill_color = CubeColor.BLACK.value
             face_color = CubeColor.WHITE.value
 
-        elif cube_color == jersi_certu.Player.WHITE:
+        elif cube_color == rules.Player.WHITE:
             fill_color = CubeColor.WHITE.value
             face_color = CubeColor.BLACK.value
 
