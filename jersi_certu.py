@@ -36,9 +36,11 @@ import mcts
 
 @enum.unique
 class Capture(enum.Enum):
-    KING = enum.auto()
+    KING_CUBE = enum.auto()
+    KING_STACK = enum.auto()
     NONE = enum.auto()
-    SOME = enum.auto()
+    SOME_CUBE = enum.auto()
+    SOME_STACK = enum.auto()
 
 
 @enum.unique
@@ -658,10 +660,10 @@ class Notation:
         if capture == Capture.NONE:
             pass
 
-        elif capture == Capture.SOME:
+        elif capture in (Capture.SOME_CUBE, Capture.SOME_STACK):
             notation += "!"
 
-        elif capture == Capture.KING:
+        elif capture in (Capture.KING_CUBE, Capture.KING_STACK):
             notation += "!!"
 
         else:
@@ -680,10 +682,10 @@ class Notation:
         if capture == Capture.NONE:
             pass
 
-        elif capture == Capture.SOME:
+        elif capture in (Capture.SOME_CUBE, Capture.SOME_STACK):
             notation += "!"
 
-        elif capture == Capture.KING:
+        elif capture in (Capture.KING_CUBE, Capture.KING_STACK):
             notation += "!!"
 
         else:
@@ -850,17 +852,21 @@ class JersiAction:
     def __init__(self, notation, state, capture=Capture.NONE, previous_action=None):
         self.notation = notation
         self.state = state
-        self.capture = capture
+        self.king_captures = set()
+        self.some_captures = set()
 
         if previous_action is not None:
-            if previous_action.capture == Capture.KING or self.capture == Capture.KING:
-                self.capture = Capture.KING
+            self.king_captures.update(previous_action.king_captures)
+            self.some_captures.update(previous_action.some_captures)
 
-            elif previous_action.capture == Capture.SOME or self.capture == Capture.SOME:
-                self.capture = Capture.SOME
+        if capture in (Capture.KING_CUBE, Capture.KING_STACK):
+            self.king_captures.add(capture)
 
-            else:
-                self.capture = Capture.NONE
+        elif capture in (Capture.SOME_CUBE, Capture.SOME_STACK):
+            self.some_captures.add(capture)
+
+        else:
+            assert capture == Capture.NONE
 
 
     def __eq__(self, other):
@@ -1182,7 +1188,7 @@ class JersiState:
             state.__turn += 1
             state.__credit = max(0, state.__credit - 1)
 
-            if action.capture in (Capture.SOME, Capture.KING):
+            if len(action.king_captures) != 0 or len(action.some_captures) != 0:
                 state.__credit = JersiState.__max_credit
 
         return state
@@ -1365,7 +1371,7 @@ class JersiState:
         king = Cube.all[king_index]
 
         for action in move_actions:
-            if action.capture == Capture.KING:
+            if len(action.king_captures) != 0:
                 can_relocate_king = False
 
                 for destination_king in Hexagon.get_king_begin_indices(king.player):
@@ -1405,7 +1411,7 @@ class JersiState:
                                     if action_21 is not None:
                                         actions.append(action_21)
 
-                                    if self.__hexagon_bottom[destination_21] == Null.CUBE:
+                                    if state_1.__hexagon_bottom[destination_21] == Null.CUBE:
                                         # stack can cross destination_21 with zero cube
                                         destination_22 = Hexagon.get_next_snd_indices(destination_1, direction_2)
                                         if destination_22 != Null.HEXAGON:
@@ -1637,7 +1643,7 @@ class JersiState:
             state.__hexagon_bottom[dst_hexagon_index] = king_index
             state.__cube_status[king_index] = CubeStatus.ACTIVATED
             notation = Notation.relocate_king(king_label, dst_hexagon_name, previous_action=previous_action)
-            action = JersiAction(notation, state, capture=Capture.KING, previous_action=previous_action)
+            action = JersiAction(notation, state, capture=Capture.KING_CUBE, previous_action=previous_action)
 
         else:
             # hexagon has one cube
@@ -1651,7 +1657,7 @@ class JersiState:
                 state.__hexagon_top[dst_hexagon_index] = king_index
                 state.__cube_status[king_index] = CubeStatus.ACTIVATED
                 notation = Notation.relocate_king(king_label, dst_hexagon_name, previous_action=previous_action)
-                action = JersiAction(notation, state, capture=Capture.KING, previous_action=previous_action)
+                action = JersiAction(notation, state, capture=Capture.KING_CUBE, previous_action=previous_action)
 
             else:
                 action = None
@@ -1721,9 +1727,9 @@ class JersiState:
                     state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                     if dst_bottom.sort == CubeSort.KING:
-                        capture = Capture.KING
+                        capture = Capture.KING_CUBE
                     else:
-                        capture = Capture.SOME
+                        capture = Capture.SOME_CUBE
 
                     if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
                         state.__hexagon_top[src_hexagon_index] = Null.CUBE
@@ -1776,9 +1782,9 @@ class JersiState:
                 state.__cube_status[dst_top_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
-                    capture = Capture.KING
+                    capture = Capture.KING_CUBE
                 else:
-                    capture = Capture.SOME
+                    capture = Capture.SOME_CUBE
 
                 if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
                     state.__hexagon_top[src_hexagon_index] = Null.CUBE
@@ -1800,9 +1806,9 @@ class JersiState:
                 state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
-                    capture = Capture.KING
+                    capture = Capture.KING_STACK
                 else:
-                    capture = Capture.SOME
+                    capture = Capture.SOME_STACK
 
                 if state.__hexagon_top[src_hexagon_index] != Null.CUBE:
                     state.__hexagon_top[src_hexagon_index] = Null.CUBE
@@ -1869,9 +1875,9 @@ class JersiState:
                 state.__cube_status[dst_bottom_index] = CubeStatus.CAPTURED
 
                 if dst_bottom.sort == CubeSort.KING:
-                    capture = Capture.KING
+                    capture = Capture.KING_CUBE
                 else:
-                    capture = Capture.SOME
+                    capture = Capture.SOME_CUBE
 
                 state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
                 state.__hexagon_top[src_hexagon_index] = Null.CUBE
@@ -1913,9 +1919,9 @@ class JersiState:
                 state.__cube_status[dst_top_index] = CubeStatus.CAPTURED
 
                 if dst_top.sort == CubeSort.KING:
-                    capture = Capture.KING
+                    capture = Capture.KING_STACK
                 else:
-                    capture = Capture.SOME
+                    capture = Capture.SOME_STACK
 
                 state.__hexagon_bottom[src_hexagon_index] = Null.CUBE
                 state.__hexagon_top[src_hexagon_index] = Null.CUBE
@@ -2251,7 +2257,7 @@ class Game:
 
         self.__jersi_state.show()
 
-        self.__log = ""
+        self.__log = "Game started"
 
 
     def get_log(self):

@@ -1,7 +1,0 @@
-a1:C  a3:N
-a4:R  b1:K
-b3:C  d3:C
-d6:r  e6:r
-f4:n  i3:R
-i3:K  c1:c
-

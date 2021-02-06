@@ -166,7 +166,7 @@ class TinyVector:
 
 class AppConfig:
     # File path containing the icon to be displayed in the title bar of Jersi GUI
-    ICON_FILE = os.path.join(_script_home, 'jersi.ico')
+    ICON_FILE = os.path.join(_script_home, 'pictures', 'jersi.ico')
 
 
 class CanvasConfig:
@@ -414,8 +414,11 @@ class GameGui(ttk.Frame):
 
         self.__root = tk.Tk()
 
-        self.__root.title("jersi-certu : for playing the jersi 4.x boardgame and testing AI agents")
-        self.__root.iconbitmap(AppConfig.ICON_FILE)
+        try:
+            self.__root.title("jersi-certu : for playing the jersi 4.x boardgame and testing AI agents")
+            self.__root.iconbitmap(AppConfig.ICON_FILE)
+        except:
+            pass
 
         self.__create_widgets()
         self.__draw_state()
@@ -569,7 +572,7 @@ class GameGui(ttk.Frame):
 
        # In __frame_human_actions
 
-        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action :')
+        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action (without any !) :')
 
         self.__variable_action = tk.StringVar()
         self.__entry_action = ttk.Entry(self.__frame_human_actions, textvariable=self.__variable_action)
@@ -641,6 +644,7 @@ class GameGui(ttk.Frame):
         (self.__action_validated,
          message) = jersi_certu.Notation.validate_simple_notation(self.__action_input,
                                                                   self.__jersi_state.get_action_simple_names())
+
         if self.__action_validated:
             self.__variable_log.set(message)
             self.__variable_action.set("")
@@ -666,8 +670,11 @@ class GameGui(ttk.Frame):
            self.__jersi_state = self.__game.get_state()
            self.__draw_state()
 
-           self.__variable_log.set("jersi started")
            self.__button_start_stop.configure(text="Stop")
+
+           self.__variable_log.set(self.__game.get_log())
+           self.__variable_summary.set(self.__game.get_summary())
+           self.__progressbar['value'] = 50.
 
            self.__combobox_white_player.config(state="disabled")
            self.__combobox_black_player.config(state="disabled")
@@ -689,6 +696,7 @@ class GameGui(ttk.Frame):
 
            self.__variable_log.set("jersi stopped")
            self.__button_start_stop.configure(text="Start")
+           self.__progressbar['value'] = 0.
 
 
     def __command_next_turn(self):
@@ -698,12 +706,14 @@ class GameGui(ttk.Frame):
             self.__jersi_state = self.__game.get_state()
             player = self.__jersi_state.get_current_player()
             searcher = self.__searcher[player]
+            self.__progressbar['value'] = 50.
 
             ready_for_next_turn = False
 
             if searcher.is_interactive():
                 self.__entry_action.config(state="enabled")
                 self.__button_action_confirm.config(state="enabled")
+                self.__progressbar['value'] = 0.
 
                 if self.__action_validated and self.__action_input is not None:
                     ready_for_next_turn = True
@@ -719,6 +729,7 @@ class GameGui(ttk.Frame):
                 ready_for_next_turn = True
 
             if ready_for_next_turn:
+                self.__progressbar['value'] = 50.
                 self.__game.next_turn()
                 self.__jersi_state = self.__game.get_state()
                 self.__draw_state()
@@ -737,7 +748,7 @@ class GameGui(ttk.Frame):
                 self.__text_actions.see(tk.END)
                 self.__text_actions.config(state="disabled")
 
-                self.__canvas.after(500, self.__command_next_turn)
+            self.__canvas.after(500, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")

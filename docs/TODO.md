@@ -1,5 +1,7 @@
 # TODO
-The foreseen tasks on jersi-certi are as follows:
+The foreseen tasks on jersi-certu are as follows:
 
-- [ ] Implement jersi version 4 using numpy for fast copy of the internal state.
+- [ ] Implement Python packaging and dependencies
 - [ ] Complete documentation and information relevant for GitHub publishing (code of conduct, etc.).
+- [ ] Implement real progress bar in the GUI.
+- [ ] Implement a minimax algorithm, with the hope of better behavior than basic MCTS
