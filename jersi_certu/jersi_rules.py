@@ -20,18 +20,12 @@ import array
 import collections
 import copy
 import enum
-import os
 import random
 import re
-import sys
 
+import mcts
 
 _do_debug = False
-
-# _package_home = os.path.abspath(os.path.dirname(__file__))
-# _mcts_home = os.path.join(os.path.dirname(_package_home), "packages", "MCTS", "commit-4e62716afdc1691784e33998297067cc4413dc6f")
-# sys.path.append(_mcts_home)
-import mcts
 
 
 @enum.unique

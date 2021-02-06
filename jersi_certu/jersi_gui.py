@@ -24,7 +24,6 @@ import sys
 
 from PIL import Image
 from PIL import ImageTk
-##TODO: consider removing such PIL dependency
 
 import tkinter as tk
 from tkinter import font
