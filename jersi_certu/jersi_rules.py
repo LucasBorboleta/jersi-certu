@@ -2219,8 +2219,9 @@ SEARCHER_CATALOG.add( MctsSearcher("mcts-60s", time_limit=60_000) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10i", iteration_limit=10) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-100i", iteration_limit=100) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-200i", iteration_limit=100) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-1ki", iteration_limit=1_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-10ki", iteration_limit=10_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-2ki", iteration_limit=2_000) )
 
 
 class Game:
