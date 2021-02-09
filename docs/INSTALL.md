@@ -1,29 +1,18 @@
 ## Install
 
-*jersi_certu* has been developed using Python 3.8.5. So it is better to have installed such version or higher one. The dependences are *Pillow* (for converting and resizing images used in the GUI)  and *MCTS*  (for implementing experimental AI agents).
+*jersi_certu* has been developed using Python 3.8.5. So it is better to have installed such version or some higher version. 
 
-### Instructions on Windows ###
+### Instructions for Windows and Linux platforms
 
-1. Either clone this *git* repository or download it as a zip archive (and unzip it).
-2. Open a terminal
-3. Move into the project directory (where the `README.md` file seats).
-4. Create a virtual environment: `python -m venv .env`
-5. Activate the virtual environment: `.env\Scripts\activate.bat`
-6. Install the requirements: `python -m pip install -r requirements.txt`
-7. Check the rules: `python jersi_certu\jersi_rules.py`
-8. Launch the GUI and have fun: `python jersi_certu\jersi_gui.py`
+1. Make an installation directory by either cloning this *git* repository or downloading it as a zip archive and unzipping it.
+2. Move into the installation directory, where the `README.md` file seats.
+3. Execute `jersi_start.py`: the first time a Python virtual environment is created and the required dependencies are downloaded and installed; then GUI is started. The next times, just the GUI is started.
+4. For un-installing *jersi_certu* just remove the installation directory.
+5. The above instructions might also work on other platforms, but only Windows and Linux have been tested.
 
-Next time perform only steps 2, 5 and 8.
+### Used dependencies
 
-### Instructions on Linux ###
+For information, *jersi_certu* relies on the following packages:
 
-1. Either clone this *git* repository or download it as a zip archive (and unzip it).
-2. Open a terminal
-3. Move into the project directory (where the `README.md` file seats).
-4. Create a virtual environment: `python -m venv .env`
-5. Activate the virtual environment: `source .env/bin/activate`
-6. Install the requirements: `python -m pip install -r requirements.txt`
-7. Check the rules: `python jersi_certu/jersi_rules.py`
-8. Launch the GUI and have fun: `python jersi_certu/jersi_gui.py`
-
-Next time perform only steps 2, 5 and 8.
+- *Pillow* : for converting and resizing images used in the GUI;
+- *MCTS*  : for implementing experimental AI agents.
