@@ -1,1 +1,2 @@
-python jersi_gui.py
+cd %~dp0
+python jersi_start.py
