@@ -426,7 +426,7 @@ class GameGui(ttk.Frame):
         self.__command_update_reserve()
         self.__command_update_players()
 
-        self.__variable_log.set("jersi-certu GUI is ready !")
+        self.__variable_log.set(f"jersi-certu GUI version {rules.__version__} is ready !")
 
         self.__root.mainloop()
 

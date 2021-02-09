@@ -3,6 +3,8 @@
 
 """jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
+__version__ = "1.0.0"
+
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
 
@@ -20,6 +22,7 @@ import array
 import collections
 import copy
 import enum
+import os
 import random
 import re
 
@@ -2415,7 +2418,7 @@ def test_game_between_random_and_human_players():
 
 
 def main():
-    print("Hello")
+    print(f"Hello from {os.path.basename(__file__)} version {__version__}")
     print(_COPYRIGHT_AND_LICENSE)
 
     if True:
@@ -2427,7 +2430,7 @@ def main():
     if False:
         test_game_between_random_and_human_players()
 
-    print("Bye")
+    print(f"Bye from {os.path.basename(__file__)} version {__version__}")
 
 
 Cube.init()
