@@ -21,7 +21,7 @@ import glob
 import os
 import subprocess
 import sys
-
+    
 
 _product_home = os.path.abspath(os.path.dirname(__file__))
 os.chdir(_product_home)
@@ -37,33 +37,65 @@ if not os.path.isdir(_venv_home):
     print("Creating virtual environment ...")
     subprocess.run(args=[sys.executable, "-m", "venv", ".env"], shell=False, check=True)
     print("Creating virtual environment done")
-    install_dependencies = True
+    _install_dependencies = True
     
 else:
-    install_dependencies = False
+    _install_dependencies = False
 print("Checking virtual environment done")
     
 
+print()
+print("Determining the python executable ...")
 if os.name == 'nt':
-    _python_executable = os.path.join(_venv_home, "Scripts", "python.exe")
+    _venv_python_executable = os.path.join(_venv_home, "Scripts", "python.exe")
 
 elif os.name == 'posix':
-    _python_executable = os.path.join(_venv_home, "bin", "python")
+    _venv_python_executable = os.path.join(_venv_home, "bin", "python")
     
 else:
-    _python_executable = glob.glob(os.path.join(_venv_home, "*/python*"))[0]
+    _venv_python_executable = glob.glob(os.path.join(_venv_home, "*/python*"))[0]
+    
+print("_venv_python_executable = ", _venv_python_executable)
+print("Determining the python executable done")
     
 
-if install_dependencies:
+
+if _install_dependencies:
     print()
     print("Installing dependencies ...")
-    subprocess.run(args=[_python_executable, "-m", "pip", "install", "-r", "requirements.txt"], shell=False, check=True)
+    
+    if os.name == 'nt':
+        # windows fix to "import _ssl" failure after "import ssl" in "pip"
+        _sys_python_path = os.path.dirname(sys.executable)
+         
+        if 'PATH' in os.environ:
+            os.environ['PATH'] =  (_sys_python_path + os.pathsep +
+                                  os.path.join(_sys_python_path, 'Scripts') + os.pathsep +
+                                  os.path.join(_sys_python_path, 'Library', 'bin') + os.pathsep +
+                                  os.environ['PATH'] )
+        else:
+            os.environ['PATH'] = (_sys_python_path + os.pathsep +
+                                  os.path.join(_sys_python_path, 'Scripts') + os.pathsep +
+                                  os.path.join(_sys_python_path, 'Library', 'bin') )
+    
+    
+    _venv_python_path = os.path.dirname(_venv_python_executable)
+    
+    if 'PATH' in os.environ:
+        os.environ['PATH'] = _venv_python_path + os.pathsep + os.environ['PATH']
+    else:
+        os.environ['PATH'] = _venv_python_path
+    
+    subprocess.run(args=[_venv_python_executable, "-c", "import ssl"], shell=False, check=True)
+
+    subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "--upgrade", "pip"], shell=False, check=True)
+    subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "-r", "requirements.txt"], shell=False, check=True)
     print("Installing dependencies done")
 
 
 print()
 print("jersi_gui ...")
-subprocess.run(args=[_python_executable, _jersi_gui_executable], shell=False, check=True)
+subprocess.run(args=[_venv_python_executable, _jersi_gui_executable], shell=False, check=True)
 print()
 print("jersi_gui done")
 
