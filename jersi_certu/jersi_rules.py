@@ -1182,7 +1182,10 @@ class JersiState:
             state.__turn += 1
             state.__credit = max(0, state.__credit - 1)
 
-            if len(action.king_captures) != 0 or len(action.some_captures) != 0:
+            if len(action.some_captures) != 0:
+                state.__credit = JersiState.__max_credit
+                
+            elif len(action.king_captures) != 0 and action.king_captures != set([Capture.KING_CUBE]):
                 state.__credit = JersiState.__max_credit
 
         return state
