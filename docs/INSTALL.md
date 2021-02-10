@@ -2,6 +2,8 @@
 
 *jersi_certu* has been developed using Python 3.8.5. So it is better to have installed such version or some higher version. 
 
+The following instructions might also work on other platforms, but only Windows and Linux have been tested.
+
 ### Instructions for Linux and Windows platforms
 
 1. Make an installation directory by either cloning this *git* repository or downloading it as a zip archive and unzipping it.
@@ -17,7 +19,6 @@
 
 4. For un-installing *jersi_certu* just remove the installation directory.
 
-5. The above instructions might also work on other platforms, but only Windows and Linux have been tested.
 
 ### Used dependencies
 

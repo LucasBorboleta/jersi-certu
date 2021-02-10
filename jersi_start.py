@@ -24,19 +24,17 @@ import sys
     
 
 _product_home = os.path.abspath(os.path.dirname(__file__))
-os.chdir(_product_home)
-
 _jersi_gui_executable = os.path.join(_product_home, "jersi_certu", "jersi_gui.py")
 _venv_home = os.path.join(_product_home, ".env")
 
+os.chdir(_product_home)
 
 print()
 print("Checking virtual environment ...")
 if not os.path.isdir(_venv_home):
-    print()
-    print("Creating virtual environment ...")
+    print("    Creating virtual environment ...")
     subprocess.run(args=[sys.executable, "-m", "venv", ".env"], shell=False, check=True)
-    print("Creating virtual environment done")
+    print("    Creating virtual environment done")
     _install_dependencies = True
     
 else:
@@ -55,17 +53,16 @@ elif os.name == 'posix':
 else:
     _venv_python_executable = glob.glob(os.path.join(_venv_home, "*/python*"))[0]
     
-print("_venv_python_executable = ", _venv_python_executable)
+print("    _venv_python_executable = ", _venv_python_executable)
 print("Determining the python executable done")
     
-
 
 if _install_dependencies:
     print()
     print("Installing dependencies ...")
     
     if os.name == 'nt':
-        # windows fix to "import _ssl" failure after "import ssl" in "pip"
+        # windows fix of "import _ssl" failure after "import ssl" during "pip" execution
         _sys_python_path = os.path.dirname(sys.executable)
          
         if 'PATH' in os.environ:
@@ -77,19 +74,11 @@ if _install_dependencies:
             os.environ['PATH'] = (_sys_python_path + os.pathsep +
                                   os.path.join(_sys_python_path, 'Scripts') + os.pathsep +
                                   os.path.join(_sys_python_path, 'Library', 'bin') )
-    
-    
-    _venv_python_path = os.path.dirname(_venv_python_executable)
-    
-    if 'PATH' in os.environ:
-        os.environ['PATH'] = _venv_python_path + os.pathsep + os.environ['PATH']
-    else:
-        os.environ['PATH'] = _venv_python_path
-    
-    subprocess.run(args=[_venv_python_executable, "-c", "import ssl"], shell=False, check=True)
-
+        
+    subprocess.run(args=[_venv_python_executable, "-m", "ensurepip", "--upgrade"], shell=False, check=True)
     subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "--upgrade", "pip"], shell=False, check=True)
     subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "-r", "requirements.txt"], shell=False, check=True)
+    print()
     print("Installing dependencies done")
 
 
