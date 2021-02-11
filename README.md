@@ -6,7 +6,7 @@ Below is an overview of the GUI interface, which retrieves the human chosen acti
 
 All combinations of players are possible: human/human, human/AI, AI/human and AI/AI. 
 
-Current AI agents are: purely random (usefull for smoke tests and as challengers for sophisticated AI agents) and based on Monte Carlo Tree Search (MCTS). MCTS agents are parametrized in seconds or in iterations. The branching ratio of *jersi* is pretty high (often greater than 100 or even greater 1000 when drops are still possible), so MCTS, at least with a simple random roll-out policy, poorly performs. An experimental biased roll-out policy, nammed *jrp*, is provided, but yet it is weak.
+Current AI agents are: purely random (usefull for smoke tests and as challengers for sophisticated AI agents) and based on Monte Carlo Tree Search (MCTS). MCTS agents are parametrized in seconds or in iterations. The branching ratio of *jersi* is pretty high (often greater than 100 or even greater 1000 when drops are still possible), so MCTS, at least with a simple random roll-out policy, poorly performs. An experimental biased roll-out policy, named *jrp*, is provided, but yet it is weak.
 
 *jersi_certu* has been developed on Windows and then ported on Linux. For running it on your computer read the [**INSTALL**](./docs/INSTALL.md) instructions.
 
