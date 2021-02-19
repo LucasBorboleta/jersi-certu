@@ -387,7 +387,7 @@ class GameGui(ttk.Frame):
     def __init__(self):
 
         self.__face_drawers = dict()
-        self.__face_drawers[rules.CubeSort.FOOL] = self.__draw_foul_face
+        self.__face_drawers[rules.CubeSort.FOOL] = self.__draw_fool_face
         self.__face_drawers[rules.CubeSort.KING] = self.__draw_king_face
         self.__face_drawers[rules.CubeSort.PAPER] = self.__draw_paper_face
         self.__face_drawers[rules.CubeSort.ROCK] = self.__draw_rock_face
@@ -954,7 +954,7 @@ class GameGui(ttk.Frame):
         pass
 
 
-    def __draw_foul_face(self, cube_center, cube_vertices, face_color):
+    def __draw_fool_face(self, cube_center, cube_vertices, face_color):
 
 
         def rotate_90_degrees(vector):
