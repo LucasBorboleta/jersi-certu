@@ -42,7 +42,7 @@ class Capture(enum.Enum):
 
 @enum.unique
 class CubeSort(enum.Enum):
-    FOUL = enum.auto()
+    FOOL = enum.auto()
     KING = enum.auto()
     MOUNTAIN = enum.auto()
     PAPER = enum.auto()
@@ -178,16 +178,16 @@ class Cube:
                 does_beat = False
 
             elif self.sort == CubeSort.ROCK:
-                does_beat = other.sort in (CubeSort.SCISSORS, CubeSort.FOUL, CubeSort.KING, CubeSort.WISE)
+                does_beat = other.sort in (CubeSort.SCISSORS, CubeSort.FOOL, CubeSort.KING, CubeSort.WISE)
 
             elif self.sort == CubeSort.PAPER:
-                does_beat = other.sort in (CubeSort.ROCK, CubeSort.FOUL, CubeSort.KING, CubeSort.WISE)
+                does_beat = other.sort in (CubeSort.ROCK, CubeSort.FOOL, CubeSort.KING, CubeSort.WISE)
 
             elif self.sort == CubeSort.SCISSORS:
-                does_beat = other.sort in (CubeSort.PAPER, CubeSort.FOUL, CubeSort.KING, CubeSort.WISE)
+                does_beat = other.sort in (CubeSort.PAPER, CubeSort.FOOL, CubeSort.KING, CubeSort.WISE)
 
-            elif self.sort == CubeSort.FOUL:
-                does_beat = other.sort in (CubeSort.ROCK, CubeSort.PAPER, CubeSort.SCISSORS, CubeSort.FOUL, CubeSort.KING)
+            elif self.sort == CubeSort.FOOL:
+                does_beat = other.sort in (CubeSort.ROCK, CubeSort.PAPER, CubeSort.SCISSORS, CubeSort.FOOL, CubeSort.KING)
 
             else:
                 assert False
@@ -251,8 +251,8 @@ class Cube:
 
         Cube(name='K1', label='K', sort=CubeSort.KING, player=Player.WHITE)
 
-        Cube(name='F1', label='F', sort=CubeSort.FOUL, player=Player.WHITE)
-        Cube(name='F2', label='F', sort=CubeSort.FOUL, player=Player.WHITE)
+        Cube(name='F1', label='F', sort=CubeSort.FOOL, player=Player.WHITE)
+        Cube(name='F2', label='F', sort=CubeSort.FOOL, player=Player.WHITE)
 
         Cube(name='W1', label='W', sort=CubeSort.WISE, player=Player.WHITE)
         Cube(name='W2', label='W', sort=CubeSort.WISE, player=Player.WHITE)
@@ -279,8 +279,8 @@ class Cube:
 
         Cube(name='k1', label='k', sort=CubeSort.KING, player=Player.BLACK)
 
-        Cube(name='f1', label='f', sort=CubeSort.FOUL, player=Player.BLACK)
-        Cube(name='f2', label='f', sort=CubeSort.FOUL, player=Player.BLACK)
+        Cube(name='f1', label='f', sort=CubeSort.FOOL, player=Player.BLACK)
+        Cube(name='f2', label='f', sort=CubeSort.FOOL, player=Player.BLACK)
 
         Cube(name='w1', label='w', sort=CubeSort.WISE, player=Player.BLACK)
         Cube(name='w2', label='w', sort=CubeSort.WISE, player=Player.BLACK)
@@ -1089,17 +1089,6 @@ class JersiState:
                 row_text += shift
             print(row_text)
 
-        reserved_labels = collections.Counter()
-        captured_labels = collections.Counter()
-
-        for (cube_index, cube_status) in enumerate(self.__cube_status):
-            cube = Cube.all[cube_index]
-
-            if cube_status == CubeStatus.RESERVED:
-                reserved_labels[cube.label] += 1
-
-            elif cube_status == CubeStatus.CAPTURED:
-                captured_labels[cube.label] += 1
 
         print()
         print(self.get_summary())

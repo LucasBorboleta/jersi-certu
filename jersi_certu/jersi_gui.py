@@ -218,7 +218,7 @@ class CubeConfig:
 
     __cube_file_name[(rules.Player.BLACK, rules.CubeSort.KING)] = 'king-black.png'
     __cube_file_name[(rules.Player.BLACK, rules.CubeSort.WISE)] = 'wise-black.png'
-    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.FOUL)] = 'foul-black.png'
+    __cube_file_name[(rules.Player.BLACK, rules.CubeSort.FOOL)] = 'fool-black.png'
     __cube_file_name[(rules.Player.BLACK, rules.CubeSort.ROCK)] = 'rock-black.png'
     __cube_file_name[(rules.Player.BLACK, rules.CubeSort.PAPER)] = 'paper-black.png'
     __cube_file_name[(rules.Player.BLACK, rules.CubeSort.SCISSORS)] = 'scissors-black.png'
@@ -226,7 +226,7 @@ class CubeConfig:
 
     __cube_file_name[(rules.Player.WHITE, rules.CubeSort.KING)] = 'king-white.png'
     __cube_file_name[(rules.Player.WHITE, rules.CubeSort.WISE)] = 'wise-white.png'
-    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.FOUL)] = 'foul-white.png'
+    __cube_file_name[(rules.Player.WHITE, rules.CubeSort.FOOL)] = 'fool-white.png'
     __cube_file_name[(rules.Player.WHITE, rules.CubeSort.ROCK)] = 'rock-white.png'
     __cube_file_name[(rules.Player.WHITE, rules.CubeSort.PAPER)] = 'paper-white.png'
     __cube_file_name[(rules.Player.WHITE, rules.CubeSort.SCISSORS)] = 'scissors-white.png'
@@ -387,7 +387,7 @@ class GameGui(ttk.Frame):
     def __init__(self):
 
         self.__face_drawers = dict()
-        self.__face_drawers[rules.CubeSort.FOUL] = self.__draw_foul_face
+        self.__face_drawers[rules.CubeSort.FOOL] = self.__draw_foul_face
         self.__face_drawers[rules.CubeSort.KING] = self.__draw_king_face
         self.__face_drawers[rules.CubeSort.PAPER] = self.__draw_paper_face
         self.__face_drawers[rules.CubeSort.ROCK] = self.__draw_rock_face
