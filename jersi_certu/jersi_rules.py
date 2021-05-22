@@ -26,10 +26,22 @@ import math
 import os
 import random
 import re
+import time
 
 import mcts
 
 _do_debug = False
+
+INFINITY_POSITIVE = float("inf")
+INFINITY_NEGATIVE = float("-inf")
+
+
+def chunks(sequence, chunck_count):
+    """ Yield chunck_count successive chunks from sequence"""
+    chunk_size = int(len(sequence) / chunck_count)
+    for chunck_index in range(0, chunck_count - 1):
+        yield sequence[chunck_index*chunk_size : chunck_index*chunk_size + chunk_size]
+    yield sequence[chunck_count*chunk_size - chunk_size:]
 
 
 @enum.unique
@@ -1307,11 +1319,12 @@ class JersiState:
         return self.__terminated
 
 
-    def get_actions(self):
+    def get_actions(self, shuffle=True):
         if self.__actions is None:
-            self.__actions = self.__find_drops() + self.__find_moves()
+            self.__actions = self.__find_moves() + self.__find_drops() 
             # Better to shuffle actions here than by MCTS searcher for example
-            random.shuffle(self.__actions)
+            if shuffle:
+                random.shuffle(self.__actions)
         return self.__actions
 
 
@@ -1373,7 +1386,7 @@ class JersiState:
 
 
     def __find_moves(self):
-        actions = self.__find_cube_first_moves() + self.__find_stack_first_moves()
+        actions = self.__find_stack_first_moves() + self.__find_cube_first_moves() 
         return self.__find_king_relocations(actions)
 
 
@@ -2046,8 +2059,8 @@ class MinimaxState:
         return minimax_reward
 
 
-    def get_actions(self):
-        return self.__jersi_state.get_actions()
+    def get_actions(self, shuffle):
+        return self.__jersi_state.get_actions(shuffle)
 
 
     def take_action(self, action):
@@ -2064,52 +2077,38 @@ def extractStatistics(mcts_searcher, action):
 
 
 def jersiSelectAction(action_names):
+    
+    def score_action_name(action_name):
+        
+        catpures = re.sub(r"[^!]", "",action_name)
+        catpures = re.sub(r"!+", "10_000",catpures)
+        
+        stacks = re.sub(r"[^=]", "",action_name).replace("=", "1_000")
+        
+        cubes = re.sub(r"[^-]", "",action_name).replace("-", "100")
+        
+        action_score = 0.000_01
+        
+        if catpures != "":
+            action_score += float(catpures)
+        
+        if stacks != "":
+            action_score += float(stacks)
+        
+        if cubes != "":
+            action_score += float(cubes)
+        
+        return action_score
 
-    actions_by_capture_by_case = [{}, {}, {}]
+    action_weights = list(map(score_action_name, action_names))
+    action_name = random.choices(action_names, weights=action_weights, k=1)[0]
+    
+    if True:
+        # print()
+        # print("jersiSelectAction: action_names:", action_names)
+        # print("jersiSelectAction: action_weights:", action_weights)
+        print("jersiSelectAction: randomly chosen action_name:", action_name)
 
-    for this_name in action_names:
-        (this_case, this_capture) = Notation.classify_notation(this_name)
-
-        if this_case not in actions_by_capture_by_case[this_capture]:
-            actions_by_capture_by_case[this_capture][this_case] = []
-
-        actions_by_capture_by_case[this_capture][this_case].append(this_name)
-
-    capture_list = [i for i in range(len(actions_by_capture_by_case))]
-    capture_weights = [2**i for i in capture_list]
-    for (this_capture, this_case_dict) in enumerate(actions_by_capture_by_case):
-        if len(this_case_dict) == 0:
-            capture_weights[this_capture] = 0
-
-    the_capture = random.choices(capture_list, weights=capture_weights)[0]
-    the_case_dict = actions_by_capture_by_case[the_capture]
-
-    the_case_list = list(the_case_dict.keys())
-    case_weights = [1 for _ in the_case_list]
-
-    for (this_index, this_case) in enumerate(the_case_list):
-
-        if this_case in (SimpleNotationCase.MOVE_CUBE_MOVE_STACK_RELOCATE_KING,
-                         SimpleNotationCase.MOVE_STACK_MOVE_CUBE_RELOCATE_KING):
-            case_weights[this_index] = 16
-
-        elif this_case in (SimpleNotationCase.MOVE_CUBE_RELOCATE_KING,
-                           SimpleNotationCase.MOVE_STACK_RELOCATE_KING):
-            case_weights[this_index] = 8
-
-        elif this_case in (SimpleNotationCase.MOVE_CUBE_MOVE_STACK,
-                           SimpleNotationCase.MOVE_STACK_MOVE_CUBE):
-            case_weights[this_index] = 4
-
-        elif this_case in (SimpleNotationCase.MOVE_STACK,):
-            case_weights[this_index] = 3
-
-        elif this_case in (SimpleNotationCase.MOVE_CUBE,):
-            case_weights[this_index] = 2
-
-    the_case = random.choices(the_case_list, weights=case_weights)[0]
-
-    action_name = random.choice(the_case_dict[the_case])
     return action_name
 
 
@@ -2208,10 +2207,11 @@ class RandomSearcher():
 class MinimaxSearcher():
 
 
-    def __init__(self, name, max_depth=1):
+    def __init__(self, name, max_depth=1, max_children=None):
         assert max_depth >= 1
         self.__name = name
         self.__max_depth = max_depth
+        self.__max_children = max_children
 
 
     def get_name(self):
@@ -2235,10 +2235,11 @@ class MinimaxSearcher():
         best_actions = list()
         for (action, action_value) in action_values.items():
             if action_value == best_value:
-                print("    best action:", action, "value:", action_value)
+                # print("    best action:", action, "value:", action_value)
                 best_actions.append(action)
             else:
-                print("         action:", action, "value:", action_value)
+                # print("         action:", action, "value:", action_value)
+                pass
 
         
         print("%d best_actions" % len(best_actions))
@@ -2269,10 +2270,10 @@ class MinimaxSearcher():
                 value = 0
                 
             elif rewards[jersi_maximizer_player] == Reward.WIN:
-                value = float("Inf")
+                value = INFINITY_POSITIVE
                 
             else:
-                value = float("-Inf")
+                value = INFINITY_NEGATIVE
             
         else:
             
@@ -2287,12 +2288,12 @@ class MinimaxSearcher():
             else:
                 white_king_hexagon_index = hexagon_top.index(Cube.white_king_index)
 
-            (white_king_u, white_king_v) = hexagons[white_king_hexagon_index].position_uv
+            (_, white_king_v) = hexagons[white_king_hexagon_index].position_uv
             
-            white_king_distance = float("Inf")
+            white_king_distance = INFINITY_POSITIVE
             for hexagon_index in Hexagon.get_king_end_indices(Player.WHITE):
-                (hexagon_u, hexagon_v) = hexagons[hexagon_index].position_uv
-                white_king_distance = min((white_king_distance, math.fabs(white_king_v - hexagon_v)))
+                (_, hexagon_v) = hexagons[hexagon_index].position_uv
+                white_king_distance = min(white_king_distance, math.fabs(white_king_v - hexagon_v))
 
             # black_king_distance
 
@@ -2301,64 +2302,88 @@ class MinimaxSearcher():
             else:
                 black_king_hexagon_index = hexagon_top.index(Cube.black_king_index)
             
-            (black_king_u, black_king_v) = hexagons[black_king_hexagon_index].position_uv
+            (_, black_king_v) = hexagons[black_king_hexagon_index].position_uv
             
-            black_king_distance = float("Inf")
+            black_king_distance = INFINITY_POSITIVE
             for hexagon_index in Hexagon.get_king_end_indices(Player.BLACK):
-                (hexagon_u, hexagon_v) = hexagons[hexagon_index].position_uv
-                black_king_distance = min((black_king_distance, math.fabs(black_king_v - hexagon_v)))
+                (_, hexagon_v) = hexagons[hexagon_index].position_uv
+                black_king_distance = min(black_king_distance, math.fabs(black_king_v - hexagon_v))
 
-            distance_weight = 2
+            distance_weight = 100
             value += distance_weight*player_sign*(black_king_distance - white_king_distance)          
 
  
-            # white capture count
-            white_capture_count = jersi_state.get_capture_count(Player.WHITE)
-            
-            # black capture count
-            black_capture_count = jersi_state.get_capture_count(Player.BLACK)
-            
-            capture_weight = 10
-            value += capture_weight*player_sign*(white_capture_count - black_capture_count)          
+            # white and black being captured
+            white_capture_count = jersi_state.get_capture_count(Player.WHITE)           
+            black_capture_count = jersi_state.get_capture_count(Player.BLACK)           
+            capture_weight = 10_000
+            value += capture_weight*player_sign*(black_capture_count - white_capture_count)          
             
             
-            # white reserve count
+            # white and black in reserve
             white_reserve_count = jersi_state.get_capture_count(Player.WHITE)
-            
-            # black reserve count
-            black_reserve_count = jersi_state.get_capture_count(Player.BLACK)
-            
-            reserve_weight = 1
+            black_reserve_count = jersi_state.get_capture_count(Player.BLACK)       
+            reserve_weight = 10
             value += reserve_weight*player_sign*(white_reserve_count - black_reserve_count)          
 
         return value
     
     
     def negamax(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
+
+        use_negascout = True
         
         if alpha is None:
-            alpha = float("-Inf")
+            alpha = INFINITY_NEGATIVE
         
         if beta is None:
-            beta = float("+Inf")
+            beta = INFINITY_POSITIVE
             
         if depth is None:
             depth =self.__max_depth
+            
         
         if depth == 0 or state.is_terminal():
+            # print("negamax at depth %d evaluating leaf state" % depth)
             return player*self.state_value(state)
                 
         if return_action_values:
             action_values = dict()
             
-        actions = state.get_actions()
+        actions = state.get_actions(shuffle=False)
         
-        value = float("-Inf")                    
+        if (self.__max_children is not None and len(actions) > self.__max_children):
+                                
+            actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
+            
+            selected_actions = list()
+            for action_chunk in chunks(actions, self.__max_children):
+                selected_actions.append(random.choice(action_chunk))
+                
+            actions = selected_actions           
+        
+        value = INFINITY_NEGATIVE                    
         for action in actions:
+            # print("negamax at depth %d evaluating action %s" % (depth, action))
             child_state = state.take_action(action)
-            child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
-                                                alpha=-beta, beta=-alpha)
-            value = max((value, child_value))
+                        
+            if use_negascout:
+                # search with a null window 
+                # print("negascout: search with a null window")
+                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                                                    alpha=-alpha - 1, beta=-alpha)
+                
+                # if it failed high, do a full re-search
+                if alpha < child_value < beta:
+                    # print("negascout: full re-search")
+                    child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                                                    alpha=-beta, beta=-child_value)
+
+            else:
+                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                                                    alpha=-beta, beta=-alpha)
+
+            value = max(value, child_value)
             
             if return_action_values:
                 action_values[action] = child_value
@@ -2452,17 +2477,28 @@ SEARCHER_CATALOG = SearcherCatalog()
 SEARCHER_CATALOG.add( HumanSearcher("human") )
 SEARCHER_CATALOG.add( RandomSearcher("random") )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1", max_depth=1) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-20", max_depth=1, max_children=20) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-200", max_depth=1, max_children=200) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2", max_depth=2) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-20", max_depth=2, max_children=20) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-50", max_depth=2, max_children=50) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-200", max_depth=2, max_children=200) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-20", max_depth=3, max_children=20) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax4-10", max_depth=4, max_children=10) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-2s-jrp", time_limit=2, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10s", time_limit=10_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-30s", time_limit=30_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-30s-jrp", time_limit=30_000, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-60s", time_limit=60_000) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10i", iteration_limit=10) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-10i-jrp", iteration_limit=10, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-50i-jrp", iteration_limit=50, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-100i", iteration_limit=100) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-100i-jrp", iteration_limit=100, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-200i", iteration_limit=100) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-1ki", iteration_limit=1_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-2ki", iteration_limit=2_000) )
@@ -2536,15 +2572,19 @@ class Game:
 
             print()
             print(f"{player_name} is thinking ...")
-
+            
+            turn_start = time.time()
             action = self.__searcher[player].search(self.__jersi_state)
+            turn_end = time.time()
+            turn_duration = turn_end - turn_start
+            
             self.__last_action = str(action)
 
-            print(f"{player_name} is done")
+            print(f"{player_name} is done after %.1f seconds" % turn_duration)
 
             self.__turn = self.__jersi_state.get_turn()
 
-            self.__log = f"turn {self.__turn} : {player_name} selects {action} amongst {action_count} actions"
+            self.__log = f"turn {self.__turn} : after {turn_duration:.1f} seconds {player_name} selects {action} amongst {action_count} actions"
             print(self.__log)
             print("-"*40)
 
