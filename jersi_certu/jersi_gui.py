@@ -401,11 +401,11 @@ class GameGui(ttk.Frame):
         self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
         self.__cube_faces = self.__cube_faces_options[2]
 
-        self.__draw_reserve = True
+        self.__play_reserve = True
 
         self.__game = None
         self.__game_started = False
-        self.__jersi_state = rules.JersiState()
+        self.__jersi_state = rules.JersiState(play_reserve=self.__play_reserve)
         self.__searcher = [None, None]
 
         self.__action_input = None
@@ -475,11 +475,12 @@ class GameGui(ttk.Frame):
 
 
         self.__variable_reserve = tk.BooleanVar()
-        self.__variable_reserve.set(self.__draw_reserve)
+        self.__variable_reserve.set(self.__play_reserve)
         self.__button_reserve = ttk.Checkbutton (self.__frame_commands,
-                                       text='Show reserve',
+                                       text='Play reserve',
                                        command=self.__command_update_reserve,
                                        variable=self.__variable_reserve)
+        self.__button_reserve.config(state="readonly")
 
         self.__variable_faces = tk.StringVar()
         self.__combobox_button_faces = ttk.Combobox(self.__frame_commands,
@@ -628,7 +629,7 @@ class GameGui(ttk.Frame):
 
 
     def __command_update_reserve(self):
-        self.__draw_reserve = self.__variable_reserve.get()
+        self.__play_reserve = self.__variable_reserve.get()
         self.__draw_state()
 
 
@@ -664,7 +665,7 @@ class GameGui(ttk.Frame):
            self.__game = rules.Game()
            self.__game.set_white_searcher(self.__searcher[rules.Player.WHITE])
            self.__game.set_black_searcher(self.__searcher[rules.Player.BLACK])
-           self.__game.start()
+           self.__game.start(play_reserve=self.__play_reserve)
 
            self.__jersi_state = self.__game.get_state()
            self.__draw_state()
@@ -677,6 +678,7 @@ class GameGui(ttk.Frame):
 
            self.__combobox_white_player.config(state="disabled")
            self.__combobox_black_player.config(state="disabled")
+           self.__button_reserve.config(state="disabled")
 
            self.__text_actions.config(state="normal")
            self.__text_actions.delete('1.0', tk.END)
@@ -687,6 +689,7 @@ class GameGui(ttk.Frame):
         else:
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
+           self.__button_reserve.config(state="readonly")
 
            self.__entry_action.config(state="enabled")
            self.__variable_action.set("")
@@ -753,6 +756,7 @@ class GameGui(ttk.Frame):
         else:
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
+           self.__button_reserve.config(state="readonly")
 
            self.__progressbar['value'] = 0.
 
@@ -823,7 +827,7 @@ class GameGui(ttk.Frame):
 
     def __draw_hexagon(self, position_uv, fill_color='', label='', reserve=False, shift_xy=None):
 
-        if reserve and not self.__draw_reserve:
+        if reserve and not self.__play_reserve:
             return
 
         (u, v) = position_uv
@@ -871,7 +875,7 @@ class GameGui(ttk.Frame):
 
         hexagon = GraphicalHexagon.get(name)
 
-        if hexagon.reserve and not self.__draw_reserve:
+        if hexagon.reserve and not self.__play_reserve:
             return
 
         (u, v) = hexagon.position_uv

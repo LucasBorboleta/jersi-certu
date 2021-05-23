@@ -3,7 +3,7 @@
 
 """jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
@@ -22,6 +22,7 @@ import array
 import collections
 import copy
 import enum
+import itertools
 import math
 import os
 import random
@@ -36,12 +37,15 @@ INFINITY_POSITIVE = float("inf")
 INFINITY_NEGATIVE = float("-inf")
 
 
-def chunks(sequence, chunck_count):
+def chunks(sequence, chunk_count):
     """ Yield chunck_count successive chunks from sequence"""
-    chunk_size = int(len(sequence) / chunck_count)
-    for chunck_index in range(0, chunck_count - 1):
-        yield sequence[chunck_index*chunk_size : chunck_index*chunk_size + chunk_size]
-    yield sequence[chunck_count*chunk_size - chunk_size:]
+    chunk_size = int(len(sequence) / chunk_count)
+    chunk_end = 0
+    for _ in range(0, chunk_count - 1):
+        chunk_start = chunk_end
+        chunk_end = chunk_start + chunk_size
+        yield sequence[chunk_start : chunk_end]
+    yield sequence[chunk_end:]
 
 
 @enum.unique
@@ -69,6 +73,7 @@ class CubeStatus(enum.IntEnum):
     ACTIVATED = -121
     CAPTURED = -122
     RESERVED = -123
+    UNUSED = -124
 
 
 @enum.unique
@@ -926,7 +931,7 @@ class JersiState:
     __max_credit = 40
 
 
-    def __init__(self):
+    def __init__(self, play_reserve=True):
 
         self.__cube_status = None
         self.__hexagon_bottom = None
@@ -944,8 +949,8 @@ class JersiState:
         self.__terminated = None
         self.__rewards = None
 
-        self.___init_hexagon_top_and_bottom()
-        self.___init_cube_status()
+        self.___init_hexagon_top_and_bottom(play_reserve)
+        self.___init_cube_status(play_reserve)
 
 
     def __fork(self):
@@ -967,20 +972,23 @@ class JersiState:
         return state
 
 
-    def ___init_cube_status(self):
+    def ___init_cube_status(self, play_reserve):
 
         self.__cube_status = array.array('b', [CubeStatus.ACTIVATED for _ in Cube.all])
 
         for (cube_index, cube) in enumerate(Cube.all):
 
             if cube.sort in (CubeSort.MOUNTAIN, CubeSort.WISE):
-                self.__cube_status[cube_index] = CubeStatus.RESERVED
+                if play_reserve:
+                    self.__cube_status[cube_index] = CubeStatus.RESERVED
+                else:
+                    self.__cube_status[cube_index] = CubeStatus.UNUSED
 
             if not (cube_index in self.__hexagon_bottom or cube_index in self.__hexagon_top):
                 self.__cube_status[cube_index] = CubeStatus.CAPTURED
 
 
-    def ___init_hexagon_top_and_bottom(self):
+    def ___init_hexagon_top_and_bottom(self, play_reserve):
 
         self.__hexagon_top = array.array('b', [Null.CUBE for _ in Hexagon.all])
         self.__hexagon_bottom = array.array('b', [Null.CUBE for _ in Hexagon.all])
@@ -1023,25 +1031,26 @@ class JersiState:
         self.__set_cube_at_hexagon_by_names('r4', 'i2')
         self.__set_cube_at_hexagon_by_names('p4', 'i1')
 
-        # white reserve
-        self.__set_cube_at_hexagon_by_names('W1', 'c')
-        self.__set_cube_at_hexagon_by_names('W2', 'c')
-
-        self.__set_cube_at_hexagon_by_names('M1', 'b')
-        self.__set_cube_at_hexagon_by_names('M2', 'b')
-
-        self.__set_cube_at_hexagon_by_names('M3', 'a')
-        self.__set_cube_at_hexagon_by_names('M4', 'a')
-
-        # black reserve
-        self.__set_cube_at_hexagon_by_names('m1', 'i')
-        self.__set_cube_at_hexagon_by_names('m2', 'i')
-
-        self.__set_cube_at_hexagon_by_names('m3', 'h')
-        self.__set_cube_at_hexagon_by_names('m4', 'h')
-
-        self.__set_cube_at_hexagon_by_names('w1', 'g')
-        self.__set_cube_at_hexagon_by_names('w2', 'g')
+        if play_reserve:
+            # white reserve
+            self.__set_cube_at_hexagon_by_names('W1', 'c')
+            self.__set_cube_at_hexagon_by_names('W2', 'c')
+    
+            self.__set_cube_at_hexagon_by_names('M1', 'b')
+            self.__set_cube_at_hexagon_by_names('M2', 'b')
+    
+            self.__set_cube_at_hexagon_by_names('M3', 'a')
+            self.__set_cube_at_hexagon_by_names('M4', 'a')
+    
+            # black reserve
+            self.__set_cube_at_hexagon_by_names('m1', 'i')
+            self.__set_cube_at_hexagon_by_names('m2', 'i')
+    
+            self.__set_cube_at_hexagon_by_names('m3', 'h')
+            self.__set_cube_at_hexagon_by_names('m4', 'h')
+    
+            self.__set_cube_at_hexagon_by_names('w1', 'g')
+            self.__set_cube_at_hexagon_by_names('w2', 'g')
 
 
     def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
@@ -2077,38 +2086,53 @@ def extractStatistics(mcts_searcher, action):
 
 
 def jersiSelectAction(action_names):
+
     
-    def score_action_name(action_name):
+    def partition(predicate, iterable):
+        """Use a predicate to partition entries into false entries and true entries"""
+        (t1, t2) = itertools.tee(iterable)
+        return (itertools.filterfalse(predicate, t1), filter(predicate, t2))   
+
+
+    def score_move_name(move_name):
         
-        catpures = re.sub(r"[^!]", "",action_name)
-        catpures = re.sub(r"!+", "10_000",catpures)
+        catpures = re.sub(r"[^!]", "",move_name)
+        catpures = re.sub(r"!+", "100",catpures)
         
-        stacks = re.sub(r"[^=]", "",action_name).replace("=", "1_000")
+        stacks = re.sub(r"[^=]", "",move_name).replace("=", "10")
         
-        cubes = re.sub(r"[^-]", "",action_name).replace("-", "100")
+        cubes = re.sub(r"[^-]", "",move_name).replace("-", "1")
         
-        action_score = 0.000_01
+        move_score = 0
         
         if catpures != "":
-            action_score += float(catpures)
+            move_score += float(catpures)
         
         if stacks != "":
-            action_score += float(stacks)
+            move_score += float(stacks)
         
         if cubes != "":
-            action_score += float(cubes)
+            move_score += float(cubes)
         
-        return action_score
+        return move_score
 
-    action_weights = list(map(score_action_name, action_names))
-    action_name = random.choices(action_names, weights=action_weights, k=1)[0]
+
+    (drop_names, move_names) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), action_names)
     
-    if True:
-        # print()
-        # print("jersiSelectAction: action_names:", action_names)
-        # print("jersiSelectAction: action_weights:", action_weights)
-        print("jersiSelectAction: randomly chosen action_name:", action_name)
+    drop_names = list(drop_names)
+    move_names = list(move_names)
 
+    drop_probability = 0.01
+
+    if len(drop_names) != 0 and random.random() <= drop_probability:
+        action_name = random.choice(drop_names)
+    else:
+        move_weights = list(map(score_move_name, move_names))
+        action_name = random.choices(move_names, weights=move_weights, k=1)[0]
+        
+    if True:
+        print("jersiSelectAction: randomly chosen action_name:", action_name)
+    
     return action_name
 
 
@@ -2241,8 +2265,14 @@ class MinimaxSearcher():
                 # print("         action:", action, "value:", action_value)
                 pass
 
-        
+        # heuristic: amonst best actions avoid drop-actions when possible
+        best_no_drop_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
+        if len(best_no_drop_actions) != 0:
+            print("%d drop actions avoided !" % (len(best_actions) - len(best_no_drop_actions)))
+            best_actions = best_no_drop_actions
+
         print("%d best_actions" % len(best_actions))
+        
         action = random.choice(best_actions)
         
         return action
@@ -2353,6 +2383,9 @@ class MinimaxSearcher():
         actions = state.get_actions(shuffle=False)
         
         if (self.__max_children is not None and len(actions) > self.__max_children):
+            
+            # sample the actions according to their destination hexagons
+            #TODO: apply a first filter to ensure that drop actions are less then 1% of the total actions
                                 
             actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
             
@@ -2435,6 +2468,7 @@ class MctsSearcher():
     def search(self, state):
 
         action = self.__searcher.search(initialState=MctsState(state, state.get_current_player()))
+        #TODO: MCTS to be patched for returning all best children in order to apply a final user filter
 
         statistics = extractStatistics(self.__searcher, action)
         print("mcts statitics:" +
@@ -2479,10 +2513,12 @@ SEARCHER_CATALOG.add( RandomSearcher("random") )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1", max_depth=1) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-20", max_depth=1, max_children=20) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-200", max_depth=1, max_children=200) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-400", max_depth=1, max_children=400) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2", max_depth=2) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-20", max_depth=2, max_children=20) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-50", max_depth=2, max_children=50) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-200", max_depth=2, max_children=200) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-400", max_depth=2, max_children=400) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-20", max_depth=3, max_children=20) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax4-10", max_depth=4, max_children=10) )
@@ -2523,12 +2559,12 @@ class Game:
         self.__searcher[Player.BLACK] = searcher
 
 
-    def start(self):
+    def start(self, play_reserve=True):
 
         assert self.__searcher[Player.WHITE] is not None
         assert self.__searcher[Player.BLACK] is not None
 
-        self.__jersi_state = JersiState()
+        self.__jersi_state = JersiState(play_reserve)
 
         self.__jersi_state.show()
 
