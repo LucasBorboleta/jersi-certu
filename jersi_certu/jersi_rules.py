@@ -48,6 +48,33 @@ def chunks(sequence, chunk_count):
     yield sequence[chunk_end:]
 
 
+def partition(predicate, iterable):
+    """Use a predicate to partition entries into false entries and true entries"""
+    (t1, t2) = itertools.tee(iterable)
+    return (itertools.filterfalse(predicate, t1), filter(predicate, t2))   
+
+
+class JersiMcts(mcts.mcts):
+    
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args,** kwargs)
+        
+
+    def getBestActions(self):
+        bestActions = []
+        bestValue = INFINITY_NEGATIVE
+        node = self.root
+        currentPlayer = node.state.getCurrentPlayer()
+        for (action, child) in node.children.items():
+            childValue = currentPlayer*child.totalReward/child.numVisits
+            if childValue > bestValue:
+                bestValue = childValue
+                bestActions = [action]
+            elif childValue == bestValue:
+                bestActions.append(action)
+        return bestActions
+    
+    
 @enum.unique
 class Capture(enum.Enum):
     KING_CUBE = enum.auto()
@@ -2087,12 +2114,6 @@ def extractStatistics(mcts_searcher, action):
 
 def jersiSelectAction(action_names):
 
-    
-    def partition(predicate, iterable):
-        """Use a predicate to partition entries into false entries and true entries"""
-        (t1, t2) = itertools.tee(iterable)
-        return (itertools.filterfalse(predicate, t1), filter(predicate, t2))   
-
 
     def score_move_name(move_name):
         
@@ -2130,7 +2151,7 @@ def jersiSelectAction(action_names):
         move_weights = list(map(score_move_name, move_names))
         action_name = random.choices(move_names, weights=move_weights, k=1)[0]
         
-    if True:
+    if False:
         print("jersiSelectAction: randomly chosen action_name:", action_name)
     
     return action_name
@@ -2265,11 +2286,11 @@ class MinimaxSearcher():
                 # print("         action:", action, "value:", action_value)
                 pass
 
-        # heuristic: amonst best actions avoid drop-actions when possible
-        best_no_drop_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
-        if len(best_no_drop_actions) != 0:
-            print("%d drop actions avoided !" % (len(best_actions) - len(best_no_drop_actions)))
-            best_actions = best_no_drop_actions
+        # heuristic: amonst best actions forget drop-actions when possible
+        best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
+        if len(best_move_actions) != 0:
+            print("forget %d drop actions !" % (len(best_actions) - len(best_move_actions)))
+            best_actions = best_move_actions
 
         print("%d best_actions" % len(best_actions))
         
@@ -2450,11 +2471,11 @@ class MctsSearcher():
 
         if self.__time_limit is not None:
             # time in milli-seconds
-            self.__searcher = mcts.mcts(timeLimit=self.__time_limit, rolloutPolicy=rolloutPolicy)
+            self.__searcher = JersiMcts(timeLimit=self.__time_limit, rolloutPolicy=rolloutPolicy)
 
         elif self.__iteration_limit is not None:
             # number of mcts rounds
-            self.__searcher = mcts.mcts(iterationLimit=self.__iteration_limit, rolloutPolicy=rolloutPolicy)
+            self.__searcher = JersiMcts(iterationLimit=self.__iteration_limit, rolloutPolicy=rolloutPolicy)
 
 
     def get_name(self):
@@ -2467,8 +2488,18 @@ class MctsSearcher():
 
     def search(self, state):
 
-        action = self.__searcher.search(initialState=MctsState(state, state.get_current_player()))
-        #TODO: MCTS to be patched for returning all best children in order to apply a final user filter
+        _ = self.__searcher.search(initialState=MctsState(state, state.get_current_player()))
+
+        # heuristic: amonst best actions forget drop-actions i.e. move actions when possible
+        best_actions = self.__searcher.getBestActions()
+        best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
+        print("best_actions:", best_actions)
+        print("best_move_actions:", best_move_actions)
+        if len(best_move_actions) != 0:
+            print("forget %d drop actions !" % (len(best_actions) - len(best_move_actions)))
+            best_actions = best_move_actions
+
+        action = random.choice(best_actions)
 
         statistics = extractStatistics(self.__searcher, action)
         print("mcts statitics:" +
