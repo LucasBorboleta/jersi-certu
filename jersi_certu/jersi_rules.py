@@ -2150,9 +2150,6 @@ def jersiSelectAction(action_names):
     else:
         move_weights = list(map(score_move_name, move_names))
         action_name = random.choices(move_names, weights=move_weights, k=1)[0]
-        
-    if False:
-        print("jersiSelectAction: randomly chosen action_name:", action_name)
     
     return action_name
 
@@ -2249,13 +2246,17 @@ class RandomSearcher():
         (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
         drop_actions = list(drop_actions)
         move_actions = list(move_actions)
-
-        drop_probability = 0.05
-
-        if len(drop_actions) != 0 and random.random() <= drop_probability:
+        
+        if len(move_actions) == 0:
             action = random.choice(drop_actions)
-        else:
-            action = random.choice(move_actions)
+            
+        else:            
+            drop_probability = 0.05
+    
+            if len(drop_actions) != 0 and random.random() <= drop_probability:
+                action = random.choice(drop_actions)
+            else:
+                action = random.choice(move_actions)
         
         return action
 
@@ -2291,22 +2292,12 @@ class MinimaxSearcher():
         best_actions = list()
         for (action, action_value) in action_values.items():
             if action_value == best_value:
-                # print("    best action:", action, "value:", action_value)
                 best_actions.append(action)
             else:
-                # print("         action:", action, "value:", action_value)
                 pass
 
-        # heuristic: amonst best actions forget drop-actions when possible
-        best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
-        if len(best_move_actions) != 0:
-            print("forget %d drop actions !" % (len(best_actions) - len(best_move_actions)))
-            best_actions = best_move_actions
-
-        print("%d best_actions" % len(best_actions))
-        
         action = random.choice(best_actions)
-        
+            
         return action
 
 
@@ -2385,18 +2376,17 @@ class MinimaxSearcher():
             black_reserve_count = jersi_state.get_capture_count(Player.BLACK)       
             reserve_difference = player_sign*(white_reserve_count - black_reserve_count)
 
-            capture_weight = 10_000
             distance_weight = 1_000
-            reserve_weight = 10
+            capture_weight = 15_000
+            reserve_weight = 0
             
-            if ((jersi_maximizer_player == Player.WHITE and black_capture_count > 10) or 
-                (jersi_maximizer_player == Player.BLACK and white_capture_count > 10)):
-                
-                # print("state_value: change weights / %d total captured cubes" % 
-                #       (white_capture_count + black_capture_count))
-                distance_weight = 10_000
+            capture_limit = 10
+            
+            if ((jersi_maximizer_player == Player.WHITE and black_capture_count > capture_limit) or 
+                (jersi_maximizer_player == Player.BLACK and white_capture_count > capture_limit)):
+                distance_weight = 15_000
                 capture_weight = 1_000
-                reserve_weight = 1                
+                reserve_weight = 0             
                 
             value += distance_weight*distance_difference          
             value += capture_weight*capture_difference          
@@ -2443,7 +2433,6 @@ class MinimaxSearcher():
             move_actions = list(move_actions)
                         
             if len(move_actions) > self.__max_children:
-                # print("forget %d moves" % (len(move_actions) - self.__max_children))
                 # sample the move actions according to their destination hexagons
                 move_actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
                 
@@ -2453,12 +2442,14 @@ class MinimaxSearcher():
                     
                 move_actions = selected_move_actions
                 
-            # >> let us admit some tolerance regarding the __max_children criterion
-            # >> by adding a small fraction of drop actions
             if len(drop_actions) != 0:
-                drop_probability = 0.02
-                drop_count = int(math.ceil(drop_probability*len(move_actions)))
-                # print("keep %d drops" % drop_count)
+                drop_count = self.__max_children - len(move_actions)
+                
+                # >> let us admit some tolerance regarding the __max_children criterion
+                # >> by adding a small fraction of drop actions
+                drop_probability = 0.05
+                drop_count = max(drop_count, int(math.ceil(drop_probability*len(move_actions))))              
+                
                 drop_actions = random.choices(drop_actions, k=drop_count)
                 actions = move_actions + drop_actions
             else:
@@ -2548,10 +2539,8 @@ class MctsSearcher():
         
         best_actions = self.__searcher.getBestActions()
         best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
-        print("best_actions:", best_actions)
-        print("best_move_actions:", best_move_actions)
         if len(best_move_actions) != 0:
-            print("forget %d drop actions !" % (len(best_actions) - len(best_move_actions)))
+            print("forget %d best drop actions !" % (len(best_actions) - len(best_move_actions)))
             best_actions = best_move_actions
 
         action = random.choice(best_actions)
@@ -2640,6 +2629,7 @@ class Game:
         self.__log = None
         self.__turn = None
         self.__last_action = None
+        self.__turn_duration = {Player.WHITE:[], Player.BLACK:[]}
 
 
     def set_white_searcher(self, searcher):
@@ -2704,6 +2694,7 @@ class Game:
             action = self.__searcher[player].search(self.__jersi_state)
             turn_end = time.time()
             turn_duration = turn_end - turn_start
+            self.__turn_duration[player].append(turn_duration)
             
             self.__last_action = str(action)
 
@@ -2725,21 +2716,24 @@ class Game:
 
             print()
             print("-"*40)
+                
+            white_time = sum(self.__turn_duration[Player.WHITE])
+            black_time = sum(self.__turn_duration[Player.BLACK])
 
             white_player = f"{Player.name(Player.WHITE)}-{self.__searcher[Player.WHITE].get_name()}"
             black_player = f"{Player.name(Player.BLACK)}-{self.__searcher[Player.BLACK].get_name()}"
 
             if rewards[Player.WHITE] == rewards[Player.BLACK]:
-                self.__log = f"nobody wins ; the game is a draw between {white_player} and {black_player}"
-                print(self.__log)
+                self.__log = f"nobody wins ; the game is a draw between {white_player} and {black_player} ; {white_time:.0f} versus {black_time:.0f} seconds"
 
             elif rewards[Player.WHITE] > rewards[Player.BLACK]:
-                self.__log = f"{white_player} wins against {black_player}"
-                print(self.__log)
+                self.__log = f"{white_player} wins against {black_player} ; {white_time:.0f} versus {black_time:.0f} seconds"
 
             else:
-                self.__log = f"{black_player} wins against {white_player}"
-                print(self.__log)
+                self.__log = f"{black_player} wins against {white_player} ; {black_time:.0f} versus {white_time:.0f} seconds"
+                
+            print(self.__log)
+            
 
 
 def test_game_between_random_players():
