@@ -2264,11 +2264,12 @@ class RandomSearcher():
 class MinimaxSearcher():
 
 
-    def __init__(self, name, max_depth=1, max_children=None):
+    def __init__(self, name, max_depth=1, max_children=None, capture_factor=50):
         assert max_depth >= 1
         self.__name = name
         self.__max_depth = max_depth
         self.__max_children = max_children
+        self.__capture_factor = capture_factor
 
 
     def get_name(self):
@@ -2377,16 +2378,18 @@ class MinimaxSearcher():
             reserve_difference = player_sign*(white_reserve_count - black_reserve_count)
 
             distance_weight = 1_000
-            capture_weight = 15_000
+            capture_weight = distance_weight*self.__capture_factor
             reserve_weight = 0
             
-            capture_limit = 10
+            # capture_limit = 10
+            # use_capture_limit = False
             
-            if ((jersi_maximizer_player == Player.WHITE and black_capture_count > capture_limit) or 
-                (jersi_maximizer_player == Player.BLACK and white_capture_count > capture_limit)):
-                distance_weight = 15_000
-                capture_weight = 1_000
-                reserve_weight = 0             
+            # if use_capture_limit:
+            #     if ((jersi_maximizer_player == Player.WHITE and black_capture_count > capture_limit) or 
+            #         (jersi_maximizer_player == Player.BLACK and white_capture_count > capture_limit)):
+            #         distance_weight = 15_000
+            #         capture_weight = 1_000
+            #         reserve_weight = 0             
                 
             value += distance_weight*distance_difference          
             value += capture_weight*capture_difference          
@@ -2674,6 +2677,10 @@ class Game:
         return self.__jersi_state
 
 
+    def get_rewards(self):
+        return self.__jersi_state.get_rewards()
+
+
     def has_next_turn(self):
         return not self.__jersi_state.is_terminal()
 
@@ -2816,6 +2823,56 @@ def test_game_between_random_and_human_players():
     print("===============================================")
 
 
+def test_game_between_minimax_players():
+
+    print("=====================================")
+    print(" test_game_between_minimax_players ...")
+    print("=====================================")
+    
+    old_wins = 0
+    new_wins = 0
+    
+    game_count = 10
+    assert game_count % 2 == 0
+    
+    for game_index in range(game_count):
+        game = Game()
+        
+        old = MinimaxSearcher("old", max_depth=2, capture_factor=50)
+        new = MinimaxSearcher("new", max_depth=2, capture_factor=60)
+        
+        if game_index % 2 == 0:
+            game.set_white_searcher(old)
+            game.set_black_searcher(new)
+            old_player = Player.WHITE
+            new_player = Player.BLACK
+        else:
+            game.set_white_searcher(new)
+            game.set_black_searcher(old)  
+            new_player = Player.WHITE
+            old_player = Player.BLACK
+            
+        game.start(play_reserve=False)
+        while game.has_next_turn():
+            game.next_turn()
+            
+        rewards = game.get_rewards()
+        
+        if rewards[old_player] == Reward.WIN:
+            old_wins += 1
+            
+        elif rewards[new_player] == Reward.WIN:
+            new_wins += 1
+            
+    
+    print("game_count:", game_count, "old_wins:", old_wins, "new_wins:", new_wins)
+
+
+    print("=====================================")
+    print("test_game_between_minimax_players done")
+    print("=====================================")
+    
+
 def main():
     print(f"Hello from {os.path.basename(__file__)} version {__version__}")
     print(_COPYRIGHT_AND_LICENSE)
@@ -2823,11 +2880,18 @@ def main():
     if True:
         test_game_between_random_players()
 
-    if True:
+    if False:
         test_game_between_mcts_players()
 
     if False:
         test_game_between_random_and_human_players()
+   
+    if False:
+        test_game_between_minimax_players()
+
+    if True:
+        print()
+        _ = input("main: done ; press enter to terminate")
 
     print(f"Bye from {os.path.basename(__file__)} version {__version__}")
 
