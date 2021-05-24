@@ -1012,7 +1012,7 @@ class JersiState:
                     self.__cube_status[cube_index] = CubeStatus.UNUSED
 
             if not (cube_index in self.__hexagon_bottom or cube_index in self.__hexagon_top):
-                self.__cube_status[cube_index] = CubeStatus.CAPTURED
+                self.__cube_status[cube_index] = CubeStatus.UNUSED
 
 
     def ___init_hexagon_top_and_bottom(self, play_reserve):
@@ -2143,7 +2143,7 @@ def jersiSelectAction(action_names):
     drop_names = list(drop_names)
     move_names = list(move_names)
 
-    drop_probability = 0.01
+    drop_probability = 0.05
 
     if len(drop_names) != 0 and random.random() <= drop_probability:
         action_name = random.choice(drop_names)
@@ -2244,8 +2244,19 @@ class RandomSearcher():
 
 
     def search(self, state):
-        actions = state.get_actions()
-        action = random.choice(actions)
+        actions = state.get_actions()      
+
+        (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
+        drop_actions = list(drop_actions)
+        move_actions = list(move_actions)
+
+        drop_probability = 0.05
+
+        if len(drop_actions) != 0 and random.random() <= drop_probability:
+            action = random.choice(drop_actions)
+        else:
+            action = random.choice(move_actions)
+        
         return action
 
 
@@ -2360,27 +2371,47 @@ class MinimaxSearcher():
                 (_, hexagon_v) = hexagons[hexagon_index].position_uv
                 black_king_distance = min(black_king_distance, math.fabs(black_king_v - hexagon_v))
 
-            distance_weight = 100
-            value += distance_weight*player_sign*(black_king_distance - white_king_distance)          
+            distance_difference = player_sign*(black_king_distance - white_king_distance)
 
  
-            # white and black being captured
+            # white and black with captured status
             white_capture_count = jersi_state.get_capture_count(Player.WHITE)           
             black_capture_count = jersi_state.get_capture_count(Player.BLACK)           
-            capture_weight = 10_000
-            value += capture_weight*player_sign*(black_capture_count - white_capture_count)          
+            capture_difference = player_sign*(black_capture_count - white_capture_count)
             
             
-            # white and black in reserve
+            # white and black with reserved status
             white_reserve_count = jersi_state.get_capture_count(Player.WHITE)
             black_reserve_count = jersi_state.get_capture_count(Player.BLACK)       
+            reserve_difference = player_sign*(white_reserve_count - black_reserve_count)
+
+            capture_weight = 10_000
+            distance_weight = 1_000
             reserve_weight = 10
-            value += reserve_weight*player_sign*(white_reserve_count - black_reserve_count)          
+            
+            if ((jersi_maximizer_player == Player.WHITE and black_capture_count > 10) or 
+                (jersi_maximizer_player == Player.BLACK and white_capture_count > 10)):
+                
+                # print("state_value: change weights / %d total captured cubes" % 
+                #       (white_capture_count + black_capture_count))
+                distance_weight = 10_000
+                capture_weight = 1_000
+                reserve_weight = 1                
+                
+            value += distance_weight*distance_difference          
+            value += capture_weight*capture_difference          
+            value += reserve_weight*reserve_difference          
 
         return value
     
     
     def negamax(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
+
+        
+        def score_action(action):
+            captures = re.sub(r"[^!]", "", str(action))
+            return len(captures)
+            
 
         use_negascout = True
         
@@ -2403,18 +2434,40 @@ class MinimaxSearcher():
             
         actions = state.get_actions(shuffle=False)
         
+
+        # reduce the number of children
         if (self.__max_children is not None and len(actions) > self.__max_children):
-            
-            # sample the actions according to their destination hexagons
-            #TODO: apply a first filter to ensure that drop actions are less then 1% of the total actions
-                                
-            actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
-            
-            selected_actions = list()
-            for action_chunk in chunks(actions, self.__max_children):
-                selected_actions.append(random.choice(action_chunk))
+
+            (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
+            drop_actions = list(drop_actions)
+            move_actions = list(move_actions)
+                        
+            if len(move_actions) > self.__max_children:
+                # print("forget %d moves" % (len(move_actions) - self.__max_children))
+                # sample the move actions according to their destination hexagons
+                move_actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
                 
-            actions = selected_actions           
+                selected_move_actions = list()
+                for action_chunk in chunks(move_actions, self.__max_children):
+                    selected_move_actions.append(random.choice(action_chunk))
+                    
+                move_actions = selected_move_actions
+                
+            # >> let us admit some tolerance regarding the __max_children criterion
+            # >> by adding a small fraction of drop actions
+            if len(drop_actions) != 0:
+                drop_probability = 0.02
+                drop_count = int(math.ceil(drop_probability*len(move_actions)))
+                # print("keep %d drops" % drop_count)
+                drop_actions = random.choices(drop_actions, k=drop_count)
+                actions = move_actions + drop_actions
+            else:
+                actions = move_actions
+ 
+        # optimize alpha beta and negascout by ordering capture at first positions
+        if True:               
+            actions.sort(key=score_action, reverse=True)
+        
         
         value = INFINITY_NEGATIVE                    
         for action in actions:
@@ -2488,9 +2541,11 @@ class MctsSearcher():
 
     def search(self, state):
 
+        # >> when search is done, ignore the automatically selected action
         _ = self.__searcher.search(initialState=MctsState(state, state.get_current_player()))
 
-        # heuristic: amonst best actions forget drop-actions i.e. move actions when possible
+        # heuristic: amonst best actions forget drop-actions i.e. selection a move action when possible
+        
         best_actions = self.__searcher.getBestActions()
         best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
         print("best_actions:", best_actions)
@@ -2544,14 +2599,17 @@ SEARCHER_CATALOG.add( RandomSearcher("random") )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1", max_depth=1) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-20", max_depth=1, max_children=20) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-200", max_depth=1, max_children=200) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-300", max_depth=1, max_children=300) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-400", max_depth=1, max_children=400) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2", max_depth=2) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-20", max_depth=2, max_children=20) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-50", max_depth=2, max_children=50) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-200", max_depth=2, max_children=200) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-300", max_depth=2, max_children=300) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-400", max_depth=2, max_children=400) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-20", max_depth=3, max_children=20) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-50", max_depth=3, max_children=50) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax4-10", max_depth=4, max_children=10) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
@@ -2563,7 +2621,9 @@ SEARCHER_CATALOG.add( MctsSearcher("mcts-60s", time_limit=60_000) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10i", iteration_limit=10) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10i-jrp", iteration_limit=10, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-40i-jrp", iteration_limit=40, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-50i-jrp", iteration_limit=50, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-60i-jrp", iteration_limit=60, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-100i", iteration_limit=100) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-100i-jrp", iteration_limit=100, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-200i", iteration_limit=100) )
