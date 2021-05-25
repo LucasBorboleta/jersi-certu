@@ -2588,39 +2588,16 @@ SEARCHER_CATALOG = SearcherCatalog()
 
 SEARCHER_CATALOG.add( HumanSearcher("human") )
 SEARCHER_CATALOG.add( RandomSearcher("random") )
+
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1", max_depth=1) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-20", max_depth=1, max_children=20) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-200", max_depth=1, max_children=200) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-300", max_depth=1, max_children=300) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-400", max_depth=1, max_children=400) )
+
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2", max_depth=2) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-20", max_depth=2, max_children=20) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-50", max_depth=2, max_children=50) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-200", max_depth=2, max_children=200) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-300", max_depth=2, max_children=300) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-400", max_depth=2, max_children=400) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-20", max_depth=3, max_children=20) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-50", max_depth=3, max_children=50) )
-SEARCHER_CATALOG.add( MinimaxSearcher("minimax4-10", max_depth=4, max_children=10) )
 
 SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-2s-jrp", time_limit=2, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-10s", time_limit=10_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-30s", time_limit=30_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-30s-jrp", time_limit=30_000, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-60s", time_limit=60_000) )
-
-SEARCHER_CATALOG.add( MctsSearcher("mcts-10i", iteration_limit=10) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-10i-jrp", iteration_limit=10, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-40i-jrp", iteration_limit=40, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-10s-jrp", time_limit=10_000, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-50i-jrp", iteration_limit=50, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-60i-jrp", iteration_limit=60, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-100i", iteration_limit=100) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-100i-jrp", iteration_limit=100, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-200i", iteration_limit=100) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-1ki", iteration_limit=1_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-2ki", iteration_limit=2_000) )
 
 
 class Game:
@@ -2753,9 +2730,9 @@ def test_game_between_random_players():
     JersiState.set_max_credit(10_000)
 
     game = Game()
-
-    game.set_white_searcher(SEARCHER_CATALOG.get("random"))
-    game.set_black_searcher(SEARCHER_CATALOG.get("random"))
+    
+    game.set_white_searcher(RandomSearcher("random"))
+    game.set_black_searcher(RandomSearcher("random"))
 
     game.start()
 
@@ -2779,9 +2756,9 @@ def test_game_between_mcts_players():
     JersiState.set_max_credit(10)
 
     game = Game()
-
-    game.set_white_searcher(SEARCHER_CATALOG.get("mcts-10s"))
-    game.set_black_searcher(SEARCHER_CATALOG.get("mcts-10i"))
+    
+    game.set_white_searcher(MctsSearcher("mcts-10s", time_limit=10_000))
+    game.set_black_searcher(MctsSearcher("mcts-10i", iteration_limit=10))
 
     game.start()
 
@@ -2806,9 +2783,11 @@ def test_game_between_random_and_human_players():
 
     game = Game()
 
-    game.set_white_searcher(SEARCHER_CATALOG.get("human"))
-    game.set_black_searcher(SEARCHER_CATALOG.get("random"))
-    SEARCHER_CATALOG.get("human").use_command_line(True)
+    human_searcher = HumanSearcher("human")
+    human_searcher.use_command_line(True)
+    game.set_white_searcher(human_searcher)
+    
+    game.set_black_searcher(RandomSearcher("random"))
 
     game.start()
 
@@ -2816,7 +2795,6 @@ def test_game_between_random_and_human_players():
         game.next_turn()
 
     JersiState.set_max_credit(default_max_credit)
-    SEARCHER_CATALOG.get("human").use_command_line(False)
 
     print("===============================================")
     print("test_game_between_random_and_human_players done")
@@ -2838,17 +2816,17 @@ def test_game_between_minimax_players():
     for game_index in range(game_count):
         game = Game()
         
-        old = MinimaxSearcher("old", max_depth=2, capture_factor=50)
-        new = MinimaxSearcher("new", max_depth=2, capture_factor=60)
+        old_searcher = MinimaxSearcher("old", max_depth=1, capture_factor=50)
+        new_searcher = MinimaxSearcher("new", max_depth=1, capture_factor=60)
         
         if game_index % 2 == 0:
-            game.set_white_searcher(old)
-            game.set_black_searcher(new)
+            game.set_white_searcher(old_searcher)
+            game.set_black_searcher(new_searcher)
             old_player = Player.WHITE
             new_player = Player.BLACK
         else:
-            game.set_white_searcher(new)
-            game.set_black_searcher(old)  
+            game.set_white_searcher(new_searcher)
+            game.set_black_searcher(old_searcher)  
             new_player = Player.WHITE
             old_player = Player.BLACK
             
