@@ -972,6 +972,7 @@ class JersiState:
         self.__hexagon_bottom = None
         self.__hexagon_top = None
         self.__king_end_distances = None
+        self.__central_hexagon_indices = None
 
         self.__credit = JersiState.__max_credit
         self.__player = Player.WHITE
@@ -987,7 +988,8 @@ class JersiState:
 
         self.__init_hexagon_top_and_bottom(play_reserve)
         self.__init_cube_status(play_reserve)
-        self.__init_king_end_distances()
+        self.__init_king_end_distances()       
+        self.__init__central_hexagon_indices()
 
 
     def __fork(self):
@@ -1116,6 +1118,18 @@ class JersiState:
         self.__set_cube_at_hexagon(cube_index, hexagon_index)
 
 
+    def __init__central_hexagon_indices(self):
+        central_names = ['c3', 'c4', 'c5', 
+                          'd3', 'd4', 'd5', 'd6',
+                          'e3', 'e4', 'e5', 'e6', 'e7',
+                          'f3', 'f4', 'f5', 'f6',
+                          'g3', 'g4', 'g5',
+                          ]
+        
+        self.__central_hexagon_indices = array.array('b', 
+                                                     [Hexagon.get(name).index for name in central_names]) 
+
+
     def __set_cube_at_hexagon(self, cube_index, hexagon_index):
 
         if self.__hexagon_bottom[hexagon_index] == Null.CUBE:
@@ -1190,6 +1204,10 @@ class JersiState:
             king_distances[player] = self.__king_end_distances[player][king_hexagon_index]
             
         return king_distances
+
+
+    def get_central_hexagon_indices(self):
+        return self.__central_hexagon_indices
         
 
     def get_capture_counts(self):
@@ -2319,7 +2337,7 @@ class MinimaxSearcher():
         self.__max_depth = max_depth
         self.__max_children = max_children
         self.__capture_factor = capture_factor
-
+           
 
     def get_name(self):
         return self.__name
@@ -2392,14 +2410,39 @@ class MinimaxSearcher():
             reserve_counts = jersi_state.get_capture_counts()
             reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
+            # white movable cubes in central zone
+            white_central_count = 0
+            black_central_count = 0
+            
+            hexagon_bottom = jersi_state.get_hexagon_bottom()
+            hexagon_top= jersi_state.get_hexagon_bottom()
+            
+            for hexagon_index in jersi_state.get_central_hexagon_indices():
+                
+                for cube_index in [hexagon_bottom[hexagon_index], hexagon_top[hexagon_index]]:
+                    
+                    if cube_index != Null.CUBE:               
+                        cube = Cube.all[cube_index]
+                        if cube.sort != CubeSort.MOUNTAIN:
+                            if cube.player == Player.WHITE:
+                                white_central_count += 1
+                            
+                            elif cube.player == Player.BLACK:
+                                black_central_count += 1
+                    else:
+                        break
+
+            central_difference = player_sign*(white_central_count - black_central_count)
 
             # synthesis
             distance_weight = 1_000
             capture_weight = distance_weight*self.__capture_factor
+            central_weight = 100
             reserve_weight = 0
                 
             value += distance_weight*distance_difference          
             value += capture_weight*capture_difference          
+            value += central_weight*central_difference          
             value += reserve_weight*reserve_difference          
 
         return value
