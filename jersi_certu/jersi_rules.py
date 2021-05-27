@@ -54,6 +54,14 @@ def partition(predicate, iterable):
     return (itertools.filterfalse(predicate, t1), filter(predicate, t2))   
 
 
+def hex_distance(position_uv_1, position_uv_2):
+    """reference: https://www.redblobgames.com/grids/hexagons/#distances"""
+    (u1, v1) = position_uv_1
+    (u2, v2) = position_uv_2
+    distance = (math.fabs(u1 - u2) + math.fabs(v1 - v2)+ math.fabs(u1 + v1 - u2 - v2))/2
+    return distance
+    
+
 class JersiMcts(mcts.mcts):
     
     def __init__(self,*args, **kwargs):
@@ -963,6 +971,7 @@ class JersiState:
         self.__cube_status = None
         self.__hexagon_bottom = None
         self.__hexagon_top = None
+        self.__king_end_distances = None
 
         self.__credit = JersiState.__max_credit
         self.__player = Player.WHITE
@@ -976,8 +985,9 @@ class JersiState:
         self.__terminated = None
         self.__rewards = None
 
-        self.___init_hexagon_top_and_bottom(play_reserve)
-        self.___init_cube_status(play_reserve)
+        self.__init_hexagon_top_and_bottom(play_reserve)
+        self.__init_cube_status(play_reserve)
+        self.__init_king_end_distances()
 
 
     def __fork(self):
@@ -999,7 +1009,7 @@ class JersiState:
         return state
 
 
-    def ___init_cube_status(self, play_reserve):
+    def __init_cube_status(self, play_reserve):
 
         self.__cube_status = array.array('b', [CubeStatus.ACTIVATED for _ in Cube.all])
 
@@ -1015,7 +1025,7 @@ class JersiState:
                 self.__cube_status[cube_index] = CubeStatus.UNUSED
 
 
-    def ___init_hexagon_top_and_bottom(self, play_reserve):
+    def __init_hexagon_top_and_bottom(self, play_reserve):
 
         self.__hexagon_top = array.array('b', [Null.CUBE for _ in Hexagon.all])
         self.__hexagon_bottom = array.array('b', [Null.CUBE for _ in Hexagon.all])
@@ -1080,6 +1090,26 @@ class JersiState:
             self.__set_cube_at_hexagon_by_names('w2', 'g')
 
 
+    def __init_king_end_distances(self):
+                    
+        self.__king_end_distances = [array.array('b', [0 for _ in Hexagon.all]) for _ in Player]
+   
+        for player in Player:
+            
+            for king_hexagon in Hexagon.all:
+            
+                king_hexagon_index = king_hexagon.index
+                king_position_uv = king_hexagon.position_uv
+    
+                king_distance = INFINITY_POSITIVE
+                for hexagon_index in Hexagon.get_king_end_indices(player):
+                    hexagon_position_uv = Hexagon.all[hexagon_index].position_uv
+                    king_distance = min(king_distance, 
+                                        hex_distance(king_position_uv, hexagon_position_uv))
+     
+                self.__king_end_distances[player][king_hexagon_index] = int(math.ceil(king_distance))
+
+
     def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
         cube_index = Cube.get(cube_name).index
         hexagon_index = Hexagon.get(hexagon_name).index
@@ -1099,7 +1129,7 @@ class JersiState:
         else:
             # hexagon is expected with either zero or one cube
             assert False
-
+        
 
     def show(self):
 
@@ -1143,28 +1173,47 @@ class JersiState:
         print(self.get_summary())
 
 
-    def get_capture_count(self, player):
-        count = 0
+    def get_king_end_distances(self):
+        """Distance to end hexagons of kings"""
+        
+        king_distances = [0 for _ in Player]
+        
+        for player in Player:
+            
+            king_index= Cube.get_king_index(player)
 
+            if king_index in self.__hexagon_bottom:
+                king_hexagon_index = self.__hexagon_bottom.index(king_index)
+            else:
+                king_hexagon_index = self.__hexagon_top.index(king_index)
+                
+            king_distances[player] = self.__king_end_distances[player][king_hexagon_index]
+            
+        return king_distances
+        
+
+    def get_capture_counts(self):
+        counts = [0 for _ in Player]
+        
         for (cube_index, cube_status) in enumerate(self.__cube_status):
             cube = Cube.all[cube_index]
             
-            if cube.player == player and cube_status == CubeStatus.CAPTURED:
-                count += 1
+            if cube_status == CubeStatus.CAPTURED:
+                counts[cube.player] += 1
         
-        return count
+        return counts
 
 
-    def get_reserve_count(self, player):
-        count = 0
-
+    def get_reserve_counts(self):
+        counts = [0 for _ in Player]
+        
         for (cube_index, cube_status) in enumerate(self.__cube_status):
             cube = Cube.all[cube_index]
             
-            if cube.player == player and cube_status == CubeStatus.RESERVED:
-                count += 1
+            if cube_status == CubeStatus.RESERVED:
+                counts[cube.player] += 1
         
-        return count
+        return counts
 
         
     def get_summary(self):
@@ -2330,66 +2379,24 @@ class MinimaxSearcher():
                 value = INFINITY_NEGATIVE
             
         else:
-            
-            hexagons = Hexagon.get_all()
-            hexagon_bottom = jersi_state.get_hexagon_bottom()
-            hexagon_top = jersi_state.get_hexagon_top()
+                                  
+            # white and black distances to their goals or ends
+            king_distances = jersi_state.get_king_end_distances()   
+            distance_difference = player_sign*(king_distances[Player.BLACK] - king_distances[Player.WHITE])
 
-            # white_king_distance
-
-            if Cube.white_king_index in hexagon_bottom:
-                white_king_hexagon_index = hexagon_bottom.index(Cube.white_king_index)
-            else:
-                white_king_hexagon_index = hexagon_top.index(Cube.white_king_index)
-
-            (_, white_king_v) = hexagons[white_king_hexagon_index].position_uv
-            
-            white_king_distance = INFINITY_POSITIVE
-            for hexagon_index in Hexagon.get_king_end_indices(Player.WHITE):
-                (_, hexagon_v) = hexagons[hexagon_index].position_uv
-                white_king_distance = min(white_king_distance, math.fabs(white_king_v - hexagon_v))
-
-            # black_king_distance
-
-            if Cube.black_king_index in hexagon_bottom:
-                black_king_hexagon_index = hexagon_bottom.index(Cube.black_king_index)
-            else:
-                black_king_hexagon_index = hexagon_top.index(Cube.black_king_index)
-            
-            (_, black_king_v) = hexagons[black_king_hexagon_index].position_uv
-            
-            black_king_distance = INFINITY_POSITIVE
-            for hexagon_index in Hexagon.get_king_end_indices(Player.BLACK):
-                (_, hexagon_v) = hexagons[hexagon_index].position_uv
-                black_king_distance = min(black_king_distance, math.fabs(black_king_v - hexagon_v))
-
-            distance_difference = player_sign*(black_king_distance - white_king_distance)
-
- 
             # white and black with captured status
-            white_capture_count = jersi_state.get_capture_count(Player.WHITE)           
-            black_capture_count = jersi_state.get_capture_count(Player.BLACK)           
-            capture_difference = player_sign*(black_capture_count - white_capture_count)
-            
+            capture_counts = jersi_state.get_capture_counts()
+            capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
             
             # white and black with reserved status
-            white_reserve_count = jersi_state.get_capture_count(Player.WHITE)
-            black_reserve_count = jersi_state.get_capture_count(Player.BLACK)       
-            reserve_difference = player_sign*(white_reserve_count - black_reserve_count)
+            reserve_counts = jersi_state.get_capture_counts()
+            reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
+
+            # synthesis
             distance_weight = 1_000
             capture_weight = distance_weight*self.__capture_factor
             reserve_weight = 0
-            
-            # capture_limit = 10
-            # use_capture_limit = False
-            
-            # if use_capture_limit:
-            #     if ((jersi_maximizer_player == Player.WHITE and black_capture_count > capture_limit) or 
-            #         (jersi_maximizer_player == Player.BLACK and white_capture_count > capture_limit)):
-            #         distance_weight = 15_000
-            #         capture_weight = 1_000
-            #         reserve_weight = 0             
                 
             value += distance_weight*distance_difference          
             value += capture_weight*capture_difference          
