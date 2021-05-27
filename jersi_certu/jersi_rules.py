@@ -2410,7 +2410,7 @@ class MinimaxSearcher():
             reserve_counts = jersi_state.get_capture_counts()
             reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
-            # white movable cubes in central zone
+            # white and black movable cubes in the central zone
             white_central_count = 0
             black_central_count = 0
             
