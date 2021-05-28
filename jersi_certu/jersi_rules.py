@@ -169,6 +169,8 @@ class TerminalCase(enum.Enum):
 
 
 class Cube:
+    
+    __slots__ = ('name', 'label', 'sort', 'player', 'index')
 
     __all_sorted_cubes = []
     __init_done = False
@@ -360,6 +362,8 @@ class Cube:
 
 
 class Hexagon:
+    
+    __slots__ = ('name', 'position_uv', 'reserve', 'index')
 
     __all_active_indices = []
     __all_indices = []
@@ -685,6 +689,9 @@ class SimpleNotationCase(enum.Enum):
 
 
 class Notation:
+    
+    __slots__ = ()
+    
 
     def __init__(self):
         assert False
@@ -898,6 +905,8 @@ class Notation:
 
 class JersiAction:
 
+    __slots__ = ('notation', 'state', 'king_captures', 'some_captures')
+
 
     def __init__(self, notation, state, capture=Capture.NONE, previous_action=None):
         self.notation = notation
@@ -939,6 +948,9 @@ class JersiAction:
 
 
 class JersiActionAppender:
+    
+    __slots__ = ('__actions', '__notations')
+
 
     def __init__(self):
         self.__actions = []
@@ -964,6 +976,13 @@ class JersiActionAppender:
 class JersiState:
 
     __max_credit = 40
+    __king_end_distances = None
+    __central_hexagon_indices = None
+    
+    __slots__ = ('__cube_status', '__hexagon_bottom', '__hexagon_top',
+                 '__credit', '__player', '__turn',
+                 '__actions', '__actions_by_simple_names', '__actions_by_names', 
+                 '__taken', '__terminal_case', '__terminated', '__rewards')
 
 
     def __init__(self, play_reserve=True):
@@ -971,8 +990,6 @@ class JersiState:
         self.__cube_status = None
         self.__hexagon_bottom = None
         self.__hexagon_top = None
-        self.__king_end_distances = None
-        self.__central_hexagon_indices = None
 
         self.__credit = JersiState.__max_credit
         self.__player = Player.WHITE
@@ -1093,41 +1110,47 @@ class JersiState:
 
 
     def __init_king_end_distances(self):
-                    
-        self.__king_end_distances = [array.array('b', [0 for _ in Hexagon.all]) for _ in Player]
-   
-        for player in Player:
+        
+        if JersiState.__king_end_distances is None:
+                        
+            JersiState.__king_end_distances = [array.array('b', [0 for _ in Hexagon.all]) for _ in Player]
+       
+            for player in Player:
+                
+                for king_hexagon in Hexagon.all:
+                
+                    king_hexagon_index = king_hexagon.index
+                    king_position_uv = king_hexagon.position_uv
+        
+                    king_distance = INFINITY_POSITIVE
+                    for hexagon_index in Hexagon.get_king_end_indices(player):
+                        hexagon_position_uv = Hexagon.all[hexagon_index].position_uv
+                        king_distance = min(king_distance, 
+                                            hex_distance(king_position_uv, hexagon_position_uv))
+         
+                    JersiState.__king_end_distances[player][king_hexagon_index] = int(math.ceil(king_distance))
+
+
+
+    def __init__central_hexagon_indices(self):
+        
+        if JersiState.__central_hexagon_indices is None:
             
-            for king_hexagon in Hexagon.all:
+            central_names = ['c3', 'c4', 'c5', 
+                              'd3', 'd4', 'd5', 'd6',
+                              'e3', 'e4', 'e5', 'e6', 'e7',
+                              'f3', 'f4', 'f5', 'f6',
+                              'g3', 'g4', 'g5',
+                              ]
             
-                king_hexagon_index = king_hexagon.index
-                king_position_uv = king_hexagon.position_uv
-    
-                king_distance = INFINITY_POSITIVE
-                for hexagon_index in Hexagon.get_king_end_indices(player):
-                    hexagon_position_uv = Hexagon.all[hexagon_index].position_uv
-                    king_distance = min(king_distance, 
-                                        hex_distance(king_position_uv, hexagon_position_uv))
-     
-                self.__king_end_distances[player][king_hexagon_index] = int(math.ceil(king_distance))
+            JersiState.__central_hexagon_indices = array.array('b', 
+                                                         [Hexagon.get(name).index for name in central_names]) 
 
 
     def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
         cube_index = Cube.get(cube_name).index
         hexagon_index = Hexagon.get(hexagon_name).index
         self.__set_cube_at_hexagon(cube_index, hexagon_index)
-
-
-    def __init__central_hexagon_indices(self):
-        central_names = ['c3', 'c4', 'c5', 
-                          'd3', 'd4', 'd5', 'd6',
-                          'e3', 'e4', 'e5', 'e6', 'e7',
-                          'f3', 'f4', 'f5', 'f6',
-                          'g3', 'g4', 'g5',
-                          ]
-        
-        self.__central_hexagon_indices = array.array('b', 
-                                                     [Hexagon.get(name).index for name in central_names]) 
 
 
     def __set_cube_at_hexagon(self, cube_index, hexagon_index):
@@ -1201,13 +1224,13 @@ class JersiState:
             else:
                 king_hexagon_index = self.__hexagon_top.index(king_index)
                 
-            king_distances[player] = self.__king_end_distances[player][king_hexagon_index]
+            king_distances[player] = JersiState.__king_end_distances[player][king_hexagon_index]
             
         return king_distances
 
 
     def get_central_hexagon_indices(self):
-        return self.__central_hexagon_indices
+        return JersiState.__central_hexagon_indices
         
 
     def get_capture_counts(self):
@@ -2071,6 +2094,9 @@ class JersiState:
 class MctsState:
     """Adaptater to mcts.StateInterface for JersiState"""
 
+    __slots__ = ('__jersi_state', '__maximizer_player')
+
+
     def __init__(self, jersi_state, maximizer_player):
         self.__jersi_state = jersi_state
         self.__maximizer_player = maximizer_player
@@ -2119,6 +2145,8 @@ class MctsState:
 
 class MinimaxState:
 
+    __slots__ = ('__jersi_state', '__maximizer_player')
+    
     
     def __init__(self, jersi_state, maximizer_player):
         self.__jersi_state = jersi_state
@@ -2437,7 +2465,7 @@ class MinimaxSearcher():
             # synthesis
             distance_weight = 1_000
             capture_weight = distance_weight*self.__capture_factor
-            central_weight = 100
+            central_weight = 200
             reserve_weight = 0
                 
             value += distance_weight*distance_difference          
