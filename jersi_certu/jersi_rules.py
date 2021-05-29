@@ -977,7 +977,7 @@ class JersiState:
 
     __max_credit = 40
     __king_end_distances = None
-    __central_hexagon_indices = None
+    __center_hexagon_indices = None
     
     __slots__ = ('__cube_status', '__hexagon_bottom', '__hexagon_top',
                  '__credit', '__player', '__turn',
@@ -1006,7 +1006,7 @@ class JersiState:
         self.__init_hexagon_top_and_bottom(play_reserve)
         self.__init_cube_status(play_reserve)
         self.__init_king_end_distances()       
-        self.__init__central_hexagon_indices()
+        self.__init__center_hexagon_indices()
 
 
     def __fork(self):
@@ -1132,19 +1132,19 @@ class JersiState:
 
 
 
-    def __init__central_hexagon_indices(self):
+    def __init__center_hexagon_indices(self):
         
-        if JersiState.__central_hexagon_indices is None:
+        if JersiState.__center_hexagon_indices is None:
             
-            central_names = ['c3', 'c4', 'c5', 
+            center_names = ['c3', 'c4', 'c5', 
                               'd3', 'd4', 'd5', 'd6',
                               'e3', 'e4', 'e5', 'e6', 'e7',
                               'f3', 'f4', 'f5', 'f6',
                               'g3', 'g4', 'g5',
                               ]
             
-            JersiState.__central_hexagon_indices = array.array('b', 
-                                                         [Hexagon.get(name).index for name in central_names]) 
+            JersiState.__center_hexagon_indices = array.array('b', 
+                                                         [Hexagon.get(name).index for name in center_names]) 
 
 
     def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
@@ -1229,8 +1229,8 @@ class JersiState:
         return king_distances
 
 
-    def get_central_hexagon_indices(self):
-        return JersiState.__central_hexagon_indices
+    def get_center_hexagon_indices(self):
+        return JersiState.__center_hexagon_indices
         
 
     def get_capture_counts(self):
@@ -1428,7 +1428,7 @@ class JersiState:
                 self.__terminal_case = TerminalCase.ZERO_CREDIT
                 self.__rewards = [Reward.DRAW for _ in Player]
 
-            elif len(self.get_actions()) == 0:
+            elif not self.has_action():
                 # the current player looses and the other player wins
                 self.__terminated = True
                 self.__rewards = [Reward.DRAW for _ in Player]
@@ -1443,7 +1443,7 @@ class JersiState:
                     self.__rewards[Player.WHITE] = Reward.WIN
 
         return self.__terminated
-
+         
 
     def get_actions(self, shuffle=True):
         if self.__actions is None:
@@ -1452,6 +1452,24 @@ class JersiState:
             if shuffle:
                 random.shuffle(self.__actions)
         return self.__actions
+
+
+    def has_action(self):
+               
+        moves = self.__find_cube_first_moves(find_one=True)
+        if len(moves) != 0:
+            king_relocation_moves = self.__find_king_relocations(moves)
+            if len(king_relocation_moves) != 0:
+                return True
+        
+        drops = self.__find_drops(find_one=True)
+        if len(drops) != 0:
+            return True
+        
+        if len(moves) != 0 and len(king_relocation_moves) == 0:
+            return len(self.get_actions(shuffle=False)) != 0
+        else:
+            return False
 
 
     def __create_action_by_names(self):
@@ -1491,14 +1509,22 @@ class JersiState:
 
     ### Action finders
 
-    def __find_drops(self):
+    def __find_drops(self, find_one=False):
+        
         action_appender = JersiActionAppender()
+        found_one = False
 
         for cube_1_index in self.__find_droppable_cubes():
+            if find_one and found_one:
+                break
+            
             for destination_1 in Hexagon.get_all_active_indices():
                 action_1 = self.__try_drop(cube_1_index, destination_1)
                 if action_1 is not None:
                     action_appender.append(action_1)
+                    if find_one:
+                        found_one = True
+                        break
 
                     state_1 = action_1.state.__fork()
 
@@ -1542,10 +1568,14 @@ class JersiState:
         return actions
 
 
-    def __find_cube_first_moves(self):
+    def __find_cube_first_moves(self, find_one=False):
         actions = []
+        found_one = False
 
         for source_1 in self.__find_hexagons_with_movable_cube():
+            
+            if find_one and found_one:
+                break
 
             for direction_1 in HexagonDirection:
                 destination_1 = Hexagon.get_next_fst_indices(source_1, direction_1)
@@ -1553,6 +1583,9 @@ class JersiState:
                     action_1 = self.__try_move_cube(source_1, destination_1)
                     if action_1 is not None:
                         actions.append(action_1)
+                        if find_one:
+                            found_one = True
+                            break
 
                         state_1 = action_1.state.__fork()
                         if state_1.__is_hexagon_with_movable_stack(destination_1):
@@ -1574,10 +1607,15 @@ class JersiState:
         return actions
 
 
-    def __find_stack_first_moves(self):
+    def __find_stack_first_moves(self, find_one=False):
+
         actions = []
+        found_one = False
 
         for source_1 in self.__find_hexagons_with_movable_stack():
+            
+            if find_one and found_one:
+                break
 
             for direction_1 in HexagonDirection:
                 destination_11 = Hexagon.get_next_fst_indices(source_1, direction_1)
@@ -1585,6 +1623,9 @@ class JersiState:
                     action_11 = self.__try_move_stack(source_1, destination_11)
                     if action_11 is not None:
                         actions.append(action_11)
+                        if find_one:
+                            found_one = True
+                            break
 
                         state_11 = action_11.state.__fork()
 
@@ -2265,6 +2306,8 @@ def jersiRandomPolicy(state):
 
 
 class HumanSearcher():
+    
+    __slots__ = ('__name', '__action_simple_name', '__use_command_line')
 
 
     def __init__(self, name):
@@ -2321,6 +2364,8 @@ class HumanSearcher():
 
 
 class RandomSearcher():
+    
+    __slots__ = ('__name')
 
 
     def __init__(self, name):
@@ -2358,13 +2403,18 @@ class RandomSearcher():
 
 class MinimaxSearcher():
 
+    __slots__ = ('__name', '__max_depth', '__max_children', '__capture_weight', '__center_weight')
+    
 
-    def __init__(self, name, max_depth=1, max_children=None, capture_factor=50):
+    def __init__(self, name, max_depth=1, max_children=None, capture_weight=50_000, center_weight=200):
+        
         assert max_depth >= 1
+        
         self.__name = name
         self.__max_depth = max_depth
         self.__max_children = max_children
-        self.__capture_factor = capture_factor
+        self.__capture_weight = capture_weight
+        self.__center_weight = center_weight
            
 
     def get_name(self):
@@ -2439,13 +2489,13 @@ class MinimaxSearcher():
             reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
             # white and black movable cubes in the central zone
-            white_central_count = 0
-            black_central_count = 0
+            white_center_count = 0
+            black_center_count = 0
             
             hexagon_bottom = jersi_state.get_hexagon_bottom()
             hexagon_top= jersi_state.get_hexagon_bottom()
             
-            for hexagon_index in jersi_state.get_central_hexagon_indices():
+            for hexagon_index in jersi_state.get_center_hexagon_indices():
                 
                 for cube_index in [hexagon_bottom[hexagon_index], hexagon_top[hexagon_index]]:
                     
@@ -2453,24 +2503,24 @@ class MinimaxSearcher():
                         cube = Cube.all[cube_index]
                         if cube.sort != CubeSort.MOUNTAIN:
                             if cube.player == Player.WHITE:
-                                white_central_count += 1
+                                white_center_count += 1
                             
                             elif cube.player == Player.BLACK:
-                                black_central_count += 1
+                                black_center_count += 1
                     else:
                         break
 
-            central_difference = player_sign*(white_central_count - black_central_count)
+            center_difference = player_sign*(white_center_count - black_center_count)
 
             # synthesis
             distance_weight = 1_000
-            capture_weight = distance_weight*self.__capture_factor
-            central_weight = 200
+            capture_weight = self.__capture_weight
+            center_weight = self.__center_weight
             reserve_weight = 0
                 
             value += distance_weight*distance_difference          
             value += capture_weight*capture_difference          
-            value += central_weight*central_difference          
+            value += center_weight*center_difference          
             value += reserve_weight*reserve_difference          
 
         return value
@@ -2579,6 +2629,8 @@ class MinimaxSearcher():
 
 class MctsSearcher():
 
+    __slots__ = ('__name', '__time_limit', '__iteration_limit', '__capture_weight', '__searcher')
+
 
     def __init__(self, name, time_limit=None, iteration_limit=None, rolloutPolicy=mcts.randomPolicy):
         self.__name = name
@@ -2642,6 +2694,8 @@ class MctsSearcher():
 
 class SearcherCatalog:
 
+    __slots__ = ('__catalog')
+
 
     def __init__(self):
         self.__catalog = {}
@@ -2673,12 +2727,18 @@ SEARCHER_CATALOG.add( MinimaxSearcher("minimax1-400", max_depth=1, max_children=
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2", max_depth=2) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-400", max_depth=2, max_children=400) )
 
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
+SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-400", max_depth=3, max_children=400) )
+
 SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-10s-jrp", time_limit=10_000, rolloutPolicy=jersiRandomPolicy) )
 SEARCHER_CATALOG.add( MctsSearcher("mcts-50i-jrp", iteration_limit=50, rolloutPolicy=jersiRandomPolicy) )
 
 
 class Game:
+    
+    __slots__ = ('__searcher', '__jersi_state', '__log', '__turn', '__last_action', '__turn_duration')
+
 
     def __init__(self):
         self.__searcher = [None, None]
@@ -2894,8 +2954,8 @@ def test_game_between_minimax_players():
     for game_index in range(game_count):
         game = Game()
         
-        old_searcher = MinimaxSearcher("old", max_depth=1, capture_factor=50)
-        new_searcher = MinimaxSearcher("new", max_depth=1, capture_factor=60)
+        old_searcher = MinimaxSearcher("old", max_depth=1, center_weight=200)
+        new_searcher = MinimaxSearcher("new", max_depth=2, center_weight=0)
         
         if game_index % 2 == 0:
             game.set_white_searcher(old_searcher)
