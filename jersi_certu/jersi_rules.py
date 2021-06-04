@@ -2586,9 +2586,8 @@ class MinimaxSearcher():
             else:
                 actions = move_actions
  
-        # optimize alpha beta and negascout by ordering capture at first positions
-        if True:               
-            actions.sort(key=score_action, reverse=True)
+        # try to optimize alpha beta and negascout by ordering capture at first positions
+        actions.sort(key=score_action, reverse=True)
         
         
         value = INFINITY_NEGATIVE                    
