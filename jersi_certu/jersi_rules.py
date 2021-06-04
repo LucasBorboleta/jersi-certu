@@ -2945,17 +2945,17 @@ def test_game_between_minimax_players():
     print(" test_game_between_minimax_players ...")
     print("=====================================")
     
-    old_wins = 0
-    new_wins = 0
+    old_points = 0
+    new_points = 0
     
-    game_count = 10
+    game_count = 2
     assert game_count % 2 == 0
     
     for game_index in range(game_count):
         game = Game()
         
-        old_searcher = MinimaxSearcher("old", max_depth=1, center_weight=200)
-        new_searcher = MinimaxSearcher("new", max_depth=2, center_weight=0)
+        old_searcher = MinimaxSearcher("old", max_depth=1)
+        new_searcher = MinimaxSearcher("new", max_depth=2)
         
         if game_index % 2 == 0:
             game.set_white_searcher(old_searcher)
@@ -2975,13 +2975,19 @@ def test_game_between_minimax_players():
         rewards = game.get_rewards()
         
         if rewards[old_player] == Reward.WIN:
-            old_wins += 1
+            old_points += 2
             
-        elif rewards[new_player] == Reward.WIN:
-            new_wins += 1
+        elif rewards[old_player] == Reward.DRAW:
+            old_points += 1
+            
+        if rewards[new_player] == Reward.WIN:
+            new_points += 2
+            
+        elif rewards[new_player] == Reward.DRAW:
+            new_points += 1
             
     
-    print("game_count:", game_count, "old_wins:", old_wins, "new_wins:", new_wins)
+    print("game_count:", game_count, "old_points:", old_points, "new_points:", new_points)
 
 
     print("=====================================")
