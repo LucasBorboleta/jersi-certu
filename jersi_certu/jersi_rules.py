@@ -2403,19 +2403,24 @@ class RandomSearcher():
 
 class MinimaxSearcher():
 
-    __slots__ = ('__name', '__max_depth', '__max_children', '__capture_weight', '__center_weight')
+    __slots__ = ('__name', '__max_depth', '__max_children', 
+                 '__distance_weight', '__capture_weight', '__center_weight', '__reserve_weight')
     
 
-    def __init__(self, name, max_depth=1, max_children=None, capture_weight=50_000, center_weight=200):
+    def __init__(self, name, max_depth=1, max_children=None, 
+                 distance_weight=1_000, capture_weight=50_000, 
+                 center_weight=200, reserve_weight=0):
         
         assert max_depth >= 1
         
         self.__name = name
         self.__max_depth = max_depth
         self.__max_children = max_children
+        self.__distance_weight = distance_weight
         self.__capture_weight = capture_weight
         self.__center_weight = center_weight
-           
+        self.__reserve_weight = reserve_weight
+
 
     def get_name(self):
         return self.__name
@@ -2513,15 +2518,10 @@ class MinimaxSearcher():
             center_difference = player_sign*(white_center_count - black_center_count)
 
             # synthesis
-            distance_weight = 1_000
-            capture_weight = self.__capture_weight
-            center_weight = self.__center_weight
-            reserve_weight = 0
-                
-            value += distance_weight*distance_difference          
-            value += capture_weight*capture_difference          
-            value += center_weight*center_difference          
-            value += reserve_weight*reserve_difference          
+            value += self.__distance_weight*distance_difference          
+            value += self.__capture_weight*capture_difference          
+            value += self.__center_weight*center_difference          
+            value += self.__reserve_weight*reserve_difference          
 
         return value
     
@@ -2535,6 +2535,7 @@ class MinimaxSearcher():
             
 
         use_negascout = True
+        use_sort = True
         
         if alpha is None:
             alpha = INFINITY_NEGATIVE
@@ -2587,7 +2588,8 @@ class MinimaxSearcher():
                 actions = move_actions
  
         # try to optimize alpha beta and negascout by ordering capture at first positions
-        actions.sort(key=score_action, reverse=True)
+        if use_sort:
+            actions.sort(key=score_action, reverse=True)
         
         
         value = INFINITY_NEGATIVE                    
@@ -2954,7 +2956,7 @@ def test_game_between_minimax_players():
         game = Game()
         
         old_searcher = MinimaxSearcher("old", max_depth=1)
-        new_searcher = MinimaxSearcher("new", max_depth=2)
+        new_searcher = MinimaxSearcher("new", max_depth=1)
         
         if game_index % 2 == 0:
             game.set_white_searcher(old_searcher)
@@ -3007,7 +3009,7 @@ def main():
     if False:
         test_game_between_random_and_human_players()
    
-    if False:
+    if True:
         test_game_between_minimax_players()
 
     if True:
