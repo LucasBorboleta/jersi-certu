@@ -1006,7 +1006,7 @@ class JersiState:
         self.__init_hexagon_top_and_bottom(play_reserve)
         self.__init_cube_status(play_reserve)
         self.__init_king_end_distances()       
-        self.__init__center_hexagon_indices()
+        self.__init_center_hexagon_indices()
 
 
     def __fork(self):
@@ -1132,7 +1132,7 @@ class JersiState:
 
 
 
-    def __init__center_hexagon_indices(self):
+    def __init_center_hexagon_indices(self):
         
         if JersiState.__center_hexagon_indices is None:
             
@@ -1140,8 +1140,7 @@ class JersiState:
                               'd3', 'd4', 'd5', 'd6',
                               'e3', 'e4', 'e5', 'e6', 'e7',
                               'f3', 'f4', 'f5', 'f6',
-                              'g3', 'g4', 'g5',
-                              ]
+                              'g3', 'g4', 'g5']
             
             JersiState.__center_hexagon_indices = array.array('b', 
                                                          [Hexagon.get(name).index for name in center_names]) 
@@ -2408,8 +2407,8 @@ class MinimaxSearcher():
     
 
     def __init__(self, name, max_depth=1, max_children=None, 
-                 distance_weight=1_000, capture_weight=50_000, 
-                 center_weight=200, reserve_weight=0):
+                  distance_weight=100, capture_weight=1_000, 
+                  center_weight=10, reserve_weight=0):
         
         assert max_depth >= 1
         
@@ -2439,13 +2438,14 @@ class MinimaxSearcher():
                                                    player=initial_player, 
                                                    return_action_values=True)
         
-        print("best_value:", best_value)
         best_actions = list()
         for (action, action_value) in action_values.items():
             if action_value == best_value:
                 best_actions.append(action)
             else:
                 pass
+
+        print("%d best_actions with best value %.1f" % (len(best_actions),best_value))
 
         action = random.choice(best_actions)
             
@@ -2462,8 +2462,7 @@ class MinimaxSearcher():
         if jersi_maximizer_player == Player.WHITE:
             player_sign = 1
         else:
-            player_sign = -1
-            
+            player_sign = -1          
         
         value = 0
         
@@ -2471,7 +2470,8 @@ class MinimaxSearcher():
             rewards = jersi_state.get_rewards()
             
             if rewards[jersi_maximizer_player] == Reward.DRAW:
-                value = 0
+                # consider a draw as a victory
+                value = INFINITY_POSITIVE
                 
             elif rewards[jersi_maximizer_player] == Reward.WIN:
                 value = INFINITY_POSITIVE
@@ -2490,7 +2490,7 @@ class MinimaxSearcher():
             capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
             
             # white and black with reserved status
-            reserve_counts = jersi_state.get_capture_counts()
+            reserve_counts = jersi_state.get_reserve_counts()
             reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
             # white and black movable cubes in the central zone
@@ -2498,15 +2498,14 @@ class MinimaxSearcher():
             black_center_count = 0
             
             hexagon_bottom = jersi_state.get_hexagon_bottom()
-            hexagon_top= jersi_state.get_hexagon_bottom()
+            hexagon_top= jersi_state.get_hexagon_top()
             
             for hexagon_index in jersi_state.get_center_hexagon_indices():
-                
                 for cube_index in [hexagon_bottom[hexagon_index], hexagon_top[hexagon_index]]:
-                    
                     if cube_index != Null.CUBE:               
                         cube = Cube.all[cube_index]
-                        if cube.sort != CubeSort.MOUNTAIN:
+                        
+                        if cube.sort != CubeSort.MOUNTAIN:                            
                             if cube.player == Player.WHITE:
                                 white_center_count += 1
                             
@@ -2517,11 +2516,29 @@ class MinimaxSearcher():
 
             center_difference = player_sign*(white_center_count - black_center_count)
 
+            # normalize each feature in the intervall [-1, +1]
+            
+            distance_norm = 8
+            capture_norm = 16
+            center_norm = 17
+            reserve_norm = 6
+            
+            distance_difference = distance_difference/distance_norm
+            capture_difference = capture_difference/capture_norm
+            center_difference = center_difference/center_norm
+            reserve_difference = reserve_difference/reserve_norm
+                                   
+            assert -1 <= distance_difference <= 1
+            assert -1 <= capture_difference <= 1
+            assert -1 <= center_difference <= 1
+            assert -1 <= reserve_difference <= 1
+
             # synthesis
-            value += self.__distance_weight*distance_difference          
-            value += self.__capture_weight*capture_difference          
-            value += self.__center_weight*center_difference          
-            value += self.__reserve_weight*reserve_difference          
+            
+            value += self.__distance_weight*distance_difference    
+            value += self.__capture_weight*capture_difference         
+            value += self.__center_weight*center_difference    
+            value += self.__reserve_weight*reserve_difference   
 
         return value
     
@@ -2946,51 +2963,88 @@ def test_game_between_minimax_players():
     print(" test_game_between_minimax_players ...")
     print("=====================================")
     
-    old_points = 0
-    new_points = 0
-    
-    game_count = 2
-    assert game_count % 2 == 0
-    
-    for game_index in range(game_count):
-        game = Game()
-        
-        old_searcher = MinimaxSearcher("old", max_depth=1)
-        new_searcher = MinimaxSearcher("new", max_depth=1)
-        
-        if game_index % 2 == 0:
-            game.set_white_searcher(old_searcher)
-            game.set_black_searcher(new_searcher)
-            old_player = Player.WHITE
-            new_player = Player.BLACK
-        else:
-            game.set_white_searcher(new_searcher)
-            game.set_black_searcher(old_searcher)  
-            new_player = Player.WHITE
-            old_player = Player.BLACK
-            
-        game.start(play_reserve=False)
-        while game.has_next_turn():
-            game.next_turn()
-            
-        rewards = game.get_rewards()
-        
-        if rewards[old_player] == Reward.WIN:
-            old_points += 2
-            
-        elif rewards[old_player] == Reward.DRAW:
-            old_points += 1
-            
-        if rewards[new_player] == Reward.WIN:
-            new_points += 2
-            
-        elif rewards[new_player] == Reward.DRAW:
-            new_points += 1
-            
-    
-    print("game_count:", game_count, "old_points:", old_points, "new_points:", new_points)
+    capture_weight_list = [800, 900, 1200]
+    center_weight_list = [0, 60, 120]
+
+    searcher_points = collections.Counter()
+
+    for x_capture_weight in capture_weight_list:
+        for y_capture_weight in capture_weight_list:       
+            for x_center_weight in center_weight_list:
+                for y_center_weight in center_weight_list:
+                    
+                    if x_capture_weight ==  y_capture_weight and x_center_weight ==  y_center_weight:
+                        break
+                    
+                    print((x_capture_weight, x_center_weight), "versus", (y_capture_weight, y_center_weight))
+
+                    x_points = 0
+                    y_points = 0
+                    
+                    game_count = 50
+                    
+                    for game_index in range(game_count):
+                        
+                        x_searcher = MinimaxSearcher("x-%d-%d@%d" % (x_capture_weight, 
+                                                                      x_center_weight, 
+                                                                      game_index), 
+                                                      max_depth=1, 
+                                                      capture_weight=x_capture_weight,
+                                                      center_weight=x_center_weight)
+                        
+                        
+                        y_searcher = MinimaxSearcher("y-%d-%d@%d" % (y_capture_weight, 
+                                                                      y_center_weight, 
+                                                                      game_index),
+                                                      max_depth=1, 
+                                                      capture_weight=y_capture_weight,
+                                                      center_weight=y_center_weight)
+                        
+                        
+                        game = Game()
+                        game.set_white_searcher(x_searcher)
+                        game.set_black_searcher(y_searcher)
+                        x_player = Player.WHITE
+                        y_player = Player.BLACK
+                            
+                        game.start(play_reserve=False)
+                        while game.has_next_turn():
+                            game.next_turn()
+                            
+                        rewards = game.get_rewards()
+                        
+                        if rewards[x_player] == Reward.WIN:
+                            x_points += 2
+                            
+                        elif rewards[x_player] == Reward.DRAW:
+                            x_points += 1
+                            
+                        if rewards[y_player] == Reward.WIN:
+                            y_points += 2
+                            
+                        elif rewards[y_player] == Reward.DRAW:
+                            y_points += 1
+                            
+                    
+                    print("game_count:", game_count, "/ x_points:", x_points, "/ y_points:", y_points)
+
+                    searcher_points[(x_capture_weight, x_center_weight)] += x_points
+                    searcher_points[(y_capture_weight, y_center_weight)] += y_points
 
 
+    print()
+    for (searcher, points) in sorted(searcher_points.items()):
+        print("searcher %s has %d points" %(searcher, points))
+
+    print()
+    searcher_count = len(capture_weight_list)*len(center_weight_list)
+    searcher_game_count = 2*(searcher_count - 1)*game_count
+    print("number of searchers:", searcher_count)
+    print("number of games per searcher:", searcher_game_count)
+    print()
+    for (searcher, points) in sorted(searcher_points.items()):
+        print("searcher %s has %.3f average points per game" %(searcher, points/searcher_game_count))
+       
     print("=====================================")
     print("test_game_between_minimax_players done")
     print("=====================================")
@@ -3000,7 +3054,7 @@ def main():
     print(f"Hello from {os.path.basename(__file__)} version {__version__}")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if True:
+    if False:
         test_game_between_random_players()
 
     if False:

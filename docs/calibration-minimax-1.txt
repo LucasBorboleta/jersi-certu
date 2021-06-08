@@ -1,0 +1,27 @@
+searcher (100, 0) has 548 points
+searcher (100, 50) has 763 points
+searcher (100, 100) has 774 points
+
+searcher (200, 0) has 1163 points
+searcher (200, 50) has 1261 points
+searcher (200, 100) has 1424 points
+
+searcher (300, 0) has 1593 points
+searcher (300, 50) has 1905 points
+searcher (300, 100) has 1888 points
+
+searcher (400, 0) has 2059 points
+searcher (400, 50) has 2099 points
+searcher (400, 100) has 2257 points
+
+searcher (500, 0) has 2131 points
+searcher (500, 50) has 2270 points
+searcher (500, 100) has 2327 points
+
+searcher (1000, 0) has 2640 points
+searcher (1000, 50) has 2748 points
+searcher (1000, 100) has 2689 points
+
+searcher (1500, 0) has 2398 points
+searcher (1500, 50) has 2457 points
+searcher (1500, 100) has 2506 points

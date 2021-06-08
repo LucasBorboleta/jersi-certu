@@ -434,7 +434,7 @@ class GameGui(ttk.Frame):
     def __create_widgets(self):
 
         searcher_catalog_names = rules.SEARCHER_CATALOG.get_names()
-        searcher_catalog_names_width = max(map(len, searcher_catalog_names))
+        searcher_catalog_names_width = max(map(len, searcher_catalog_names)) + 1
 
         # Frames
 
