@@ -2404,21 +2404,65 @@ class MinimaxSearcher():
 
     __slots__ = ('__name', '__max_depth', '__max_children', 
                  '__distance_weight', '__capture_weight', '__center_weight', '__reserve_weight')
-    
+
+        
+    default_weights_by_depth = dict()
+        
+    default_weights_by_depth[1] = {'distance_weight':100,
+                                   'capture_weight':1_200,
+                                   'center_weight':400,
+                                   'reserve_weight':0}
+        
+    default_weights_by_depth[2] = {'distance_weight':100,
+                                   'capture_weight':1_200,
+                                   'center_weight':0,
+                                   'reserve_weight':0}
+         
+    default_weights_by_depth[3] = {'distance_weight':100,
+                                   'capture_weight':1_200,
+                                   'center_weight':0,
+                                   'reserve_weight':0}
+   
 
     def __init__(self, name, max_depth=1, max_children=None, 
-                  distance_weight=100, capture_weight=1_200, 
-                  center_weight=400, reserve_weight=0):
+                  distance_weight=None, capture_weight=None, 
+                  center_weight=None, reserve_weight=None):
         
         assert max_depth >= 1
+         
+        if max_depth in MinimaxSearcher.default_weights_by_depth:
+            default_weights = MinimaxSearcher.default_weights_by_depth[max_depth]
+        else:
+            default_weights = MinimaxSearcher.default_weights_by_depth[1]
+       
         
         self.__name = name
         self.__max_depth = max_depth
         self.__max_children = max_children
-        self.__distance_weight = distance_weight
-        self.__capture_weight = capture_weight
-        self.__center_weight = center_weight
-        self.__reserve_weight = reserve_weight
+        
+        
+        if distance_weight is not None:
+            self.__distance_weight = distance_weight
+        else:
+            self.__distance_weight = default_weights['distance_weight']
+        
+        
+        if capture_weight is not None:
+            self.__capture_weight = capture_weight
+        else:
+            self.__capture_weight = default_weights['capture_weight']
+        
+        
+        if center_weight is not None:
+            self.__center_weight = center_weight
+        else:
+            self.__center_weight = default_weights['center_weight']
+        
+        
+        if reserve_weight is not None:
+            self.__reserve_weight = reserve_weight
+        else:
+            self.__reserve_weight = default_weights['reserve_weight']
 
 
     def get_name(self):
@@ -2963,87 +3007,92 @@ def test_game_between_minimax_players():
     print(" test_game_between_minimax_players ...")
     print("=====================================")
     
-    capture_weight_list = [1000, 1200]
+    
+    searcher_dict = dict()
+    
+    capture_weight_list = [1200]
     center_weight_list = [400]
+    
+    for capture_weight in capture_weight_list:
+        for center_weight in center_weight_list:
+            searcher_name = "minimax1-%d-%d" % (capture_weight, center_weight)
+            searcher = MinimaxSearcher(searcher_name, 
+                                        max_depth=1, 
+                                        capture_weight=capture_weight,
+                                        center_weight=center_weight)
+            assert searcher_name not in searcher_dict
+            searcher_dict[searcher_name] = searcher
+
+
+    (capture_weight, center_weight) = (1200, 10)
+    searcher_name = "minimax2-%d-%d" % (capture_weight, center_weight)
+    searcher = MinimaxSearcher(searcher_name, 
+                                max_depth=2, 
+                                capture_weight=capture_weight,
+                                center_weight=center_weight)
+    searcher_dict[searcher_name] = searcher
 
     searcher_points = collections.Counter()
 
-    for x_capture_weight in capture_weight_list:
-        for y_capture_weight in capture_weight_list:       
-            for x_center_weight in center_weight_list:
-                for y_center_weight in center_weight_list:
-                    
-                    if x_capture_weight ==  y_capture_weight and x_center_weight ==  y_center_weight:
-                        break
-                    
-                    print((x_capture_weight, x_center_weight), "versus", (y_capture_weight, y_center_weight))
+    game_count = 5
 
-                    x_points = 0
-                    y_points = 0
+    for x_searcher in searcher_dict.values():
+        for y_searcher in searcher_dict.values():
+            if x_searcher is y_searcher:
+                break
+            
+            print(x_searcher.get_name() + " versus " + y_searcher.get_name())
+  
+            x_points = 0
+            y_points = 0
+            
+            
+            for game_index in range(game_count):
+               
+                
+                game = Game()
+                game.set_white_searcher(x_searcher)
+                game.set_black_searcher(y_searcher)
+                x_player = Player.WHITE
+                y_player = Player.BLACK
                     
-                    game_count = 50
+                game.start(play_reserve=False)
+                while game.has_next_turn():
+                    game.next_turn()
                     
-                    for game_index in range(game_count):
-                        
-                        x_searcher = MinimaxSearcher("x-%d-%d@%d" % (x_capture_weight, 
-                                                                      x_center_weight, 
-                                                                      game_index), 
-                                                      max_depth=1, 
-                                                      capture_weight=x_capture_weight,
-                                                      center_weight=x_center_weight)
-                        
-                        
-                        y_searcher = MinimaxSearcher("y-%d-%d@%d" % (y_capture_weight, 
-                                                                      y_center_weight, 
-                                                                      game_index),
-                                                      max_depth=1, 
-                                                      capture_weight=y_capture_weight,
-                                                      center_weight=y_center_weight)
-                        
-                        
-                        game = Game()
-                        game.set_white_searcher(x_searcher)
-                        game.set_black_searcher(y_searcher)
-                        x_player = Player.WHITE
-                        y_player = Player.BLACK
-                            
-                        game.start(play_reserve=False)
-                        while game.has_next_turn():
-                            game.next_turn()
-                            
-                        rewards = game.get_rewards()
-                        
-                        if rewards[x_player] == Reward.WIN:
-                            x_points += 2
-                            
-                        elif rewards[x_player] == Reward.DRAW:
-                            x_points += 1
-                            
-                        if rewards[y_player] == Reward.WIN:
-                            y_points += 2
-                            
-                        elif rewards[y_player] == Reward.DRAW:
-                            y_points += 1
-                            
+                rewards = game.get_rewards()
+                
+                if rewards[x_player] == Reward.WIN:
+                    x_points += 2
                     
-                    print("game_count:", game_count, "/ x_points:", x_points, "/ y_points:", y_points)
+                elif rewards[x_player] == Reward.DRAW:
+                    x_points += 1
+                    
+                if rewards[y_player] == Reward.WIN:
+                    y_points += 2
+                    
+                elif rewards[y_player] == Reward.DRAW:
+                    y_points += 1
+                    
+            
+            print("game_count:", game_count, "/ x_points:", x_points, "/ y_points:", y_points)
 
-                    searcher_points[(x_capture_weight, x_center_weight)] += x_points
-                    searcher_points[(y_capture_weight, y_center_weight)] += y_points
+            searcher_points[x_searcher.get_name()] += x_points
+            searcher_points[y_searcher.get_name()] += y_points
 
 
     print()
-    for (searcher, points) in sorted(searcher_points.items()):
-        print("searcher %s has %d points" %(searcher, points))
+    for (searcher_name, points) in sorted(searcher_points.items()):
+        print("searcher %s has %d points" %(searcher_name, points))
 
     print()
-    searcher_count = len(capture_weight_list)*len(center_weight_list)
+    searcher_count = len(searcher_dict)
     searcher_game_count = 2*(searcher_count - 1)*game_count
     print("number of searchers:", searcher_count)
     print("number of games per searcher:", searcher_game_count)
     print()
-    for (searcher, points) in sorted(searcher_points.items()):
-        print("searcher %s has %.3f average points per game" %(searcher, points/searcher_game_count))
+    for (searcher_name, points) in sorted(searcher_points.items()):
+        print("searcher %s has %.3f average points per game" %(searcher_name, points/searcher_game_count))
        
     print("=====================================")
     print("test_game_between_minimax_players done")

@@ -1,0 +1,22 @@
+number of searchers: 2
+number of games per searcher: 100
+
+searcher minimax1-1200-400 has 0.160 average points per game
+searcher minimax2-1200-0 has 0.840 average points per game
+
+**************************************************************
+
+number of searchers: 2
+number of games per searcher: 100
+
+searcher minimax1-1200-400 has 0.180 average points per game
+searcher minimax2-1200-100 has 0.820 average points per game
+
+**************************************************************
+
+number of searchers: 2
+number of games per searcher: 10
+
+searcher minimax1-1200-400 has 0.300 average points per game
+searcher minimax2-1200-10 has 0.700 average points per game
+=
