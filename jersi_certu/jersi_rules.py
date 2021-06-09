@@ -2407,8 +2407,8 @@ class MinimaxSearcher():
     
 
     def __init__(self, name, max_depth=1, max_children=None, 
-                  distance_weight=100, capture_weight=1_000, 
-                  center_weight=10, reserve_weight=0):
+                  distance_weight=100, capture_weight=1_200, 
+                  center_weight=400, reserve_weight=0):
         
         assert max_depth >= 1
         
@@ -2963,8 +2963,8 @@ def test_game_between_minimax_players():
     print(" test_game_between_minimax_players ...")
     print("=====================================")
     
-    capture_weight_list = [800, 900, 1200]
-    center_weight_list = [0, 60, 120]
+    capture_weight_list = [1000, 1200]
+    center_weight_list = [400]
 
     searcher_points = collections.Counter()
 
