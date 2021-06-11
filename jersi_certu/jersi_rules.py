@@ -2417,11 +2417,6 @@ class MinimaxSearcher():
                                    'capture_weight':1_200,
                                    'center_weight':0,
                                    'reserve_weight':0}
-         
-    default_weights_by_depth[3] = {'distance_weight':100,
-                                   'capture_weight':1_200,
-                                   'center_weight':0,
-                                   'reserve_weight':0}
    
 
     def __init__(self, name, max_depth=1, max_children=None, 
@@ -3010,24 +3005,24 @@ def test_game_between_minimax_players():
     
     searcher_dict = dict()
     
-    capture_weight_list = [1200]
-    center_weight_list = [400]
+    capture_weight_list = [1200, 1400, 1600]
+    center_weight_list = [0, 100, 200, 400]
     
     for capture_weight in capture_weight_list:
         for center_weight in center_weight_list:
-            searcher_name = "minimax1-%d-%d" % (capture_weight, center_weight)
+            searcher_name = "minimax2-%d-%d" % (capture_weight, center_weight)
             searcher = MinimaxSearcher(searcher_name, 
-                                        max_depth=1, 
+                                        max_depth=2, 
                                         capture_weight=capture_weight,
                                         center_weight=center_weight)
             assert searcher_name not in searcher_dict
             searcher_dict[searcher_name] = searcher
 
 
-    (capture_weight, center_weight) = (1200, 10)
-    searcher_name = "minimax2-%d-%d" % (capture_weight, center_weight)
+    (capture_weight, center_weight) = (1200, 400)
+    searcher_name = "minimax1-%d-%d" % (capture_weight, center_weight)
     searcher = MinimaxSearcher(searcher_name, 
-                                max_depth=2, 
+                                max_depth=1, 
                                 capture_weight=capture_weight,
                                 center_weight=center_weight)
     searcher_dict[searcher_name] = searcher
@@ -3039,9 +3034,8 @@ def test_game_between_minimax_players():
     for x_searcher in searcher_dict.values():
         for y_searcher in searcher_dict.values():
             if x_searcher is y_searcher:
-                break
+                continue
             
-            print(x_searcher.get_name() + " versus " + y_searcher.get_name())
   
             x_points = 0
             y_points = 0
@@ -3058,6 +3052,8 @@ def test_game_between_minimax_players():
                     
                 game.start(play_reserve=False)
                 while game.has_next_turn():
+                    print("--> " + x_searcher.get_name() + " versus " + 
+                                   y_searcher.get_name() +  " game_index: %d" % game_index)
                     game.next_turn()
                     
                 rewards = game.get_rewards()

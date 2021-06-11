@@ -1,209 +1,80 @@
-searcher (100, 0) has 548 points
-searcher (100, 50) has 763 points
-searcher (100, 100) has 774 points
+searcher minimax1-1000-0 has 0.760 average points per game
+searcher minimax1-1000-200 has 0.960 average points per game
+searcher minimax1-1000-400 has 1.320 average points per game ++
 
-searcher (200, 0) has 1163 points
-searcher (200, 50) has 1261 points
-searcher (200, 100) has 1424 points
+searcher minimax1-1200-0 has 1.040 average points per game
+searcher minimax1-1200-200 has 0.760 average points per game
+searcher minimax1-1200-400 has 1.160 average points per game
 
-searcher (300, 0) has 1593 points
-searcher (300, 50) has 1905 points
-searcher (300, 100) has 1888 points
+***************************************************************
 
-searcher (400, 0) has 2059 points
-searcher (400, 50) has 2099 points
-searcher (400, 100) has 2257 points
+number of searchers: 4
+number of games per searcher: 30
 
-searcher (500, 0) has 2131 points
-searcher (500, 50) has 2270 points
-searcher (500, 100) has 2327 points
+searcher minimax1-1000-400 has 0.933 average points per game
+searcher minimax1-1000-600 has 1.000 average points per game
 
-searcher (1000, 0) has 2640 points
-searcher (1000, 50) has 2748 points
-searcher (1000, 100) has 2689 points
+searcher minimax1-1200-400 has 0.867 average points per game
+searcher minimax1-1200-600 has 1.200 average points per game ++
 
-searcher (1500, 0) has 2398 points
-searcher (1500, 50) has 2457 points
-searcher (1500, 100) has 2506 points
+***************************************************************
 
-********************************************
+number of searchers: 16
+number of games per searcher: 150
 
-searcher (800, 0) has 669 points
-searcher (800, 60) has 703 points
-searcher (800, 120) has 747 points
+searcher minimax1-1000-0 has 0.900 average points per game
+searcher minimax1-1000-400 has 1.093 average points per game
+searcher minimax1-1000-600 has 1.000 average points per game
+searcher minimax1-1000-800 has 0.873 average points per game
 
-searcher (900, 0) has 683 points
-searcher (900, 60) has 618 points
-searcher (900, 120) has 760 points
+searcher minimax1-1200-0 has 0.913 average points per game
+searcher minimax1-1200-400 has 1.180 average points per game ++
+searcher minimax1-1200-600 has 1.093 average points per game
+searcher minimax1-1200-800 has 0.987 average points per game
 
-searcher (1200, 0) has 674 points
-searcher (1200, 60) has 682 points
-searcher (1200, 120) has 764 points
+searcher minimax1-1400-0 has 0.987 average points per game
+searcher minimax1-1400-400 has 1.153 average points per game +
+searcher minimax1-1400-600 has 1.153 average points per game +
+searcher minimax1-1400-800 has 0.807 average points per game
+
+searcher minimax1-800-0 has 0.893 average points per game
+searcher minimax1-800-400 has 1.087 average points per game
+searcher minimax1-800-600 has 1.020 average points per game
+searcher minimax1-800-800 has 0.860 average points per game
+
+***************************************************************
+
+number of searchers: 9
+number of games per searcher: 80
+
+searcher minimax1-1200-400 has 1.087 average points per game
+searcher minimax1-1200-500 has 1.012 average points per game
+searcher minimax1-1200-600 has 1.062 average points per game
+
+searcher minimax1-1400-400 has 1.075 average points per game
+searcher minimax1-1400-500 has 0.887 average points per game
+searcher minimax1-1400-600 has 1.000 average points per game
+
+searcher minimax1-1600-400 has 0.988 average points per game
+searcher minimax1-1600-500 has 1.113 average points per game
+searcher minimax1-1600-600 has 0.775 average points per game
+
+***************************************************************
 
 number of searchers: 9
 number of games per searcher: 800
 
-searcher (800, 0) has 0.836 average points per game
-searcher (800, 60) has 0.879 average points per game
-searcher (800, 120) has 0.934 average points per game
+searcher minimax1-1200-400 has 1.025 average points per game ++
+searcher minimax1-1200-500 has 0.966 average points per game
+searcher minimax1-1200-600 has 1.012 average points per game
 
-searcher (900, 0) has 0.854 average points per game
-searcher (900, 60) has 0.772 average points per game
-searcher (900, 120) has 0.950 average points per game
+searcher minimax1-1400-400 has 1.005 average points per game
+searcher minimax1-1400-500 has 1.059 average points per game
+searcher minimax1-1400-600 has 0.993 average points per game
 
-searcher (1200, 0) has 0.843 average points per game
-searcher (1200, 60) has 0.853 average points per game
-searcher (1200, 120) has 0.955 average points per game
+searcher minimax1-1600-400 has 0.979 average points per game
+searcher minimax1-1600-500 has 0.964 average points per game
+searcher minimax1-1600-600 has 0.998 average points per game
 
-********************************************
-
-searcher (800, 120) has 665 points
-searcher (800, 200) has 625 points
-searcher (800, 400) has 855 points
-searcher (900, 120) has 647 points
-searcher (900, 200) has 652 points
-searcher (900, 400) has 834 points
-searcher (1200, 120) has 603 points
-searcher (1200, 200) has 591 points
-searcher (1200, 400) has 828 points
-
-number of searchers: 9
-number of games per searcher: 800
-
-searcher (800, 120) has 0.831 average points per game
-searcher (800, 200) has 0.781 average points per game
-searcher (800, 400) has 1.069 average points per game
-
-searcher (900, 120) has 0.809 average points per game
-searcher (900, 200) has 0.815 average points per game
-searcher (900, 400) has 1.042 average points per game
-
-searcher (1200, 120) has 0.754 average points per game
-searcher (1200, 200) has 0.739 average points per game
-searcher (1200, 400) has 1.035 average points per game
-
-********************************************
-
-searcher (1200, 0) has 33 points
-searcher (1200, 400) has 67 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 0) has 0.330 average points per game
-searcher (1200, 400) has 0.670 average points per game
-
-********************************************
-
-searcher (1200, 400) has 32 points
-searcher (1200, 600) has 68 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 400) has 0.320 average points per game
-searcher (1200, 600) has 0.680 average points per game
-
-********************************************
-
-searcher (1200, 600) has 44 points
-searcher (1200, 800) has 56 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 600) has 0.440 average points per game
-searcher (1200, 800) has 0.560 average points per game
-
-********************************************
-
-searcher (1200, 400) has 51 points
-searcher (1200, 800) has 49 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 400) has 0.510 average points per game
-searcher (1200, 800) has 0.490 average points per game
-
-********************************************
-
-searcher (1200, 0) has 66 points
-searcher (1200, 800) has 34 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 0) has 0.660 average points per game
-searcher (1200, 800) has 0.340 average points per game
-
-********************************************
-
-searcher (1200, 0) has 28 points
-searcher (1200, 400) has 72 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 0) has 0.280 average points per game
-searcher (1200, 400) has 0.720 average points per game
-
-********************************************
-
-searcher (1200, 0) has 50 points
-searcher (1200, 200) has 50 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 0) has 0.500 average points per game
-searcher (1200, 200) has 0.500 average points per game
-
-********************************************
-
-searcher (1200, 0) has 34 points
-searcher (1200, 500) has 66 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1200, 0) has 0.340 average points per game
-searcher (1200, 500) has 0.660 average points per game
-
-********************************************
-
-searcher (1000, 400) has 89 points
-searcher (1200, 400) has 111 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher (1000, 400) has 0.890 average points per game
-searcher (1200, 400) has 1.110 average points per game
-
-********************************************
-
-searcher minimax1-1200-400 has 98 points
-searcher random has 2 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher minimax1-1200-400 has 0.980 average points per game
-searcher random has 0.020 average points per game
-
-********************************************
-
-searcher random1 has 50 points
-searcher random2 has 50 points
-
-number of searchers: 2
-number of games per searcher: 100
-
-searcher random1 has 0.500 average points per game
-searcher random2 has 0.500 average points per game
-
-********************************************
-
-
+***************************************************************
 
