@@ -1236,10 +1236,23 @@ class JersiState:
         counts = [0 for _ in Player]
         
         for (cube_index, cube_status) in enumerate(self.__cube_status):
-            cube = Cube.all[cube_index]
             
             if cube_status == CubeStatus.CAPTURED:
+                cube = Cube.all[cube_index]
                 counts[cube.player] += 1
+        
+        return counts
+
+
+    def get_fighter_counts(self):
+        counts = [0 for _ in Player]
+        
+        for (cube_index, cube_status) in enumerate(self.__cube_status):
+            
+            if cube_status == CubeStatus.ACTIVATED:
+                cube = Cube.all[cube_index]
+                if cube.sort in (CubeSort.FOOL, CubeSort.PAPER, CubeSort.ROCK, CubeSort.SCISSORS):
+                    counts[cube.player] += 1
         
         return counts
 
@@ -1248,9 +1261,9 @@ class JersiState:
         counts = [0 for _ in Player]
         
         for (cube_index, cube_status) in enumerate(self.__cube_status):
-            cube = Cube.all[cube_index]
             
             if cube_status == CubeStatus.RESERVED:
+                cube = Cube.all[cube_index]
                 counts[cube.player] += 1
         
         return counts
@@ -2403,25 +2416,22 @@ class RandomSearcher():
 class MinimaxSearcher():
 
     __slots__ = ('__name', '__max_depth', '__max_children', 
-                 '__distance_weight', '__capture_weight', '__center_weight', '__reserve_weight')
+                 '__distance_weight', '__capture_weight', '__center_weight')
 
         
     default_weights_by_depth = dict()
         
     default_weights_by_depth[1] = {'distance_weight':100,
                                    'capture_weight':1_200,
-                                   'center_weight':400,
-                                   'reserve_weight':0}
+                                   'center_weight':400}
         
     default_weights_by_depth[2] = {'distance_weight':100,
                                    'capture_weight':1_200,
-                                   'center_weight':0,
-                                   'reserve_weight':0}
+                                   'center_weight':100}
    
 
     def __init__(self, name, max_depth=1, max_children=None, 
-                  distance_weight=None, capture_weight=None, 
-                  center_weight=None, reserve_weight=None):
+                  distance_weight=None, capture_weight=None, center_weight=None):
         
         assert max_depth >= 1
          
@@ -2452,13 +2462,7 @@ class MinimaxSearcher():
             self.__center_weight = center_weight
         else:
             self.__center_weight = default_weights['center_weight']
-        
-        
-        if reserve_weight is not None:
-            self.__reserve_weight = reserve_weight
-        else:
-            self.__reserve_weight = default_weights['reserve_weight']
-
+ 
 
     def get_name(self):
         return self.__name
@@ -2519,6 +2523,23 @@ class MinimaxSearcher():
                 value = INFINITY_NEGATIVE
             
         else:
+            
+            # white and black activated fighters
+            fighter_counts = jersi_state.get_fighter_counts()
+            
+            if fighter_counts[Player.BLACK] == 0:
+                white_capture_importance = 0
+                white_center_importance = 0
+            else:
+                white_capture_importance = 1
+                white_center_importance = 1
+            
+            if fighter_counts[Player.WHITE] == 0:
+                black_capture_importance = 0
+                black_center_importance = 0
+            else:
+                black_capture_importance = 1
+                black_center_importance = 1
                                   
             # white and black distances to their goals or ends
             king_distances = jersi_state.get_king_end_distances()   
@@ -2526,11 +2547,8 @@ class MinimaxSearcher():
 
             # white and black with captured status
             capture_counts = jersi_state.get_capture_counts()
-            capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
-            
-            # white and black with reserved status
-            reserve_counts = jersi_state.get_reserve_counts()
-            reserve_difference = player_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
+            capture_difference = player_sign*(white_capture_importance*capture_counts[Player.BLACK] - 
+                                              black_capture_importance*capture_counts[Player.WHITE])
 
             # white and black movable cubes in the central zone
             white_center_count = 0
@@ -2553,31 +2571,28 @@ class MinimaxSearcher():
                     else:
                         break
 
-            center_difference = player_sign*(white_center_count - black_center_count)
+            center_difference = player_sign*(black_center_importance*white_center_count - 
+                                             white_center_importance*black_center_count)
 
             # normalize each feature in the intervall [-1, +1]
             
             distance_norm = 8
             capture_norm = 16
             center_norm = 17
-            reserve_norm = 6
             
             distance_difference = distance_difference/distance_norm
             capture_difference = capture_difference/capture_norm
             center_difference = center_difference/center_norm
-            reserve_difference = reserve_difference/reserve_norm
                                    
             assert -1 <= distance_difference <= 1
             assert -1 <= capture_difference <= 1
             assert -1 <= center_difference <= 1
-            assert -1 <= reserve_difference <= 1
 
             # synthesis
             
             value += self.__distance_weight*distance_difference    
             value += self.__capture_weight*capture_difference         
             value += self.__center_weight*center_difference    
-            value += self.__reserve_weight*reserve_difference   
 
         return value
     
@@ -2787,9 +2802,7 @@ SEARCHER_CATALOG.add( MinimaxSearcher("minimax2-400", max_depth=2, max_children=
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3", max_depth=3) )
 SEARCHER_CATALOG.add( MinimaxSearcher("minimax3-400", max_depth=3, max_children=400) )
 
-SEARCHER_CATALOG.add( MctsSearcher("mcts-2s", time_limit=2_000) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-10s-jrp", time_limit=10_000, rolloutPolicy=jersiRandomPolicy) )
-SEARCHER_CATALOG.add( MctsSearcher("mcts-50i-jrp", iteration_limit=50, rolloutPolicy=jersiRandomPolicy) )
+SEARCHER_CATALOG.add( MctsSearcher("mcts-90s-jrp", time_limit=90_000, rolloutPolicy=jersiRandomPolicy) )
 
 
 class Game:

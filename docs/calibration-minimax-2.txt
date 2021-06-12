@@ -4,3 +4,5 @@ number of games per searcher: 10
 searcher minimax1-1200-400 has 0.200 average points per game
 searcher minimax2-1200-400 has 1.800 average points per game
 
+***************************************************************
+
