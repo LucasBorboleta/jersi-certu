@@ -2547,8 +2547,8 @@ class MinimaxSearcher():
 
             # white and black with captured status
             capture_counts = jersi_state.get_capture_counts()
-            capture_difference = player_sign*(white_capture_importance*capture_counts[Player.BLACK] - 
-                                              black_capture_importance*capture_counts[Player.WHITE])
+            capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
+            capture_difference *= white_capture_importance*black_capture_importance
 
             # white and black movable cubes in the central zone
             white_center_count = 0
@@ -2571,15 +2571,15 @@ class MinimaxSearcher():
                     else:
                         break
 
-            center_difference = player_sign*(black_center_importance*white_center_count - 
-                                             white_center_importance*black_center_count)
+            center_difference = player_sign*(white_center_count - black_center_count)
+            center_difference *= white_center_importance*black_center_importance
 
             # normalize each feature in the intervall [-1, +1]
             
             distance_norm = 8
             capture_norm = 16
             center_norm = 17
-            
+    
             distance_difference = distance_difference/distance_norm
             capture_difference = capture_difference/capture_norm
             center_difference = center_difference/center_norm
