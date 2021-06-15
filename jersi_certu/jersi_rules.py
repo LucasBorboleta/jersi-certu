@@ -2426,7 +2426,7 @@ class MinimaxSearcher():
                                    'center_weight':400}
         
     default_weights_by_depth[2] = {'distance_weight':100,
-                                   'capture_weight':1_200,
+                                   'capture_weight':1_600,
                                    'center_weight':100}
    
 
@@ -2438,7 +2438,7 @@ class MinimaxSearcher():
         if max_depth in MinimaxSearcher.default_weights_by_depth:
             default_weights = MinimaxSearcher.default_weights_by_depth[max_depth]
         else:
-            default_weights = MinimaxSearcher.default_weights_by_depth[1]
+            default_weights = MinimaxSearcher.default_weights_by_depth[2]
        
         
         self.__name = name
@@ -2524,19 +2524,31 @@ class MinimaxSearcher():
             
         else:
             
-            # white and black activated fighters
+            # white and black activated fighters are used as indicators of parts of the game:
+            # opening part, middle part and final part
             fighter_counts = jersi_state.get_fighter_counts()
             
             if fighter_counts[Player.BLACK] == 0:
                 white_capture_importance = 0
                 white_center_importance = 0
+            
+            elif fighter_counts[Player.BLACK] <= 5:
+                white_capture_importance = 1
+                white_center_importance = 0.50
+                
             else:
                 white_capture_importance = 1
                 white_center_importance = 1
             
+            
             if fighter_counts[Player.WHITE] == 0:
                 black_capture_importance = 0
                 black_center_importance = 0
+            
+            elif fighter_counts[Player.WHITE] <= 5:
+                black_capture_importance = 1
+                black_center_importance = 0.50
+                
             else:
                 black_capture_importance = 1
                 black_center_importance = 1
@@ -3112,7 +3124,7 @@ def main():
     print(f"Hello from {os.path.basename(__file__)} version {__version__}")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if False:
+    if True:
         test_game_between_random_players()
 
     if False:
@@ -3121,7 +3133,7 @@ def main():
     if False:
         test_game_between_random_and_human_players()
    
-    if True:
+    if False:
         test_game_between_minimax_players()
 
     if True:
