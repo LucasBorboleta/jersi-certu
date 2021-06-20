@@ -3,7 +3,7 @@
 
 """jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
@@ -2529,27 +2529,33 @@ class MinimaxSearcher():
             fighter_counts = jersi_state.get_fighter_counts()
             
             if fighter_counts[Player.BLACK] == 0:
+                white_distance_importance = 1000
                 white_capture_importance = 0
                 white_center_importance = 0
             
             elif fighter_counts[Player.BLACK] <= 5:
-                white_capture_importance = 1
-                white_center_importance = 0.50
+                white_distance_importance = 10
+                white_capture_importance = 10
+                white_center_importance = 1
                 
             else:
+                white_distance_importance = 1
                 white_capture_importance = 1
                 white_center_importance = 1
             
             
             if fighter_counts[Player.WHITE] == 0:
+                black_distance_importance = 1000
                 black_capture_importance = 0
                 black_center_importance = 0
             
             elif fighter_counts[Player.WHITE] <= 5:
-                black_capture_importance = 1
-                black_center_importance = 0.50
+                black_distance_importance = 10
+                black_capture_importance = 10
+                black_center_importance = 1
                 
             else:
+                black_distance_importance = 1
                 black_capture_importance = 1
                 black_center_importance = 1
                                   
@@ -2560,9 +2566,8 @@ class MinimaxSearcher():
             # white and black with captured status
             capture_counts = jersi_state.get_capture_counts()
             capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
-            capture_difference *= white_capture_importance*black_capture_importance
 
-            # white and black movable cubes in the central zone
+            # white and black fighter cubes in the central zone
             white_center_count = 0
             black_center_count = 0
             
@@ -2574,7 +2579,7 @@ class MinimaxSearcher():
                     if cube_index != Null.CUBE:               
                         cube = Cube.all[cube_index]
                         
-                        if cube.sort != CubeSort.MOUNTAIN:                            
+                        if cube.sort in (CubeSort.FOOL, CubeSort.PAPER, CubeSort.ROCK, CubeSort.SCISSORS):                            
                             if cube.player == Player.WHITE:
                                 white_center_count += 1
                             
@@ -2584,7 +2589,6 @@ class MinimaxSearcher():
                         break
 
             center_difference = player_sign*(white_center_count - black_center_count)
-            center_difference *= white_center_importance*black_center_importance
 
             # normalize each feature in the intervall [-1, +1]
             
@@ -2595,11 +2599,12 @@ class MinimaxSearcher():
             distance_difference = distance_difference/distance_norm
             capture_difference = capture_difference/capture_norm
             center_difference = center_difference/center_norm
-                                   
-            assert -1 <= distance_difference <= 1
-            assert -1 <= capture_difference <= 1
-            assert -1 <= center_difference <= 1
 
+            # account for importances
+            distance_difference *= white_distance_importance*black_distance_importance
+            capture_difference *= white_capture_importance*black_capture_importance
+            center_difference *= white_center_importance*black_center_importance
+            
             # synthesis
             
             value += self.__distance_weight*distance_difference    

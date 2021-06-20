@@ -2,7 +2,7 @@
 
 The Python package *jersi_certu* provides a GUI and a rules engine for playing the [*jersi*](https://github.com/LucasBorboleta/jersi) board-game version 4 and also for testing AI agents. 
 
-Below is an overview of the GUI interface, which retrieves the human chosen action thanks to a text field. It is simple and straightforward. The project has focused on the rules engine, the generator of all possible actions (for AI purpose) and the graphical display. Minimal time was spent on graphical input or on the progress bar.
+Below is an overview of the GUI interface, which retrieves the human chosen action thanks to a text field. Admittedly, the GUI is limited: fake progress bar, no thread dedicated to IA. The project has focused on the rules engine, the generator of all possible actions (for AI purpose) and the graphical display.
 
  *jersi_certu* has been developed on Windows and then ported on Linux. For running it on your computer read the [**INSTALL**](./docs/INSTALL.md) instructions.
 
