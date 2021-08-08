@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License along with thi
 """
 
 
+import copy
 import enum
 import math
 import os
@@ -401,7 +402,11 @@ class GameGui(ttk.Frame):
         self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
         self.__cube_faces = self.__cube_faces_options[2]
 
+        self.__timer_delay = 250
+        self.__timer_id = None
+
         self.__play_reserve = True
+        self.__edit_actions = False
 
         self.__game = None
         self.__game_started = False
@@ -480,7 +485,7 @@ class GameGui(ttk.Frame):
                                        text='Play reserve',
                                        command=self.__command_update_reserve,
                                        variable=self.__variable_reserve)
-        self.__button_reserve.config(state="readonly")
+        self.__button_reserve.config(state="enabled")
 
         self.__variable_faces = tk.StringVar()
         self.__combobox_button_faces = ttk.Combobox(self.__frame_commands,
@@ -503,7 +508,7 @@ class GameGui(ttk.Frame):
 
         # In __frame_players
 
-        self.__label_white_player = ttk.Label(self.__frame_players, text='White :')
+        self.__label_white_player = ttk.Label(self.__frame_players, text='White:')
 
         self.__variable_white_player = tk.StringVar()
         self.__combobox_white_player = ttk.Combobox(self.__frame_players,
@@ -514,7 +519,7 @@ class GameGui(ttk.Frame):
         self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.__label_black_player = ttk.Label(self.__frame_players, text='Black :')
+        self.__label_black_player = ttk.Label(self.__frame_players, text='Black:')
 
         self.__variable_black_player = tk.StringVar()
         self.__combobox_black_player = ttk.Combobox(self.__frame_players,
@@ -541,6 +546,10 @@ class GameGui(ttk.Frame):
 
         self.__frame_players.rowconfigure(0, pad=5)
         self.__frame_players.rowconfigure(1, pad=5)
+        self.__frame_players.columnconfigure(0, pad=5)
+        self.__frame_players.columnconfigure(1, pad=5)
+        self.__frame_players.columnconfigure(2, pad=5)
+        self.__frame_players.columnconfigure(3, pad=5)
 
         self.__variable_white_player.trace_add('write', self.__command_update_players)
         self.__variable_black_player.trace_add('write', self.__command_update_players)
@@ -572,7 +581,7 @@ class GameGui(ttk.Frame):
 
        # In __frame_human_actions
 
-        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action (without any !) :')
+        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action (without any !):')
 
         self.__variable_action = tk.StringVar()
         self.__entry_action = ttk.Entry(self.__frame_human_actions, textvariable=self.__variable_action)
@@ -580,6 +589,16 @@ class GameGui(ttk.Frame):
         self.__button_action_confirm = ttk.Button(self.__frame_human_actions,
                                   text='OK',
                                   command=self.__command_action_confirm)
+
+        self.__variable_edit_actions = tk.BooleanVar()
+        self.__variable_edit_actions.set(self.__edit_actions)
+        self.__button_edit_actions = ttk.Checkbutton (self.__frame_human_actions,
+                                       text='Edit actions',
+                                       command=self.__command_update_edit_actions,
+                                       variable=self.__variable_edit_actions)
+        self.__button_edit_actions.config(state="enabled")
+
+
        # In __frame_text_actions
 
         self.__text_actions = tk.Text(self.__frame_text_actions,
@@ -596,9 +615,10 @@ class GameGui(ttk.Frame):
         self.__label_summary.pack(side=tk.TOP, pady=10)
 
         self.__frame_human_actions.pack(side=tk.TOP)
-        self.__label_action.pack(side=tk.LEFT)
-        self.__entry_action.pack(side=tk.LEFT)
-        self.__button_action_confirm.pack(side=tk.LEFT)
+        self.__label_action.pack(side=tk.LEFT, padx=5)
+        self.__entry_action.pack(side=tk.LEFT, padx=5)
+        self.__button_action_confirm.pack(side=tk.LEFT, padx=5)
+        self.__button_edit_actions.pack(side=tk.LEFT, padx=5)
 
         self.__frame_text_actions.pack(side=tk.TOP)
         self.__scrollbar_actions.pack(side=tk.LEFT, fill=tk.Y)
@@ -639,6 +659,7 @@ class GameGui(ttk.Frame):
 
 
     def __command_action_confirm(self):
+
         self.__action_input = self.__variable_action.get()
 
         (self.__action_validated,
@@ -653,10 +674,28 @@ class GameGui(ttk.Frame):
             self.__variable_log.set(message)
 
 
+    def __command_update_edit_actions(self):
+
+        self.__edit_actions = self.__variable_edit_actions.get()
+
+        if self.__edit_actions:
+            self.__button_start_stop.configure(text="Resume")
+            self.__text_actions.config(state="normal")
+
+        else:
+           self.__button_start_stop.configure(text="Start")
+           self.__text_actions.config(state="disabled")
+
+
     def __command_start_stop(self):
+
+        if self.__timer_id is not None:
+            self.__canvas.after_cancel(self.__timer_id)
+            self.__timer_id = None
 
         self.__entry_action.config(state="disabled")
         self.__button_action_confirm.config(state="disabled")
+        self.__button_edit_actions.config(state="disabled")
 
         self.__game_started = not self.__game_started
 
@@ -680,21 +719,150 @@ class GameGui(ttk.Frame):
            self.__combobox_black_player.config(state="disabled")
            self.__button_reserve.config(state="disabled")
 
-           self.__text_actions.config(state="normal")
-           self.__text_actions.delete('1.0', tk.END)
-           self.__text_actions.config(state="disabled")
+           if self.__edit_actions:
+               actions_text = copy.copy(self.__text_actions.get('1.0', tk.END))
 
-           self.__canvas.after(500, self.__command_next_turn)
+               self.__text_actions.config(state="normal")
+               self.__text_actions.delete('1.0', tk.END)
+               self.__text_actions.config(state="disabled")
+
+               validated_edited_actions = True
+               actions_items = actions_text.split()
+
+               # check length of action items
+               if validated_edited_actions and not len(actions_items) % 2 == 0:
+                  validated_edited_actions = False
+                  self.__variable_log.set("error: not an even count of words")
+
+               # check action indices
+               if validated_edited_actions:
+                  action_count = int(len(actions_items)/2)
+                  for action_index in range(action_count):
+                      even_action_item = actions_items[2*action_index]
+                      if even_action_item != str(action_index + 1):
+                          validated_edited_actions = False
+                          self.__variable_log.set("error: bad index '%s'" % even_action_item)
+
+               # extract actions
+               if validated_edited_actions:
+                   edited_actions = list()
+                   for action_index in range(action_count):
+                       action = actions_items[2*action_index + 1]
+                       action = action.replace("!", "")
+                       edited_actions.append(action)
+
+               # interpet actions
+               if validated_edited_actions:
+
+                    white_replayer = rules.HumanSearcher(self.__searcher[rules.Player.WHITE].get_name())
+                    black_replayer = rules.HumanSearcher(self.__searcher[rules.Player.BLACK].get_name())
+
+                    self.__game.set_white_searcher(white_replayer)
+                    self.__game.set_black_searcher(black_replayer)
+
+                    for (action_index, action) in enumerate(edited_actions):
+
+                        if not self.__game.has_next_turn():
+                            validated_edited_actions = False
+                            self.__variable_log.set("error: too much actions")
+                            break
+
+                        self.__jersi_state = self.__game.get_state()
+
+                        (action_validated, message) = rules.Notation.validate_simple_notation(action,
+                                                                  self.__jersi_state.get_action_simple_names())
+                        if not action_validated:
+                            validated_edited_actions = False
+                            self.__variable_log.set("error at turn %d: %s" % (action_index + 1, message))
+                            break
+
+                        player = self.__jersi_state.get_current_player()
+
+                        if player == rules.Player.WHITE:
+                            white_replayer.set_action_simple_name(action)
+                        else:
+                            black_replayer.set_action_simple_name(action)
+
+                        self.__game.next_turn()
+
+                        self.__variable_summary.set(self.__game.get_summary())
+                        self.__variable_log.set(self.__game.get_log())
+
+                        self.__text_actions.config(state="normal")
+
+                        turn = self.__game.get_turn()
+                        notation = str(turn).rjust(4) + " " + self.__game.get_last_action().ljust(16)
+                        if turn % 2 == 0:
+                            notation = ' '*2 + notation + "\n"
+
+                        self.__text_actions.insert(tk.END, notation)
+                        self.__text_actions.see(tk.END)
+                        self.__text_actions.config(state="disabled")
+
+                    self.__game.set_white_searcher(self.__searcher[rules.Player.WHITE])
+                    self.__game.set_black_searcher(self.__searcher[rules.Player.BLACK])
+
+                    self.__jersi_state = self.__game.get_state()
+                    self.__draw_state()
+
+               if not validated_edited_actions:
+                   self.__game_started = False
+
+                   self.__text_actions.config(state="normal")
+                   self.__text_actions.delete('1.0', tk.END)
+                   self.__text_actions.config(state="disabled")
+
+                   self.__text_actions.config(state="normal")
+                   self.__text_actions.insert(tk.END, actions_text)
+                   self.__text_actions.see(tk.END)
+
+                   self.__combobox_white_player.config(state="readonly")
+                   self.__combobox_black_player.config(state="readonly")
+                   self.__button_reserve.config(state="disabled")
+
+                   self.__entry_action.config(state="disabled")
+                   self.__button_action_confirm.config(state="disabled")
+
+                   self.__button_edit_actions.config(state="enabled")
+                   self.__edit_actions = True
+                   self.__variable_edit_actions.set(self.__edit_actions)
+
+                   self.__button_start_stop.configure(text="Resume")
+                   self.__progressbar['value'] = 0.
+
+               else:
+                   self.__game_started = True
+
+                   self.__button_edit_actions.config(state="disabled")
+                   self.__edit_actions = False
+                   self.__variable_edit_actions.set(self.__edit_actions)
+
+                   self.__timer_id = self.__canvas.after(self.__timer_delay, self.__command_next_turn)
+
+           else:
+               self.__text_actions.config(state="normal")
+               self.__text_actions.delete('1.0', tk.END)
+               self.__text_actions.config(state="disabled")
+
+               self.__button_edit_actions.config(state="disabled")
+               self.__edit_actions = False
+               self.__variable_edit_actions.set(self.__edit_actions)
+
+               self.__timer_id = self.__canvas.after(self.__timer_delay, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
-           self.__button_reserve.config(state="readonly")
+           self.__button_reserve.config(state="enabled")
 
            self.__entry_action.config(state="enabled")
            self.__variable_action.set("")
            self.__entry_action.config(state="disabled")
            self.__button_action_confirm.config(state="disabled")
+
+           self.__button_edit_actions.config(state="enabled")
+           self.__edit_actions = False
+           self.__variable_edit_actions.set(self.__edit_actions)
 
            self.__variable_log.set("jersi stopped")
            self.__button_start_stop.configure(text="Start")
@@ -702,6 +870,10 @@ class GameGui(ttk.Frame):
 
 
     def __command_next_turn(self):
+
+        if self.__timer_id is not None:
+            self.__canvas.after_cancel(self.__timer_id)
+            self.__timer_id = None
 
         if self.__game_started and self.__game.has_next_turn():
 
@@ -751,18 +923,21 @@ class GameGui(ttk.Frame):
                 self.__text_actions.see(tk.END)
                 self.__text_actions.config(state="disabled")
 
-            self.__canvas.after(500, self.__command_next_turn)
+            self.__timer_id = self.__canvas.after(self.__timer_delay, self.__command_next_turn)
 
         else:
            self.__combobox_white_player.config(state="readonly")
            self.__combobox_black_player.config(state="readonly")
-           self.__button_reserve.config(state="readonly")
+           self.__button_reserve.config(state="enabled")
 
            self.__progressbar['value'] = 0.
 
            self.__game_started = False
            self.__button_start_stop.configure(text="Start")
 
+           self.__button_edit_actions.config(state="enabled")
+           self.__edit_actions = False
+           self.__variable_edit_actions.set(self.__edit_actions)
 
     ### Drawer iterators
 
@@ -1192,3 +1367,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

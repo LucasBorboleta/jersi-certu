@@ -21,7 +21,7 @@ import glob
 import os
 import subprocess
 import sys
-    
+
 
 _product_home = os.path.abspath(os.path.dirname(__file__))
 _jersi_gui_executable = os.path.join(_product_home, "jersi_certu", "jersi_gui.py")
@@ -36,11 +36,11 @@ if not os.path.isdir(_venv_home):
     subprocess.run(args=[sys.executable, "-m", "venv", ".env"], shell=False, check=True)
     print("    Creating virtual environment done")
     _install_dependencies = True
-    
+
 else:
     _install_dependencies = False
 print("Checking virtual environment done")
-    
+
 
 print()
 print("Determining the python executable ...")
@@ -49,22 +49,22 @@ if os.name == 'nt':
 
 elif os.name == 'posix':
     _venv_python_executable = os.path.join(_venv_home, "bin", "python")
-    
+
 else:
     _venv_python_executable = glob.glob(os.path.join(_venv_home, "*/python*"))[0]
-    
+
 print("    _venv_python_executable = ", _venv_python_executable)
 print("Determining the python executable done")
-    
+
 
 if _install_dependencies:
     print()
     print("Installing dependencies ...")
-    
+
     if os.name == 'nt':
         # windows fix of "import _ssl" failure after "import ssl" during "pip" execution
         _sys_python_path = os.path.dirname(sys.executable)
-         
+
         if 'PATH' in os.environ:
             os.environ['PATH'] =  (_sys_python_path + os.pathsep +
                                   os.path.join(_sys_python_path, 'Scripts') + os.pathsep +
@@ -74,7 +74,7 @@ if _install_dependencies:
             os.environ['PATH'] = (_sys_python_path + os.pathsep +
                                   os.path.join(_sys_python_path, 'Scripts') + os.pathsep +
                                   os.path.join(_sys_python_path, 'Library', 'bin') )
-        
+
     subprocess.run(args=[_venv_python_executable, "-m", "ensurepip", "--upgrade"], shell=False, check=True)
     subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "--upgrade", "pip"], shell=False, check=True)
     subprocess.run(args=[_venv_python_executable, "-m", "pip", "install", "-r", "requirements.txt"], shell=False, check=True)

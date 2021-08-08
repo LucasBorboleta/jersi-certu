@@ -3,7 +3,7 @@
 
 """jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
@@ -51,7 +51,7 @@ def chunks(sequence, chunk_count):
 def partition(predicate, iterable):
     """Use a predicate to partition entries into false entries and true entries"""
     (t1, t2) = itertools.tee(iterable)
-    return (itertools.filterfalse(predicate, t1), filter(predicate, t2))   
+    return (itertools.filterfalse(predicate, t1), filter(predicate, t2))
 
 
 def hex_distance(position_uv_1, position_uv_2):
@@ -60,13 +60,13 @@ def hex_distance(position_uv_1, position_uv_2):
     (u2, v2) = position_uv_2
     distance = (math.fabs(u1 - u2) + math.fabs(v1 - v2)+ math.fabs(u1 + v1 - u2 - v2))/2
     return distance
-    
+
 
 class JersiMcts(mcts.mcts):
-    
+
     def __init__(self,*args, **kwargs):
         super().__init__(*args,** kwargs)
-        
+
 
     def getBestActions(self):
         bestActions = []
@@ -81,8 +81,8 @@ class JersiMcts(mcts.mcts):
             elif childValue == bestValue:
                 bestActions.append(action)
         return bestActions
-    
-    
+
+
 @enum.unique
 class Capture(enum.Enum):
     KING_CUBE = enum.auto()
@@ -169,7 +169,7 @@ class TerminalCase(enum.Enum):
 
 
 class Cube:
-    
+
     __slots__ = ('name', 'label', 'sort', 'player', 'index')
 
     __all_sorted_cubes = []
@@ -362,7 +362,7 @@ class Cube:
 
 
 class Hexagon:
-    
+
     __slots__ = ('name', 'position_uv', 'reserve', 'index')
 
     __all_active_indices = []
@@ -689,9 +689,9 @@ class SimpleNotationCase(enum.Enum):
 
 
 class Notation:
-    
+
     __slots__ = ()
-    
+
 
     def __init__(self):
         assert False
@@ -948,7 +948,7 @@ class JersiAction:
 
 
 class JersiActionAppender:
-    
+
     __slots__ = ('__actions', '__notations')
 
 
@@ -978,10 +978,10 @@ class JersiState:
     __max_credit = 40
     __king_end_distances = None
     __center_hexagon_indices = None
-    
+
     __slots__ = ('__cube_status', '__hexagon_bottom', '__hexagon_top',
                  '__credit', '__player', '__turn',
-                 '__actions', '__actions_by_simple_names', '__actions_by_names', 
+                 '__actions', '__actions_by_simple_names', '__actions_by_names',
                  '__taken', '__terminal_case', '__terminated', '__rewards')
 
 
@@ -1005,7 +1005,7 @@ class JersiState:
 
         self.__init_hexagon_top_and_bottom(play_reserve)
         self.__init_cube_status(play_reserve)
-        self.__init_king_end_distances()       
+        self.__init_king_end_distances()
         self.__init_center_hexagon_indices()
 
 
@@ -1091,59 +1091,59 @@ class JersiState:
             # white reserve
             self.__set_cube_at_hexagon_by_names('W1', 'c')
             self.__set_cube_at_hexagon_by_names('W2', 'c')
-    
+
             self.__set_cube_at_hexagon_by_names('M1', 'b')
             self.__set_cube_at_hexagon_by_names('M2', 'b')
-    
+
             self.__set_cube_at_hexagon_by_names('M3', 'a')
             self.__set_cube_at_hexagon_by_names('M4', 'a')
-    
+
             # black reserve
             self.__set_cube_at_hexagon_by_names('m1', 'i')
             self.__set_cube_at_hexagon_by_names('m2', 'i')
-    
+
             self.__set_cube_at_hexagon_by_names('m3', 'h')
             self.__set_cube_at_hexagon_by_names('m4', 'h')
-    
+
             self.__set_cube_at_hexagon_by_names('w1', 'g')
             self.__set_cube_at_hexagon_by_names('w2', 'g')
 
 
     def __init_king_end_distances(self):
-        
+
         if JersiState.__king_end_distances is None:
-                        
+
             JersiState.__king_end_distances = [array.array('b', [0 for _ in Hexagon.all]) for _ in Player]
-       
+
             for player in Player:
-                
+
                 for king_hexagon in Hexagon.all:
-                
+
                     king_hexagon_index = king_hexagon.index
                     king_position_uv = king_hexagon.position_uv
-        
+
                     king_distance = INFINITY_POSITIVE
                     for hexagon_index in Hexagon.get_king_end_indices(player):
                         hexagon_position_uv = Hexagon.all[hexagon_index].position_uv
-                        king_distance = min(king_distance, 
+                        king_distance = min(king_distance,
                                             hex_distance(king_position_uv, hexagon_position_uv))
-         
+
                     JersiState.__king_end_distances[player][king_hexagon_index] = int(math.ceil(king_distance))
 
 
 
     def __init_center_hexagon_indices(self):
-        
+
         if JersiState.__center_hexagon_indices is None:
-            
-            center_names = ['c3', 'c4', 'c5', 
+
+            center_names = ['c3', 'c4', 'c5',
                               'd3', 'd4', 'd5', 'd6',
                               'e3', 'e4', 'e5', 'e6', 'e7',
                               'f3', 'f4', 'f5', 'f6',
                               'g3', 'g4', 'g5']
-            
-            JersiState.__center_hexagon_indices = array.array('b', 
-                                                         [Hexagon.get(name).index for name in center_names]) 
+
+            JersiState.__center_hexagon_indices = array.array('b',
+                                                         [Hexagon.get(name).index for name in center_names])
 
 
     def __set_cube_at_hexagon_by_names(self, cube_name, hexagon_name):
@@ -1165,7 +1165,7 @@ class JersiState:
         else:
             # hexagon is expected with either zero or one cube
             assert False
-        
+
 
     def show(self):
 
@@ -1211,64 +1211,64 @@ class JersiState:
 
     def get_king_end_distances(self):
         """Distance to end hexagons of kings"""
-        
+
         king_distances = [0 for _ in Player]
-        
+
         for player in Player:
-            
+
             king_index= Cube.get_king_index(player)
 
             if king_index in self.__hexagon_bottom:
                 king_hexagon_index = self.__hexagon_bottom.index(king_index)
             else:
                 king_hexagon_index = self.__hexagon_top.index(king_index)
-                
+
             king_distances[player] = JersiState.__king_end_distances[player][king_hexagon_index]
-            
+
         return king_distances
 
 
     def get_center_hexagon_indices(self):
         return JersiState.__center_hexagon_indices
-        
+
 
     def get_capture_counts(self):
         counts = [0 for _ in Player]
-        
+
         for (cube_index, cube_status) in enumerate(self.__cube_status):
-            
+
             if cube_status == CubeStatus.CAPTURED:
                 cube = Cube.all[cube_index]
                 counts[cube.player] += 1
-        
+
         return counts
 
 
     def get_fighter_counts(self):
         counts = [0 for _ in Player]
-        
+
         for (cube_index, cube_status) in enumerate(self.__cube_status):
-            
+
             if cube_status == CubeStatus.ACTIVATED:
                 cube = Cube.all[cube_index]
                 if cube.sort in (CubeSort.FOOL, CubeSort.PAPER, CubeSort.ROCK, CubeSort.SCISSORS):
                     counts[cube.player] += 1
-        
+
         return counts
 
 
     def get_reserve_counts(self):
         counts = [0 for _ in Player]
-        
+
         for (cube_index, cube_status) in enumerate(self.__cube_status):
-            
+
             if cube_status == CubeStatus.RESERVED:
                 cube = Cube.all[cube_index]
                 counts[cube.player] += 1
-        
+
         return counts
 
-        
+
     def get_summary(self):
 
         reserved_labels = collections.Counter()
@@ -1351,7 +1351,7 @@ class JersiState:
 
             if len(action.some_captures) != 0:
                 state.__credit = JersiState.__max_credit
-                
+
             elif len(action.king_captures) != 0 and action.king_captures != set([Capture.KING_CUBE]):
                 state.__credit = JersiState.__max_credit
 
@@ -1455,11 +1455,11 @@ class JersiState:
                     self.__rewards[Player.WHITE] = Reward.WIN
 
         return self.__terminated
-         
+
 
     def get_actions(self, shuffle=True):
         if self.__actions is None:
-            self.__actions = self.__find_moves() + self.__find_drops() 
+            self.__actions = self.__find_moves() + self.__find_drops()
             # Better to shuffle actions here than by MCTS searcher for example
             if shuffle:
                 random.shuffle(self.__actions)
@@ -1467,17 +1467,17 @@ class JersiState:
 
 
     def has_action(self):
-               
+
         moves = self.__find_cube_first_moves(find_one=True)
         if len(moves) != 0:
             king_relocation_moves = self.__find_king_relocations(moves)
             if len(king_relocation_moves) != 0:
                 return True
-        
+
         drops = self.__find_drops(find_one=True)
         if len(drops) != 0:
             return True
-        
+
         if len(moves) != 0 and len(king_relocation_moves) == 0:
             return len(self.get_actions(shuffle=False)) != 0
         else:
@@ -1522,14 +1522,14 @@ class JersiState:
     ### Action finders
 
     def __find_drops(self, find_one=False):
-        
+
         action_appender = JersiActionAppender()
         found_one = False
 
         for cube_1_index in self.__find_droppable_cubes():
             if find_one and found_one:
                 break
-            
+
             for destination_1 in Hexagon.get_all_active_indices():
                 action_1 = self.__try_drop(cube_1_index, destination_1)
                 if action_1 is not None:
@@ -1550,7 +1550,7 @@ class JersiState:
 
 
     def __find_moves(self):
-        actions = self.__find_stack_first_moves() + self.__find_cube_first_moves() 
+        actions = self.__find_stack_first_moves() + self.__find_cube_first_moves()
         return self.__find_king_relocations(actions)
 
 
@@ -1585,7 +1585,7 @@ class JersiState:
         found_one = False
 
         for source_1 in self.__find_hexagons_with_movable_cube():
-            
+
             if find_one and found_one:
                 break
 
@@ -1625,7 +1625,7 @@ class JersiState:
         found_one = False
 
         for source_1 in self.__find_hexagons_with_movable_stack():
-            
+
             if find_one and found_one:
                 break
 
@@ -2199,8 +2199,8 @@ class MctsState:
 class MinimaxState:
 
     __slots__ = ('__jersi_state', '__maximizer_player')
-    
-    
+
+
     def __init__(self, jersi_state, maximizer_player):
         self.__jersi_state = jersi_state
         self.__maximizer_player = maximizer_player
@@ -2213,7 +2213,7 @@ class MinimaxState:
     def get_current_jersi_maximizer_player(self):
         return self.__maximizer_player
 
-        
+
     def get_current_player(self):
        """ Returns 1 if it is the maximizer player's turn to choose an action,
        or -1 for the minimiser player"""
@@ -2264,30 +2264,30 @@ def jersiSelectAction(action_names):
 
 
     def score_move_name(move_name):
-        
+
         catpures = re.sub(r"[^!]", "",move_name)
         catpures = re.sub(r"!+", "100",catpures)
-        
+
         stacks = re.sub(r"[^=]", "",move_name).replace("=", "10")
-        
+
         cubes = re.sub(r"[^-]", "",move_name).replace("-", "1")
-        
+
         move_score = 0
-        
+
         if catpures != "":
             move_score += float(catpures)
-        
+
         if stacks != "":
             move_score += float(stacks)
-        
+
         if cubes != "":
             move_score += float(cubes)
-        
+
         return move_score
 
 
     (drop_names, move_names) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), action_names)
-    
+
     drop_names = list(drop_names)
     move_names = list(move_names)
 
@@ -2298,7 +2298,7 @@ def jersiSelectAction(action_names):
     else:
         move_weights = list(map(score_move_name, move_names))
         action_name = random.choices(move_names, weights=move_weights, k=1)[0]
-    
+
     return action_name
 
 
@@ -2318,7 +2318,7 @@ def jersiRandomPolicy(state):
 
 
 class HumanSearcher():
-    
+
     __slots__ = ('__name', '__action_simple_name', '__use_command_line')
 
 
@@ -2376,7 +2376,7 @@ class HumanSearcher():
 
 
 class RandomSearcher():
-    
+
     __slots__ = ('__name')
 
 
@@ -2393,76 +2393,76 @@ class RandomSearcher():
 
 
     def search(self, state):
-        actions = state.get_actions()      
+        actions = state.get_actions()
 
         (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
         drop_actions = list(drop_actions)
         move_actions = list(move_actions)
-        
+
         if len(move_actions) == 0:
             action = random.choice(drop_actions)
-            
-        else:            
+
+        else:
             drop_probability = 0.05
-    
+
             if len(drop_actions) != 0 and random.random() <= drop_probability:
                 action = random.choice(drop_actions)
             else:
                 action = random.choice(move_actions)
-        
+
         return action
 
 
 class MinimaxSearcher():
 
-    __slots__ = ('__name', '__max_depth', '__max_children', 
+    __slots__ = ('__name', '__max_depth', '__max_children',
                  '__distance_weight', '__capture_weight', '__center_weight')
 
-        
+
     default_weights_by_depth = dict()
-        
+
     default_weights_by_depth[1] = {'distance_weight':100,
                                    'capture_weight':1_200,
                                    'center_weight':400}
-        
+
     default_weights_by_depth[2] = {'distance_weight':100,
                                    'capture_weight':1_600,
                                    'center_weight':100}
-   
 
-    def __init__(self, name, max_depth=1, max_children=None, 
+
+    def __init__(self, name, max_depth=1, max_children=None,
                   distance_weight=None, capture_weight=None, center_weight=None):
-        
+
         assert max_depth >= 1
-         
+
         if max_depth in MinimaxSearcher.default_weights_by_depth:
             default_weights = MinimaxSearcher.default_weights_by_depth[max_depth]
         else:
             default_weights = MinimaxSearcher.default_weights_by_depth[2]
-       
-        
+
+
         self.__name = name
         self.__max_depth = max_depth
         self.__max_children = max_children
-        
-        
+
+
         if distance_weight is not None:
             self.__distance_weight = distance_weight
         else:
             self.__distance_weight = default_weights['distance_weight']
-        
-        
+
+
         if capture_weight is not None:
             self.__capture_weight = capture_weight
         else:
             self.__capture_weight = default_weights['capture_weight']
-        
-        
+
+
         if center_weight is not None:
             self.__center_weight = center_weight
         else:
             self.__center_weight = default_weights['center_weight']
- 
+
 
     def get_name(self):
         return self.__name
@@ -2473,14 +2473,14 @@ class MinimaxSearcher():
 
 
     def search(self, state):
-        
+
         initial_state = MinimaxState(state, state.get_current_player())
         initial_player = initial_state.get_current_player()
-       
-        (best_value, action_values) = self.negamax(state=initial_state, 
-                                                   player=initial_player, 
+
+        (best_value, action_values) = self.negamax(state=initial_state,
+                                                   player=initial_player,
                                                    return_action_values=True)
-        
+
         best_actions = list()
         for (action, action_value) in action_values.items():
             if action_value == best_value:
@@ -2491,76 +2491,76 @@ class MinimaxSearcher():
         print("%d best_actions with best value %.1f" % (len(best_actions),best_value))
 
         action = random.choice(best_actions)
-            
+
         return action
 
 
     def state_value(self, state):
-        
+
         jersi_state = state.get_jersi_state()
         jersi_maximizer_player = state.get_current_jersi_maximizer_player()
-        
+
         # if needed then evaluate as jersi_maximizer_player = Player.WHITE
         # and use a sign
         if jersi_maximizer_player == Player.WHITE:
             player_sign = 1
         else:
-            player_sign = -1          
-        
+            player_sign = -1
+
         value = 0
-        
+
         if state.is_terminal():
             rewards = jersi_state.get_rewards()
-            
+
             if rewards[jersi_maximizer_player] == Reward.DRAW:
                 # consider a draw as a victory
                 value = INFINITY_POSITIVE
-                
+
             elif rewards[jersi_maximizer_player] == Reward.WIN:
                 value = INFINITY_POSITIVE
-                
+
             else:
                 value = INFINITY_NEGATIVE
-            
+
         else:
-            
+
             # white and black activated fighters are used as indicators of parts of the game:
             # opening part, middle part and final part
             fighter_counts = jersi_state.get_fighter_counts()
-            
+
             if fighter_counts[Player.BLACK] == 0:
                 white_distance_importance = 1000
                 white_capture_importance = 0
                 white_center_importance = 0
-            
+
             elif fighter_counts[Player.BLACK] <= 5:
                 white_distance_importance = 10
                 white_capture_importance = 10
                 white_center_importance = 1
-                
+
             else:
                 white_distance_importance = 1
                 white_capture_importance = 1
                 white_center_importance = 1
-            
-            
+
+
             if fighter_counts[Player.WHITE] == 0:
                 black_distance_importance = 1000
                 black_capture_importance = 0
                 black_center_importance = 0
-            
+
             elif fighter_counts[Player.WHITE] <= 5:
                 black_distance_importance = 10
                 black_capture_importance = 10
                 black_center_importance = 1
-                
+
             else:
                 black_distance_importance = 1
                 black_capture_importance = 1
                 black_center_importance = 1
-                                  
+
             # white and black distances to their goals or ends
-            king_distances = jersi_state.get_king_end_distances()   
+            king_distances = jersi_state.get_king_end_distances()
             distance_difference = player_sign*(king_distances[Player.BLACK] - king_distances[Player.WHITE])
 
             # white and black with captured status
@@ -2570,19 +2570,19 @@ class MinimaxSearcher():
             # white and black fighter cubes in the central zone
             white_center_count = 0
             black_center_count = 0
-            
+
             hexagon_bottom = jersi_state.get_hexagon_bottom()
             hexagon_top= jersi_state.get_hexagon_top()
-            
+
             for hexagon_index in jersi_state.get_center_hexagon_indices():
                 for cube_index in [hexagon_bottom[hexagon_index], hexagon_top[hexagon_index]]:
-                    if cube_index != Null.CUBE:               
+                    if cube_index != Null.CUBE:
                         cube = Cube.all[cube_index]
-                        
-                        if cube.sort in (CubeSort.FOOL, CubeSort.PAPER, CubeSort.ROCK, CubeSort.SCISSORS):                            
+
+                        if cube.sort in (CubeSort.FOOL, CubeSort.PAPER, CubeSort.ROCK, CubeSort.SCISSORS):
                             if cube.player == Player.WHITE:
                                 white_center_count += 1
-                            
+
                             elif cube.player == Player.BLACK:
                                 black_center_count += 1
                     else:
@@ -2591,11 +2591,11 @@ class MinimaxSearcher():
             center_difference = player_sign*(white_center_count - black_center_count)
 
             # normalize each feature in the intervall [-1, +1]
-            
+
             distance_norm = 8
             capture_norm = 16
             center_norm = 17
-    
+
             distance_difference = distance_difference/distance_norm
             capture_difference = capture_difference/capture_norm
             center_difference = center_difference/center_norm
@@ -2604,46 +2604,46 @@ class MinimaxSearcher():
             distance_difference *= white_distance_importance*black_distance_importance
             capture_difference *= white_capture_importance*black_capture_importance
             center_difference *= white_center_importance*black_center_importance
-            
+
             # synthesis
-            
-            value += self.__distance_weight*distance_difference    
-            value += self.__capture_weight*capture_difference         
-            value += self.__center_weight*center_difference    
+
+            value += self.__distance_weight*distance_difference
+            value += self.__capture_weight*capture_difference
+            value += self.__center_weight*center_difference
 
         return value
-    
-    
+
+
     def negamax(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
 
-        
+
         def score_action(action):
             captures = re.sub(r"[^!]", "", str(action))
             return len(captures)
-            
+
 
         use_negascout = True
         use_sort = True
-        
+
         if alpha is None:
             alpha = INFINITY_NEGATIVE
-        
+
         if beta is None:
             beta = INFINITY_POSITIVE
-            
+
         if depth is None:
             depth =self.__max_depth
-            
-        
+
+
         if depth == 0 or state.is_terminal():
             # print("negamax at depth %d evaluating leaf state" % depth)
             return player*self.state_value(state)
-                
+
         if return_action_values:
             action_values = dict()
-            
+
         actions = state.get_actions(shuffle=False)
-        
+
 
         # reduce the number of children
         if (self.__max_children is not None and len(actions) > self.__max_children):
@@ -2651,65 +2651,65 @@ class MinimaxSearcher():
             (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
             drop_actions = list(drop_actions)
             move_actions = list(move_actions)
-                        
+
             if len(move_actions) > self.__max_children:
                 # sample the move actions according to their destination hexagons
                 move_actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
-                
+
                 selected_move_actions = list()
                 for action_chunk in chunks(move_actions, self.__max_children):
                     selected_move_actions.append(random.choice(action_chunk))
-                    
+
                 move_actions = selected_move_actions
-                
+
             if len(drop_actions) != 0:
                 drop_count = self.__max_children - len(move_actions)
-                
+
                 # >> let us admit some tolerance regarding the __max_children criterion
                 # >> by adding a small fraction of drop actions
                 drop_probability = 0.05
-                drop_count = max(drop_count, int(math.ceil(drop_probability*len(move_actions))))              
-                
+                drop_count = max(drop_count, int(math.ceil(drop_probability*len(move_actions))))
+
                 drop_actions = random.choices(drop_actions, k=drop_count)
                 actions = move_actions + drop_actions
             else:
                 actions = move_actions
- 
+
         # try to optimize alpha beta and negascout by ordering capture at first positions
         if use_sort:
             actions.sort(key=score_action, reverse=True)
-        
-        
-        value = INFINITY_NEGATIVE                    
+
+
+        value = INFINITY_NEGATIVE
         for action in actions:
             # print("negamax at depth %d evaluating action %s" % (depth, action))
             child_state = state.take_action(action)
-                        
+
             if use_negascout:
-                # search with a null window 
+                # search with a null window
                 # print("negascout: search with a null window")
-                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
                                                     alpha=-alpha - 1, beta=-alpha)
-                
+
                 # if it failed high, do a full re-search
                 if alpha < child_value < beta:
                     # print("negascout: full re-search")
-                    child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                    child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
                                                     alpha=-beta, beta=-child_value)
 
             else:
-                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1, 
+                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
                                                     alpha=-beta, beta=-alpha)
 
             value = max(value, child_value)
-            
+
             if return_action_values:
                 action_values[action] = child_value
-            
+
             alpha = max(alpha, value)
             if alpha >= beta:
                 break
-            
+
         if return_action_values:
             return (value, action_values)
         else:
@@ -2758,7 +2758,7 @@ class MctsSearcher():
         _ = self.__searcher.search(initialState=MctsState(state, state.get_current_player()))
 
         # heuristic: amonst best actions forget drop-actions i.e. selection a move action when possible
-        
+
         best_actions = self.__searcher.getBestActions()
         best_move_actions = list(filter(lambda x: re.match(r"^.*[-=].*$", str(x)), best_actions))
         if len(best_move_actions) != 0:
@@ -2823,7 +2823,7 @@ SEARCHER_CATALOG.add( MctsSearcher("mcts-90s-jrp", time_limit=90_000, rolloutPol
 
 
 class Game:
-    
+
     __slots__ = ('__searcher', '__jersi_state', '__log', '__turn', '__last_action', '__turn_duration')
 
 
@@ -2898,13 +2898,13 @@ class Game:
 
             print()
             print(f"{player_name} is thinking ...")
-            
+
             turn_start = time.time()
             action = self.__searcher[player].search(self.__jersi_state)
             turn_end = time.time()
             turn_duration = turn_end - turn_start
             self.__turn_duration[player].append(turn_duration)
-            
+
             self.__last_action = str(action)
 
             print(f"{player_name} is done after %.1f seconds" % turn_duration)
@@ -2925,7 +2925,7 @@ class Game:
 
             print()
             print("-"*40)
-                
+
             white_time = sum(self.__turn_duration[Player.WHITE])
             black_time = sum(self.__turn_duration[Player.BLACK])
 
@@ -2940,9 +2940,9 @@ class Game:
 
             else:
                 self.__log = f"{black_player} wins against {white_player} ; {black_time:.0f} versus {white_time:.0f} seconds"
-                
+
             print(self.__log)
-            
+
 
 
 def test_game_between_random_players():
@@ -2955,7 +2955,7 @@ def test_game_between_random_players():
     JersiState.set_max_credit(10_000)
 
     game = Game()
-    
+
     game.set_white_searcher(RandomSearcher("random"))
     game.set_black_searcher(RandomSearcher("random"))
 
@@ -2981,7 +2981,7 @@ def test_game_between_mcts_players():
     JersiState.set_max_credit(10)
 
     game = Game()
-    
+
     game.set_white_searcher(MctsSearcher("mcts-10s", time_limit=10_000))
     game.set_black_searcher(MctsSearcher("mcts-10i", iteration_limit=10))
 
@@ -3011,7 +3011,7 @@ def test_game_between_random_and_human_players():
     human_searcher = HumanSearcher("human")
     human_searcher.use_command_line(True)
     game.set_white_searcher(human_searcher)
-    
+
     game.set_black_searcher(RandomSearcher("random"))
 
     game.start()
@@ -3031,18 +3031,18 @@ def test_game_between_minimax_players():
     print("=====================================")
     print(" test_game_between_minimax_players ...")
     print("=====================================")
-    
-    
+
+
     searcher_dict = dict()
-    
+
     capture_weight_list = [1200, 1400, 1600]
     center_weight_list = [0, 100, 200, 400]
-    
+
     for capture_weight in capture_weight_list:
         for center_weight in center_weight_list:
             searcher_name = "minimax2-%d-%d" % (capture_weight, center_weight)
-            searcher = MinimaxSearcher(searcher_name, 
-                                        max_depth=2, 
+            searcher = MinimaxSearcher(searcher_name,
+                                        max_depth=2,
                                         capture_weight=capture_weight,
                                         center_weight=center_weight)
             assert searcher_name not in searcher_dict
@@ -3051,8 +3051,8 @@ def test_game_between_minimax_players():
 
     (capture_weight, center_weight) = (1200, 400)
     searcher_name = "minimax1-%d-%d" % (capture_weight, center_weight)
-    searcher = MinimaxSearcher(searcher_name, 
-                                max_depth=1, 
+    searcher = MinimaxSearcher(searcher_name,
+                                max_depth=1,
                                 capture_weight=capture_weight,
                                 center_weight=center_weight)
     searcher_dict[searcher_name] = searcher
@@ -3065,42 +3065,42 @@ def test_game_between_minimax_players():
         for y_searcher in searcher_dict.values():
             if x_searcher is y_searcher:
                 continue
-            
-  
+
+
             x_points = 0
             y_points = 0
-            
-            
+
+
             for game_index in range(game_count):
-               
-                
+
+
                 game = Game()
                 game.set_white_searcher(x_searcher)
                 game.set_black_searcher(y_searcher)
                 x_player = Player.WHITE
                 y_player = Player.BLACK
-                    
+
                 game.start(play_reserve=False)
                 while game.has_next_turn():
-                    print("--> " + x_searcher.get_name() + " versus " + 
+                    print("--> " + x_searcher.get_name() + " versus " +
                                    y_searcher.get_name() +  " game_index: %d" % game_index)
                     game.next_turn()
-                    
+
                 rewards = game.get_rewards()
-                
+
                 if rewards[x_player] == Reward.WIN:
                     x_points += 2
-                    
+
                 elif rewards[x_player] == Reward.DRAW:
                     x_points += 1
-                    
+
                 if rewards[y_player] == Reward.WIN:
                     y_points += 2
-                    
+
                 elif rewards[y_player] == Reward.DRAW:
                     y_points += 1
-                    
-            
+
+
             print("game_count:", game_count, "/ x_points:", x_points, "/ y_points:", y_points)
 
             searcher_points[x_searcher.get_name()] += x_points
@@ -3119,11 +3119,11 @@ def test_game_between_minimax_players():
     print()
     for (searcher_name, points) in sorted(searcher_points.items()):
         print("searcher %s has %.3f average points per game" %(searcher_name, points/searcher_game_count))
-       
+
     print("=====================================")
     print("test_game_between_minimax_players done")
     print("=====================================")
-    
+
 
 def main():
     print(f"Hello from {os.path.basename(__file__)} version {__version__}")
@@ -3137,7 +3137,7 @@ def main():
 
     if False:
         test_game_between_random_and_human_players()
-   
+
     if False:
         test_game_between_minimax_players()
 
