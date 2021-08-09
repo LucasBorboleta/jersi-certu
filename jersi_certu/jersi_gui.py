@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License along with thi
 """
 
 
-import copy
 import enum
 import math
 import os
@@ -402,7 +401,7 @@ class GameGui(ttk.Frame):
         self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
         self.__cube_faces = self.__cube_faces_options[2]
 
-        self.__timer_delay = 250
+        self.__timer_delay = 500
         self.__timer_id = None
 
         self.__play_reserve = True
@@ -720,7 +719,7 @@ class GameGui(ttk.Frame):
            self.__button_reserve.config(state="disabled")
 
            if self.__edit_actions:
-               actions_text = copy.copy(self.__text_actions.get('1.0', tk.END))
+               actions_text = self.__text_actions.get('1.0', tk.END)
 
                self.__text_actions.config(state="normal")
                self.__text_actions.delete('1.0', tk.END)
