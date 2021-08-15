@@ -507,7 +507,7 @@ class GameGui(ttk.Frame):
 
         # In __frame_players
 
-        self.__label_white_player = ttk.Label(self.__frame_players, text='White:')
+        self.__label_white_player = ttk.Label(self.__frame_players, text='White :')
 
         self.__variable_white_player = tk.StringVar()
         self.__combobox_white_player = ttk.Combobox(self.__frame_players,
@@ -518,7 +518,7 @@ class GameGui(ttk.Frame):
         self.__variable_white_player.set(searcher_catalog_names[0])
 
 
-        self.__label_black_player = ttk.Label(self.__frame_players, text='Black:')
+        self.__label_black_player = ttk.Label(self.__frame_players, text='Black :')
 
         self.__variable_black_player = tk.StringVar()
         self.__combobox_black_player = ttk.Combobox(self.__frame_players,
@@ -580,7 +580,7 @@ class GameGui(ttk.Frame):
 
        # In __frame_human_actions
 
-        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action (without any !):')
+        self.__label_action = ttk.Label(self.__frame_human_actions, text='Action :')
 
         self.__variable_action = tk.StringVar()
         self.__entry_action = ttk.Entry(self.__frame_human_actions, textvariable=self.__variable_action)
@@ -597,6 +597,16 @@ class GameGui(ttk.Frame):
                                        variable=self.__variable_edit_actions)
         self.__button_edit_actions.config(state="enabled")
 
+        self.__label_turn = ttk.Label(self.__frame_human_actions, text='Turn :')
+        
+        self.__variable_turn = tk.StringVar()
+        self.__spinbox_turn = ttk.Spinbox(self.__frame_human_actions, 
+                                          from_=1.0, to=100.0, 
+                                          increment=1.0,
+                                          command=self.__command_update_turn,
+                                          textvariable=self.__variable_turn,
+                                          width=5)
+        self.__spinbox_turn.config(state="readonly")
 
        # In __frame_text_actions
 
@@ -614,10 +624,23 @@ class GameGui(ttk.Frame):
         self.__label_summary.pack(side=tk.TOP, pady=10)
 
         self.__frame_human_actions.pack(side=tk.TOP)
-        self.__label_action.pack(side=tk.LEFT, padx=5)
-        self.__entry_action.pack(side=tk.LEFT, padx=5)
-        self.__button_action_confirm.pack(side=tk.LEFT, padx=5)
-        self.__button_edit_actions.pack(side=tk.LEFT, padx=5)
+        
+        
+        self.__label_action.grid(row=0, column=0)
+        self.__entry_action.grid(row=0, column=1)
+        self.__button_action_confirm.grid(row=0, column=2)
+        self.__button_edit_actions.grid(row=0, column=3)
+        self.__label_turn.grid(row=0, column=4)
+        self.__spinbox_turn.grid(row=0, column=5)
+
+        self.__frame_human_actions.rowconfigure(0, pad=5)
+        self.__frame_human_actions.columnconfigure(0, pad=5)
+        self.__frame_human_actions.columnconfigure(1, pad=5)
+        self.__frame_human_actions.columnconfigure(2, pad=5)
+        self.__frame_human_actions.columnconfigure(3, pad=5)
+        self.__frame_human_actions.columnconfigure(4, pad=5)
+        self.__frame_human_actions.columnconfigure(5, pad=5)
+        
 
         self.__frame_text_actions.pack(side=tk.TOP)
         self.__scrollbar_actions.pack(side=tk.LEFT, fill=tk.Y)
@@ -657,9 +680,15 @@ class GameGui(ttk.Frame):
         self.__searcher[rules.Player.BLACK] = rules.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
+    def __command_update_turn(self, *_):
+        self.__variable_log.set("__command_update_turn: NOT IMPLEMENTED !!!")
+
+
     def __command_action_confirm(self):
 
         self.__action_input = self.__variable_action.get()
+        self.__action_input = self.__action_input.replace("!", "")
+
 
         (self.__action_validated,
          message) = rules.Notation.validate_simple_notation(self.__action_input,
