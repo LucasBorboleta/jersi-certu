@@ -397,7 +397,6 @@ class GameGui(ttk.Frame):
 
         self.__cube_photos = None
 
-
         self.__cube_faces_options = ("faces=letters", "faces=drawings", "faces=pictures")
         self.__cube_faces = self.__cube_faces_options[2]
 
@@ -406,6 +405,7 @@ class GameGui(ttk.Frame):
 
         self.__play_reserve = True
         self.__edit_actions = False
+        self.__turn_states = list()
 
         self.__game = None
         self.__game_started = False
@@ -414,6 +414,8 @@ class GameGui(ttk.Frame):
 
         self.__action_input = None
         self.__action_validated = False
+        
+        self.__turn_states.append(self.__jersi_state)
 
         self.__root = tk.Tk()
 
@@ -600,13 +602,14 @@ class GameGui(ttk.Frame):
         self.__label_turn = ttk.Label(self.__frame_human_actions, text='Turn :')
         
         self.__variable_turn = tk.StringVar()
+        self.__variable_turn.set(len(self.__turn_states) - 1)
         self.__spinbox_turn = ttk.Spinbox(self.__frame_human_actions, 
-                                          from_=1.0, to=100.0, 
-                                          increment=1.0,
+                                          values=list(range(len(self.__turn_states))), 
                                           command=self.__command_update_turn,
                                           textvariable=self.__variable_turn,
                                           width=5)
         self.__spinbox_turn.config(state="readonly")
+
 
        # In __frame_text_actions
 
@@ -680,8 +683,10 @@ class GameGui(ttk.Frame):
         self.__searcher[rules.Player.BLACK] = rules.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
-    def __command_update_turn(self, *_):
-        self.__variable_log.set("__command_update_turn: NOT IMPLEMENTED !!!")
+    def __command_update_turn(self):
+        turn_index = int(self.__variable_turn.get())
+        self.__jersi_state = self.__turn_states[turn_index]
+        self.__draw_state()
 
 
     def __command_action_confirm(self):
@@ -736,6 +741,11 @@ class GameGui(ttk.Frame):
 
            self.__jersi_state = self.__game.get_state()
            self.__draw_state()
+           
+           self.__turn_states = list()
+           self.__turn_states.append(self.__game.get_state())
+           self.__spinbox_turn.config(values=list(range(len(self.__turn_states))))
+           self.__variable_turn.set(len(self.__turn_states) - 1)
 
            self.__button_start_stop.configure(text="Stop")
 
@@ -787,7 +797,7 @@ class GameGui(ttk.Frame):
 
                     self.__game.set_white_searcher(white_replayer)
                     self.__game.set_black_searcher(black_replayer)
-
+                                        
                     for (action_index, action) in enumerate(edited_actions):
 
                         if not self.__game.has_next_turn():
@@ -812,6 +822,8 @@ class GameGui(ttk.Frame):
                             black_replayer.set_action_simple_name(action)
 
                         self.__game.next_turn()
+                        
+                        self.__turn_states.append(self.__game.get_state())
 
                         self.__variable_summary.set(self.__game.get_summary())
                         self.__variable_log.set(self.__game.get_log())
@@ -833,6 +845,10 @@ class GameGui(ttk.Frame):
                     self.__jersi_state = self.__game.get_state()
                     self.__draw_state()
 
+                    self.__spinbox_turn.config(values=list(range(len(self.__turn_states))))
+                    self.__variable_turn.set(len(self.__turn_states) - 1)
+
+
                if not validated_edited_actions:
                    self.__game_started = False
 
@@ -846,7 +862,7 @@ class GameGui(ttk.Frame):
 
                    self.__combobox_white_player.config(state="readonly")
                    self.__combobox_black_player.config(state="readonly")
-                   self.__button_reserve.config(state="disabled")
+                   self.__button_reserve.config(state="enabled")
 
                    self.__entry_action.config(state="disabled")
                    self.__button_action_confirm.config(state="disabled")
@@ -950,6 +966,10 @@ class GameGui(ttk.Frame):
                 self.__text_actions.insert(tk.END, notation)
                 self.__text_actions.see(tk.END)
                 self.__text_actions.config(state="disabled")
+                
+                self.__turn_states.append(self.__game.get_state())
+                self.__spinbox_turn.config(values=list(range(len(self.__turn_states))))
+                self.__variable_turn.set(len(self.__turn_states) - 1)
 
             self.__timer_id = self.__canvas.after(self.__timer_delay, self.__command_next_turn)
 
