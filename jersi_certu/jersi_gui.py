@@ -604,11 +604,12 @@ class GameGui(ttk.Frame):
         self.__variable_turn = tk.StringVar()
         self.__variable_turn.set(len(self.__turn_states) - 1)
         self.__spinbox_turn = ttk.Spinbox(self.__frame_human_actions, 
-                                          values=list(range(len(self.__turn_states))), 
+                                          values=list(range(len(self.__turn_states))),
+                                          wrap=True,
                                           command=self.__command_update_turn,
                                           textvariable=self.__variable_turn,
                                           width=5)
-        self.__spinbox_turn.config(state="readonly")
+        self.__spinbox_turn.bind('<Return>', self.__command_update_turn)
 
 
        # In __frame_text_actions
@@ -683,10 +684,23 @@ class GameGui(ttk.Frame):
         self.__searcher[rules.Player.BLACK] = rules.SEARCHER_CATALOG.get(self.__variable_black_player.get())
 
 
-    def __command_update_turn(self):
-        turn_index = int(self.__variable_turn.get())
-        self.__jersi_state = self.__turn_states[turn_index]
-        self.__draw_state()
+    def __command_update_turn(self, *_):
+        try:
+            turn_index = int(self.__variable_turn.get())
+            
+            if 0 <= turn_index < len(self.__turn_states):
+                self.__jersi_state = self.__turn_states[turn_index]
+                self.__draw_state()
+                self.__variable_turn.set(turn_index)
+            
+            else:
+                return
+            
+        except ValueError:
+            return
+        
+        except:
+            assert False
 
 
     def __command_action_confirm(self):
