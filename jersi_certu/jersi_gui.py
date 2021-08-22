@@ -420,7 +420,7 @@ class GameGui(ttk.Frame):
         self.__root = tk.Tk()
 
         try:
-            self.__root.title("jersi-certu : for playing the jersi 4.x boardgame and testing AI agents")
+            self.__root.title("jersi-certu : for playing the jersi 4 boardgame and testing AI agents")
             self.__root.iconbitmap(AppConfig.ICON_FILE)
         except:
             pass
@@ -432,7 +432,8 @@ class GameGui(ttk.Frame):
         self.__command_update_reserve()
         self.__command_update_players()
 
-        self.__variable_log.set(f"jersi-certu GUI version {rules.__version__} is ready !")
+        self.__variable_log.set(f"jersi-certu version {rules.__version__} is ready !")
+        self.__variable_summary.set("(c) 2019 Lucas Borboleta ; jersi software license : GNU GPL ; jersi rules license : CC-BY-NC-SA")
 
         self.__root.mainloop()
 

@@ -2,3 +2,6 @@
 __pycache__
 .env
 .spyproject
+tmp
+tmp_*
+*.spec
