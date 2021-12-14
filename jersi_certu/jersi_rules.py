@@ -3,7 +3,7 @@
 
 """jersi_rules.py implements the rules engine for the JERSI boardgame."""
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 _COPYRIGHT_AND_LICENSE = """
 JERSI-CERTU implements a GUI and a rules engine for the JERSI boardgame.
