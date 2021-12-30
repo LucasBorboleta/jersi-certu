@@ -2286,18 +2286,25 @@ def jersiSelectAction(action_names):
         return move_score
 
 
+    assert len(action_names) != 0
     (drop_names, move_names) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), action_names)
 
     drop_names = list(drop_names)
     move_names = list(move_names)
+    assert len(drop_names) + len(move_names) != 0
 
     drop_probability = 0.05
 
     if len(drop_names) != 0 and random.random() <= drop_probability:
         action_name = random.choice(drop_names)
-    else:
+
+    elif len(move_names) != 0:
         move_weights = list(map(score_move_name, move_names))
+        assert len(move_weights) != 0
         action_name = random.choices(move_names, weights=move_weights, k=1)[0]
+    
+    else:
+        action_name = random.choice(drop_names)
 
     return action_name
 
