@@ -33,8 +33,8 @@ import mcts
 
 _do_debug = False
 
-INFINITY_POSITIVE = float("inf")
-INFINITY_NEGATIVE = float("-inf")
+OMEGA = 1_000.
+OMEGA_2 = OMEGA**2
 
 
 def chunks(sequence, chunk_count):
@@ -70,7 +70,7 @@ class JersiMcts(mcts.mcts):
 
     def getBestActions(self):
         bestActions = []
-        bestValue = INFINITY_NEGATIVE
+        bestValue = -math.inf
         node = self.root
         currentPlayer = node.state.getCurrentPlayer()
         for (action, child) in node.children.items():
@@ -1122,7 +1122,7 @@ class JersiState:
                     king_hexagon_index = king_hexagon.index
                     king_position_uv = king_hexagon.position_uv
 
-                    king_distance = INFINITY_POSITIVE
+                    king_distance = math.inf
                     for hexagon_index in Hexagon.get_king_end_indices(player):
                         hexagon_position_uv = Hexagon.all[hexagon_index].position_uv
                         king_distance = min(king_distance,
@@ -1289,6 +1289,10 @@ class JersiState:
              "captured %s" % " ".join([f"{label}:{count}" for (label, count) in sorted(captured_labels.items())]))
 
         return summary
+
+
+    def get_credit(self):
+        return self.__credit
 
 
     @staticmethod
@@ -2210,14 +2214,8 @@ class MinimaxState:
         return self.__jersi_state
 
 
-    def get_current_jersi_maximizer_player(self):
+    def get_current_maximizer_player(self):
         return self.__maximizer_player
-
-
-    def get_current_player(self):
-       """ Returns 1 if it is the maximizer player's turn to choose an action,
-       or -1 for the minimiser player"""
-       return 1 if self.__jersi_state.get_current_player() == self.__maximizer_player else -1
 
 
     def is_terminal(self):
@@ -2423,22 +2421,35 @@ class RandomSearcher():
 class MinimaxSearcher():
 
     __slots__ = ('__name', '__max_depth', '__max_children',
-                 '__distance_weight', '__capture_weight', '__center_weight')
+                 '__distance_weight', '__capture_weight', 
+                 '__fighter_weight', '__reserve_weight',
+                 '__center_weight', '__credit_weight',
+                 '__debug')
 
 
     default_weights_by_depth = dict()
 
-    default_weights_by_depth[1] = {'distance_weight':100,
-                                   'capture_weight':1_200,
-                                   'center_weight':400}
+    default_weights_by_depth[1] = {'distance_weight':32,
+                                   'capture_weight':16,
+                                   'fighter_weight':8,
+                                   'center_weight':4,
+                                   'reserve_weight':2,
+                                   'credit_weight':1}
 
-    default_weights_by_depth[2] = {'distance_weight':100,
-                                   'capture_weight':1_600,
-                                   'center_weight':100}
+    default_weights_by_depth[2] = {'distance_weight':32,
+                                   'capture_weight':16,
+                                   'fighter_weight':8,
+                                   'center_weight':4,
+                                   'reserve_weight':2,
+                                   'credit_weight':1}
 
 
     def __init__(self, name, max_depth=1, max_children=None,
-                  distance_weight=None, capture_weight=None, center_weight=None):
+                  distance_weight=None, capture_weight=None,
+                  fighter_weight=None, reserve_weight=None,
+                  center_weight=None, credit_weight=None):
+
+        self.__debug = False
 
         assert max_depth >= 1
 
@@ -2471,6 +2482,24 @@ class MinimaxSearcher():
             self.__center_weight = default_weights['center_weight']
 
 
+        if fighter_weight is not None:
+            self.__fighter_weight = fighter_weight
+        else:
+            self.__fighter_weight = default_weights['fighter_weight']
+
+
+        if reserve_weight is not None:
+            self.__reserve_weight = reserve_weight
+        else:
+            self.__reserve_weight = default_weights['reserve_weight']
+
+
+        if credit_weight is not None:
+            self.__credit_weight = credit_weight
+        else:
+            self.__credit_weight = default_weights['credit_weight']
+
+
     def get_name(self):
         return self.__name
 
@@ -2480,109 +2509,146 @@ class MinimaxSearcher():
 
 
     def search(self, state):
-
+        do_check = False
+        
         initial_state = MinimaxState(state, state.get_current_player())
-        initial_player = initial_state.get_current_player()
 
-        (best_value, action_values) = self.negamax(state=initial_state,
-                                                   player=initial_player,
-                                                   return_action_values=True)
+        (best_value, action_values) = self.alphabeta(state=initial_state,
+                                                    player=1,
+                                                    return_action_values=True)
+        
+        if do_check:                 
+            self.check(initial_state, best_value, action_values)
 
+        if self.__debug:
+            print()
+            
         best_actions = list()
         for (action, action_value) in action_values.items():
             if action_value == best_value:
                 best_actions.append(action)
-            else:
-                pass
+                if self.__debug:
+                    print("MinimaxSearcher.search: best (action, value)=",(action, action_value))               
 
-        print("%d best_actions with best value %.1f" % (len(best_actions),best_value))
+        print()
+        print("%d best_actions with best value %.1f" % (len(best_actions), best_value))
 
         action = random.choice(best_actions)
 
         return action
 
 
-    def state_value(self, state):
+    def check(self, initial_state, best_value, action_values):
 
-        jersi_state = state.get_jersi_state()
-        jersi_maximizer_player = state.get_current_jersi_maximizer_player()
+        (best_value_ref, action_values_ref) = self.minimax(state=initial_state,
+                                                    player=1,
+                                                    return_action_values=True)
 
-        # if needed then evaluate as jersi_maximizer_player = Player.WHITE
-        # and use a sign
+        if self.__debug:
+            print()
+            print("MinimaxSearcher.check: best_value_ref=",best_value_ref)
+            print("MinimaxSearcher.check: best_value=",best_value)
+
+        if self.__debug:
+            print()
+            
+        best_actions_ref = list()
+        for (action_ref, action_value_ref) in action_values_ref.items():
+            if action_value_ref == best_value_ref:
+                best_actions_ref.append(action_ref)
+                if self.__debug:
+                    print("MinimaxSearcher.check: best (action_ref, action_value_ref)=", 
+                          (action_ref, action_value_ref))               
+
+        if self.__debug:
+            print()
+            print("%d best_actions_ref with best value %.1f" % (len(best_actions_ref), best_value_ref))
+           
+        best_actions = list()
+        for (action, action_value) in action_values.items():
+            if action_value == best_value:
+                best_actions.append(action)
+                if self.__debug:
+                    print("MinimaxSearcher.check: best (action, action_value)=", 
+                          (action, action_value))               
+ 
+        if self.__debug:
+            print()
+        
+        action_names_ref = set(map(str, action_values_ref.keys()))
+        action_names = set(map(str, action_values.keys()))
+
+        best_names_ref = set(best_actions_ref)
+        best_names = set(best_actions)
+
+        assert best_value == best_value_ref
+        
+        assert len(action_names) <= len(action_names_ref)
+        assert len(action_names - action_names_ref) == 0
+ 
+        assert len(best_names) <= len(best_names_ref)
+        assert len(best_names - best_names_ref) == 0
+    
+
+    def state_value(self, state, depth):
+        # evaluate favorability for jersi_maximizer_player
+
+        assert depth >= 0
+        
+        # evaluate as if jersi_maximizer_player == Player.WHITE and use minimax_maximizer_sign
+        jersi_maximizer_player = state.get_current_maximizer_player()
+        
         if jersi_maximizer_player == Player.WHITE:
-            player_sign = 1
+            minimax_maximizer_sign = 1
         else:
-            player_sign = -1
+            minimax_maximizer_sign = -1
 
         value = 0
 
-        if state.is_terminal():
-            rewards = jersi_state.get_rewards()
+        jersi_state = state.get_jersi_state()
 
-            if rewards[jersi_maximizer_player] == Reward.DRAW:
-                # consider a draw as a victory
-                value = INFINITY_POSITIVE
+        if jersi_state.is_terminal():
+            # >> amplify terminal value using the depth (rationale: winning faster is safer)
+            
+            white_reward = jersi_state.get_rewards()[Player.WHITE]
 
-            elif rewards[jersi_maximizer_player] == Reward.WIN:
-                value = INFINITY_POSITIVE
+            if white_reward == Reward.WIN:
+                value = minimax_maximizer_sign*OMEGA_2*(depth + 1)
+
+            elif white_reward == Reward.DRAW:
+                # >> no use of minimax_maximizer_sign because the DRAW applies to both WHITE and BLACK
+                value = OMEGA*(depth + 1)
 
             else:
-                value = INFINITY_NEGATIVE
+                value = minimax_maximizer_sign*(-OMEGA_2)*(depth + 1)
 
         else:
 
-            # white and black activated fighters are used as indicators of parts of the game:
-            # opening part, middle part and final part
-            fighter_counts = jersi_state.get_fighter_counts()
-
-            if fighter_counts[Player.BLACK] == 0:
-                white_distance_importance = 1000
-                white_capture_importance = 0
-                white_center_importance = 0
-
-            elif fighter_counts[Player.BLACK] <= 5:
-                white_distance_importance = 10
-                white_capture_importance = 10
-                white_center_importance = 1
-
-            else:
-                white_distance_importance = 1
-                white_capture_importance = 1
-                white_center_importance = 1
-
-
-            if fighter_counts[Player.WHITE] == 0:
-                black_distance_importance = 1000
-                black_capture_importance = 0
-                black_center_importance = 0
-
-            elif fighter_counts[Player.WHITE] <= 5:
-                black_distance_importance = 10
-                black_capture_importance = 10
-                black_center_importance = 1
-
-            else:
-                black_distance_importance = 1
-                black_capture_importance = 1
-                black_center_importance = 1
-
             # white and black distances to their goals or ends
             king_distances = jersi_state.get_king_end_distances()
-            distance_difference = player_sign*(king_distances[Player.BLACK] - king_distances[Player.WHITE])
+            distance_difference = minimax_maximizer_sign*(king_distances[Player.BLACK] - king_distances[Player.WHITE])
 
             # white and black with captured status
             capture_counts = jersi_state.get_capture_counts()
-            capture_difference = player_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
+            capture_difference = minimax_maximizer_sign*(capture_counts[Player.BLACK] - capture_counts[Player.WHITE])
+
+            # white and black with active fighters status
+            fighter_counts = jersi_state.get_fighter_counts()
+            fighter_difference = minimax_maximizer_sign*(fighter_counts[Player.WHITE] - fighter_counts[Player.BLACK])
+
+            # white and black with reserved status
+            reserve_counts = jersi_state.get_reserve_counts()     
+            reserve_difference = minimax_maximizer_sign*(reserve_counts[Player.WHITE] - reserve_counts[Player.BLACK])
 
             # white and black fighter cubes in the central zone
             white_center_count = 0
             black_center_count = 0
 
-            hexagon_bottom = jersi_state.get_hexagon_bottom()
-            hexagon_top= jersi_state.get_hexagon_top()
+            cell_bottom = jersi_state.get_hexagon_bottom()
+            cell_top= jersi_state.get_hexagon_top()
 
-            for hexagon_index in jersi_state.get_center_hexagon_indices():
-                for cube_index in [hexagon_bottom[hexagon_index], hexagon_top[hexagon_index]]:
+            for cell_index in jersi_state.get_center_hexagon_indices():
+                for cube_index in [cell_bottom[cell_index], cell_top[cell_index]]:
                     if cube_index != Null.CUBE:
                         cube = Cube.all[cube_index]
 
@@ -2595,72 +2661,69 @@ class MinimaxSearcher():
                     else:
                         break
 
-            center_difference = player_sign*(white_center_count - black_center_count)
+            center_difference = minimax_maximizer_sign*(white_center_count - black_center_count)
+
+
+            # credit acts symmetrically for white and black
+            credit = jersi_state.get_credit()
+
 
             # normalize each feature in the intervall [-1, +1]
 
             distance_norm = 8
             capture_norm = 16
-            center_norm = 17
+            fighter_norm = 14
+            reserve_norm = 6
+            center_norm = 14
+            credit_norm = JersiState.get_max_credit()
+            
+            assert distance_difference <= distance_norm
+            assert -distance_difference <= distance_norm
+            
+            assert capture_difference <= capture_norm
+            assert -capture_difference <= capture_norm
+            
+            assert fighter_difference <= fighter_norm
+            assert -fighter_difference <= fighter_norm
+            
+            assert center_difference <= center_norm
+            assert -center_difference <= center_norm
+
+            assert credit <= credit_norm
+            assert -credit <= credit_norm
+
 
             distance_difference = distance_difference/distance_norm
             capture_difference = capture_difference/capture_norm
+            fighter_difference = fighter_difference/fighter_norm
+            reserve_difference = reserve_difference/reserve_norm
             center_difference = center_difference/center_norm
-
-            # account for importances
-            distance_difference *= white_distance_importance*black_distance_importance
-            capture_difference *= white_capture_importance*black_capture_importance
-            center_difference *= white_center_importance*black_center_importance
-
+            credit = credit/center_norm
+            
             # synthesis
 
             value += self.__distance_weight*distance_difference
             value += self.__capture_weight*capture_difference
+            value += self.__fighter_weight*fighter_difference
+            value += self.__reserve_weight*reserve_difference
             value += self.__center_weight*center_difference
+            value += self.__credit_weight*credit
 
         return value
 
 
-    def negamax(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
+    def reduce_actions(self, actions):
 
-
-        def score_action(action):
-            captures = re.sub(r"[^!]", "", str(action))
-            return len(captures)
-
-
-        use_negascout = True
-        use_sort = True
-
-        if alpha is None:
-            alpha = INFINITY_NEGATIVE
-
-        if beta is None:
-            beta = INFINITY_POSITIVE
-
-        if depth is None:
-            depth =self.__max_depth
-
-
-        if depth == 0 or state.is_terminal():
-            # print("negamax at depth %d evaluating leaf state" % depth)
-            return player*self.state_value(state)
-
-        if return_action_values:
-            action_values = dict()
-
-        actions = state.get_actions(shuffle=False)
-
-
-        # reduce the number of children
         if (self.__max_children is not None and len(actions) > self.__max_children):
+            if self.__debug:
+                print("--- reduce actions")           
 
             (drop_actions, move_actions) = partition(lambda x: re.match(r"^.*[-=].*$", str(x)), actions)
             drop_actions = list(drop_actions)
             move_actions = list(move_actions)
 
             if len(move_actions) > self.__max_children:
-                # sample the move actions according to their destination hexagons
+                # sample the move actions according to their destination cells
                 move_actions.sort(key=lambda x: re.sub(r"/[kK]:..$", "", str(x)).replace("!","")[-2:])
 
                 selected_move_actions = list()
@@ -2674,7 +2737,7 @@ class MinimaxSearcher():
 
                 # >> let us admit some tolerance regarding the __max_children criterion
                 # >> by adding a small fraction of drop actions
-                drop_probability = 0.05
+                drop_probability = 0.25
                 drop_count = max(drop_count, int(math.ceil(drop_probability*len(move_actions))))
 
                 drop_actions = random.choices(drop_actions, k=drop_count)
@@ -2682,45 +2745,386 @@ class MinimaxSearcher():
             else:
                 actions = move_actions
 
-        # try to optimize alpha beta and negascout by ordering capture at first positions
+        return actions
+
+
+    def sort_actions(self, actions):
+
+        def score_action(action):
+            captures = re.sub(r"[^!]", "", str(action))
+            return len(captures)
+        
+        if self.__debug:
+            print("--- sort actions")           
+
+        actions.sort(key=score_action, reverse=True)
+
+
+    def minimax(self, state, player, depth=None, return_action_values=False):
+
+        if depth is None:
+            depth =self.__max_depth
+
+
+        if depth == 0 or state.is_terminal():
+            state_value = self.state_value(state, depth)
+            
+            if self.__debug:
+                print()
+                print("minimax at depth %d evaluates leaf state %d with value %f" % 
+                      (depth, id(state),  state_value))
+                
+            return state_value
+
+        if self.__debug:
+            print()
+            print("minimax at depth %d evaluates state %d ..." % (depth, id(state)))           
+
+        assert player == -1 or player == 1
+        
+        if player == -1:
+            assert not return_action_values
+
+        if return_action_values:
+            action_values = dict()
+
+        actions = state.get_actions(shuffle=True)
+        
+        if player == 1:
+            
+            state_value = -math.inf
+            
+            for action in actions:
+                child_state = state.take_action(action)
+                
+                child_value = self.minimax(state=child_state, player=-player, depth=depth - 1)
+    
+                if return_action_values:
+                    action_values[action] = child_value
+                    
+                state_value = max(state_value, child_value)    
+
+        elif player == -1:
+            
+            state_value = math.inf
+            
+            for action in actions:
+                child_state = state.take_action(action)
+                
+                child_value = self.minimax(state=child_state, player=-player, depth=depth - 1)
+                    
+                state_value = min(state_value, child_value)    
+                
+        if self.__debug:
+            print()
+            print("minimax at depth %d evaluates state %d with value %f" % (depth, id(state), state_value))           
+     
+        if return_action_values:
+            return (state_value, action_values)
+        else:
+            return state_value
+
+
+    def alphabeta(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
+
+        use_sort = True
+
+        if alpha is None:
+            alpha = -math.inf
+
+        if beta is None:
+            beta = math.inf
+
+        if depth is None:
+            depth = self.__max_depth
+            
+        assert alpha <= beta
+
+        if depth == 0 or state.is_terminal():
+            state_value = self.state_value(state, depth)
+            
+            if self.__debug:
+                print()
+                print("alphabeta at depth %d evaluates leaf state %d with value %f" % 
+                      (depth, id(state),  state_value))
+                
+            return state_value
+
+        if return_action_values:
+            action_values = dict()
+
+        if self.__debug:
+            print()
+            print("alphabeta at depth %d evaluates state %d ..." % (depth, id(state)))           
+
+        assert player == -1 or player == 1
+        
+        if player == -1:
+            assert not return_action_values
+
+        if return_action_values:
+            action_values = dict()
+
+        # >> alphabeta will return only the first high valued action,
+        # >> so shuffling may vary the alphabeta return
+        actions = state.get_actions(shuffle=True)
+        actions = self.reduce_actions(actions)
         if use_sort:
-            actions.sort(key=score_action, reverse=True)
+            self.sort_actions(actions)
+        
+        if player == 1:
+            
+            state_value = -math.inf
+            
+            for action in actions:
+                child_state = state.take_action(action)
+                
+                child_value = self.alphabeta(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=beta)
+    
+                if return_action_values:
+                    action_values[action] = child_value
+                    
+                state_value = max(state_value, child_value)    
+                
+                if state_value >= beta:
+                    if self.__debug:
+                        print("--- beta cut-off")
+                    break
+                        
+                alpha = max(alpha, state_value)    
+
+        elif player == -1:
+            
+            state_value = math.inf
+            
+            for (action_index, action) in enumerate(actions):
+                child_state = state.take_action(action)
+                
+                child_value = self.alphabeta(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=beta)
+    
+                state_value = min(state_value, child_value)    
+                
+                if state_value <= alpha:
+                    if self.__debug:
+                        print("--- alpha cut-off")
+                    
+                    if depth == (self.__max_depth - 1):
+                        if state_value == alpha and action_index != (len(actions) - 1):
+                            # >> prevent final return of actions with falsely equal values due to cut-off
+                            # >> rationale: without cut-off it could be that state_value < alpha 
+                            state_value -= 1/OMEGA
+                            assert state_value < alpha
+                            if self.__debug:
+                                print("--- force state_value < alpha")
+                    
+                    break
+                        
+                beta = min(beta, state_value)    
+
+        if self.__debug:
+            print()
+            print("alphabeta at depth %d evaluates state %d with value %f" % (depth, id(state), state_value))           
+     
+        if return_action_values:
+            return (state_value, action_values)
+        else:
+            return state_value
 
 
-        value = INFINITY_NEGATIVE
+    def pvs(self, state, player, depth=None, alpha=None, beta=None, return_action_values=False):
+
+        assert False
+        # >> Method "pvs" to be used only when the null windows principle will be understood 
+        # >> checked against minimax, and proven faster than alphabeta !        
+
+        use_sort = True
+
+        if alpha is None:
+            alpha = -math.inf
+
+        if beta is None:
+            beta = math.inf
+
+        if depth is None:
+            depth = self.__max_depth
+            
+        assert alpha <= beta
+
+        if depth == 0 or state.is_terminal():
+            state_value = self.state_value(state, depth)
+            
+            if self.__debug:
+                print()
+                print("pvs at depth %d evaluates leaf state %d with value %f" % 
+                      (depth, id(state),  state_value))
+                
+            return state_value
+
+        if return_action_values:
+            action_values = dict()
+
+        if self.__debug:
+            print()
+            print("pvs at depth %d evaluates state %d ..." % (depth, id(state)))           
+
+        assert player == -1 or player == 1
+        
+        if player == -1:
+            assert not return_action_values
+
+        if return_action_values:
+            action_values = dict()
+
+        # >> pvs will return only the first high valued action,
+        # >> so shuffling may vary the pvs return
+        actions = state.get_actions(shuffle=True)
+        actions = self.reduce_actions(actions)
+        if use_sort:
+            self.sort_actions(actions)
+            
+        pvs_window = 0.01
+        
+        if player == 1:
+            
+            state_value = -math.inf
+            
+            for (action_index, action) in enumerate(actions):
+                child_state = state.take_action(action)
+                
+                if action_index == 0:
+                    child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=beta)
+                    
+                else:
+
+                    if self.__debug:
+                        print("--- maximizer: null window ...")
+                    child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=alpha + pvs_window)
+                    
+                    if not (alpha < child_value < beta):
+                        if self.__debug:
+                            print("--- maximizer: null window succeeded")
+                    else:
+                        if self.__debug:
+                            print("--- maximizer: null window failed; full re-search")
+                        child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=child_value - 1/OMEGA, beta=beta)
+                           
+                if return_action_values:
+                    action_values[action] = child_value
+                    
+                state_value = max(state_value, child_value)    
+                
+                if state_value >= beta:
+                    if self.__debug:
+                        print("--- maximizer: beta cut-off")
+                    break
+                        
+                alpha = max(alpha, state_value)    
+
+        elif player == -1:
+            
+            state_value = math.inf
+            
+            for (action_index, action) in enumerate(actions):
+                child_state = state.take_action(action)
+                
+                if action_index == 0:
+                    child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=beta)
+                    
+                else:
+                    if self.__debug:
+                        print("--- minimizer: null window ...")
+                    child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=beta - pvs_window, beta=beta)
+                    
+                    if not (alpha < child_value < beta):
+                        if self.__debug:
+                            print("--- minimizer: null window succeeded")
+                    else:
+                        if self.__debug:
+                            print("--- minimizer: null window failed; full re-search")
+                        child_value = self.pvs(state=child_state, player=-player, depth=depth - 1,
+                                              alpha=alpha, beta=child_value + 1/OMEGA)
+
+    
+                state_value = min(state_value, child_value)    
+                
+                if state_value <= alpha:
+                    if self.__debug:
+                        print("--- minimizer: alpha cut-off")
+                    
+                    if depth == (self.__max_depth - 1):
+                        if state_value == alpha and action_index != (len(actions) - 1):
+                            # >> prevent final return of actions with falsely equal values due to cut-off
+                            # >> rationale: without cut-off it could be that state_value < alpha 
+                            state_value -= 1/OMEGA
+                            assert state_value < alpha
+                            if self.__debug:
+                                print("--- minimizer: force state_value < alpha")
+                    
+                    break
+                        
+                beta = min(beta, state_value)    
+
+        if self.__debug:
+            print()
+            print("pvs at depth %d evaluates state %d with value %f" % (depth, id(state), state_value))           
+     
+        if return_action_values:
+            return (state_value, action_values)
+        else:
+            return state_value
+
+
+    def negamax(self, state, player, depth=None, return_action_values=False):
+
+        if depth is None:
+            depth =self.__max_depth
+
+        if depth == 0 or state.is_terminal():
+            state_value = player*self.state_value(state, depth)
+            
+            if self.__debug:
+                print()
+                print("negamax at depth %d evaluates leaf state %d with value %f" % 
+                      (depth, id(state),  state_value))
+                
+            return state_value
+
+        if return_action_values:
+            action_values = dict()
+
+        actions = state.get_actions(shuffle=True)
+
+        if self.__debug:
+            print()
+            print("negamax at depth %d evaluates state %d ..." % (depth, id(state)))           
+            
+        state_value = -math.inf
+        
         for action in actions:
-            # print("negamax at depth %d evaluating action %s" % (depth, action))
             child_state = state.take_action(action)
-
-            if use_negascout:
-                # search with a null window
-                # print("negascout: search with a null window")
-                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
-                                                    alpha=-alpha - 1, beta=-alpha)
-
-                # if it failed high, do a full re-search
-                if alpha < child_value < beta:
-                    # print("negascout: full re-search")
-                    child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
-                                                    alpha=-beta, beta=-child_value)
-
-            else:
-                child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1,
-                                                    alpha=-beta, beta=-alpha)
-
-            value = max(value, child_value)
+            
+            child_value = -self.negamax(state=child_state, player=-player, depth=depth - 1)
 
             if return_action_values:
                 action_values[action] = child_value
+                
+            state_value = max(state_value, child_value)    
 
-            alpha = max(alpha, value)
-            if alpha >= beta:
-                break
-
+        if self.__debug:
+            print()
+            print("negamax at depth %d evaluates state %d with value %f" % (depth, id(state), state_value))           
+     
         if return_action_values:
-            return (value, action_values)
+            return (state_value, action_values)
         else:
-            return value
+            return state_value
 
 
 class MctsSearcher():
@@ -3041,28 +3445,15 @@ def test_game_between_minimax_players():
 
 
     searcher_dict = dict()
+    searcher_dict["random"] = RandomSearcher("random")
 
-    capture_weight_list = [1200, 1400, 1600]
-    center_weight_list = [0, 100, 200, 400]
+    max_depth_list = [1, 2]
 
-    for capture_weight in capture_weight_list:
-        for center_weight in center_weight_list:
-            searcher_name = "minimax2-%d-%d" % (capture_weight, center_weight)
-            searcher = MinimaxSearcher(searcher_name,
-                                        max_depth=2,
-                                        capture_weight=capture_weight,
-                                        center_weight=center_weight)
-            assert searcher_name not in searcher_dict
-            searcher_dict[searcher_name] = searcher
-
-
-    (capture_weight, center_weight) = (1200, 400)
-    searcher_name = "minimax1-%d-%d" % (capture_weight, center_weight)
-    searcher = MinimaxSearcher(searcher_name,
-                                max_depth=1,
-                                capture_weight=capture_weight,
-                                center_weight=center_weight)
-    searcher_dict[searcher_name] = searcher
+    for max_depth in max_depth_list:
+        searcher_name = "minimax%d" % max_depth
+        searcher = MinimaxSearcher(searcher_name, max_depth=max_depth)
+        assert searcher_name not in searcher_dict
+        searcher_dict[searcher_name] = searcher
 
     searcher_points = collections.Counter()
 
@@ -3073,13 +3464,10 @@ def test_game_between_minimax_players():
             if x_searcher is y_searcher:
                 continue
 
-
             x_points = 0
             y_points = 0
 
-
             for game_index in range(game_count):
-
 
                 game = Game()
                 game.set_white_searcher(x_searcher)
@@ -3113,7 +3501,6 @@ def test_game_between_minimax_players():
             searcher_points[x_searcher.get_name()] += x_points
             searcher_points[y_searcher.get_name()] += y_points
 
-
     print()
     for (searcher_name, points) in sorted(searcher_points.items()):
         print("searcher %s has %d points" %(searcher_name, points))
@@ -3136,7 +3523,7 @@ def main():
     print(f"Hello from {os.path.basename(__file__)} version {__version__}")
     print(_COPYRIGHT_AND_LICENSE)
 
-    if True:
+    if False:
         test_game_between_random_players()
 
     if False:
@@ -3145,7 +3532,7 @@ def main():
     if False:
         test_game_between_random_and_human_players()
 
-    if False:
+    if True:
         test_game_between_minimax_players()
 
     if True:
